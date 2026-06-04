@@ -3,6 +3,7 @@ import { JwtAuthGuard } from "./jwt-auth.guard";
 import { AuthService } from "./auth.service";
 import { SignupDto } from "./dto/signup.dto";
 import { LoginDto } from "./dto/login.dto";
+import { VerifyDto } from "./dto/verify.dto";
 
 @Controller()
 export class AuthController
@@ -28,4 +29,11 @@ export class AuthController
     {
         return this.authService.login(body.email, body.password);
     }
+
+    @Post('verify')
+    verify(@Body() body: VerifyDto)
+    {
+        return this.authService.verify(body.email, body.code);
+    }
+
 }
