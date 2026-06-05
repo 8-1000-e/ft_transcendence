@@ -6,7 +6,6 @@ import { UnauthorizedException } from "@nestjs/common";
 import { MailService } from "src/mail/mail.service";
 import { randomInt } from "crypto";
 import { BadRequestException } from "@nestjs/common";
-import { throwDeprecation } from "process";
 
 @Injectable()
 export class AuthService
@@ -25,12 +24,18 @@ export class AuthService
 
     async signup(email: string, password: string, name: string)
     {
+        const existing = await this.prisma.user.findUnique({where: {email}});
+        if (existing)
+            throw new BadRequestException(`Email ${email} already exist`);
+
         const passwordHash = await bcrypt.hash(password, 10);
         const code = randomInt(100000, 1000000).toString();
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-        await this.prisma.pendingRegistration.create({
-            data: { email, name, passwordHash, verifCode: code, verifCodeExpiresAt: expiresAt }
+        await this.prisma.pendingRegistration.upsert({
+            where: {email},
+            update: {name, passwordHash, verifCode: code, verifCodeExpiresAt: expiresAt},
+            create: {email, name, passwordHash, verifCode: code, verifCodeExpiresAt: expiresAt}
         })
 
         await this.mail.sendVerificationEmail(email, code);
