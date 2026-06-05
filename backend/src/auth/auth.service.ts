@@ -83,6 +83,14 @@ export class AuthService
         return this.issueTokens(user.id);
     }
 
+    async logout(refreshToken: string)
+    {
+        const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
+        await this.prisma.refreshToken.deleteMany({where: {tokenHash}});
+
+        return {message: 'Logged out successfully'};
+    }
+
     async getProfile(userId: string)
     {
         return this.prisma.user.findUnique({

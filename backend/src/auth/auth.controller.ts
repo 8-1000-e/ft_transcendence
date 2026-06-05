@@ -4,7 +4,8 @@ import { AuthService } from "./auth.service";
 import { SignupDto } from "./dto/signup.dto";
 import { LoginDto } from "./dto/login.dto";
 import { VerifyDto } from "./dto/verify.dto";
-import {RefreshDto} from "./dto/refresh.dto"
+import {RefreshDto} from "./dto/refresh.dto";
+import {LogoutDto} from "./dto/logout.dto";
 
 @Controller()
 export class AuthController
@@ -30,11 +31,18 @@ export class AuthController
     {
         return this.authService.login(body.email, body.password);
     }
-
+    
     @Post('verify')
     verify(@Body() body: VerifyDto)
     {
         return this.authService.verify(body.email, body.code);
+    }
+    
+    @Post('logout')
+    @UseGuards(JwtAuthGuard)
+    logout(@Body() body: LogoutDto)
+    {
+        return this.authService.logout(body.refresh_token);
     }
 
     @Post('refresh')
@@ -42,5 +50,6 @@ export class AuthController
     {
         return this.authService.refresh(body.refresh_token);
     }
+
 
 }
