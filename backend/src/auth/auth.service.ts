@@ -88,11 +88,11 @@ export class AuthService
         return this.issueTokens(user.id);
     }
 
-    getFtAuthUrl()
+    getFtAuthUrl(state: string)
     {
         const clientId = this.config.get("FT_OAUTH_CLIENT_ID");
         const redirectUri = encodeURIComponent(this.config.getOrThrow("FT_OAUTH_REDIRECT_URI"));
-        return `https://api.intra.42.fr/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=public`;
+        return `https://api.intra.42.fr/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=public&state=${state}`;
     }
 
     async getFtCallback(code: string)
@@ -127,7 +127,7 @@ export class AuthService
             update: { ftId, ftPfpUrl, campus },
             create: { ftId, email, name, ftPfpUrl, campus },
         });
-        
+
         return this.issueTokens(user.id);
 
     }

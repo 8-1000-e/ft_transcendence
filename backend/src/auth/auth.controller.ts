@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Req, Post, Body, Redirect, Query} from "@nestjs/common";
+import { Controller, Get, UseGuards, Req, Post, Body, Redirect, Query, Res, UnauthorizedException} from "@nestjs/common";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { AuthService } from "./auth.service";
 import { SignupDto } from "./dto/signup.dto";
@@ -6,6 +6,8 @@ import { LoginDto } from "./dto/login.dto";
 import { VerifyDto } from "./dto/verify.dto";
 import {RefreshDto} from "./dto/refresh.dto";
 import {LogoutDto} from "./dto/logout.dto";
+import { randomBytes} from "crypto";
+import type { Response } from 'express';
 
 @Controller()
 export class AuthController
@@ -39,16 +41,31 @@ export class AuthController
     }
     
     @Get('auth/42')
-    @Redirect()
-    ftAuth(@Body() body: any)
+    ftAuth(@Res() res: Response)
     {
-            return { url: this.authService.getFtAuthUrl()};
+            const state = randomBytes(16).toString('hex');
+            res.cookie('oauth_state', state, {httpOnly: true, maxAge: 5 * 60 * 1000});
+            res.redirect(this.authService.getFtAuthUrl(state));
     }
 
     @Get('auth/42/callback')
-    ftCallback(@Query('code') code: string)
+    async ftCallback(
+        @Query('code') code: string,
+        @Query('state') state: string,
+        @Req() req: any,
+    )
     {
-        return this.authService.getFtCallback(code);
+        const cookieState = req.cookies['oauth_state'];
+        if (!cookieState || cookieState !== state)
+            throw new UnauthorizedException('Invalid Oauth state');
+        try 
+        {
+            return await this.authService.getFtCallback(code);
+        }
+        catch
+        {
+            throw new UnauthorizedException("42 auth failed");
+        }
     }
 
     @Post('logout')
