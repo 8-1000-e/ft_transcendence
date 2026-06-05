@@ -1,9 +1,11 @@
-import {Injectable, UnauthorizedException, BadRequestException} from "@nestjs/common";
+import {Injectable, UnauthorizedException, BadRequestException, Redirect} from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "src/prisma/prisma.service";
 import * as bcrypt from 'bcrypt'
 import { MailService } from "src/mail/mail.service";
 import { randomInt, randomBytes, createHash } from "crypto";
+import { ConfigService } from "@nestjs/config";
+import { profile } from "console";
 
 @Injectable()
 export class AuthService
@@ -12,6 +14,7 @@ export class AuthService
         private readonly jwtService: JwtService,
         private readonly prisma: PrismaService,
         private readonly mail: MailService,
+        private readonly config: ConfigService,
     ) {}
 
     createAccessToken(userId: string)
@@ -76,11 +79,57 @@ export class AuthService
         if (!user)
                 throw new UnauthorizedException();
 
-        const match = await bcrypt.compare(password, user.passwordHash);
+        let match
+        if (user.passwordHash)
+            match = await bcrypt.compare(password, user.passwordHash);
         if (!match)
                 throw new UnauthorizedException();
         
         return this.issueTokens(user.id);
+    }
+
+    getFtAuthUrl()
+    {
+        const clientId = this.config.get("FT_OAUTH_CLIENT_ID");
+        const redirectUri = encodeURIComponent(this.config.getOrThrow("FT_OAUTH_REDIRECT_URI"));
+        return `https://api.intra.42.fr/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=public`;
+    }
+
+    async getFtCallback(code: string)
+    {
+        const res = await fetch('https://api.intra.42.fr/oauth/token', {
+            method: 'POST',
+            body: new URLSearchParams({
+                grant_type: 'authorization_code',
+                client_id: this.config.getOrThrow('FT_OAUTH_CLIENT_ID'),
+                client_secret: this.config.getOrThrow("FT_OAUTH_CLIENT_SECRET"),
+                code: code,
+                redirect_uri: this.config.getOrThrow("FT_OAUTH_REDIRECT_URI"),
+            })
+        });
+
+        const data = await res.json();
+        const ftAccessToken = data.access_token;
+
+        const profilRes = await fetch('https://api.intra.42.fr/v2/me', {
+            headers: {Authorization: `Bearer ${ftAccessToken}`}
+        });
+        const ftProfile = await profilRes.json();
+
+        const ftId = String(ftProfile.id);
+        const email = ftProfile.email;
+        const name = ftProfile.login;
+        const ftPfpUrl = ftProfile.image.link;
+        const campus = ftProfile.campus[0].name;
+
+        const user = await this.prisma.user.upsert({
+            where: { email },
+            update: { ftId, ftPfpUrl, campus },
+            create: { ftId, email, name, ftPfpUrl, campus },
+        });
+        
+        return this.issueTokens(user.id);
+
     }
 
     async logout(refreshToken: string)

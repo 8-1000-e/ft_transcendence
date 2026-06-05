@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Req, Post, Body} from "@nestjs/common";
+import { Controller, Get, UseGuards, Req, Post, Body, Redirect, Query} from "@nestjs/common";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { AuthService } from "./auth.service";
 import { SignupDto } from "./dto/signup.dto";
@@ -38,6 +38,19 @@ export class AuthController
         return this.authService.verify(body.email, body.code);
     }
     
+    @Get('auth/42')
+    @Redirect()
+    ftAuth(@Body() body: any)
+    {
+            return { url: this.authService.getFtAuthUrl()};
+    }
+
+    @Get('auth/42/callback')
+    ftCallback(@Query('code') code: string)
+    {
+        return this.authService.getFtCallback(code);
+    }
+
     @Post('logout')
     @UseGuards(JwtAuthGuard)
     logout(@Body() body: LogoutDto)
@@ -50,6 +63,5 @@ export class AuthController
     {
         return this.authService.refresh(body.refresh_token);
     }
-
 
 }
