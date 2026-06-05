@@ -4,6 +4,7 @@ import { AuthService } from "./auth.service";
 import { SignupDto } from "./dto/signup.dto";
 import { LoginDto } from "./dto/login.dto";
 import { VerifyDto } from "./dto/verify.dto";
+import {RefreshDto} from "./dto/refresh.dto"
 
 @Controller()
 export class AuthController
@@ -34,6 +35,12 @@ export class AuthController
     verify(@Body() body: VerifyDto)
     {
         return this.authService.verify(body.email, body.code);
+    }
+
+    @Post('refresh')
+    refresh(@Body() body: RefreshDto)
+    {
+        return this.authService.refresh(body.refresh_token);
     }
 
 }

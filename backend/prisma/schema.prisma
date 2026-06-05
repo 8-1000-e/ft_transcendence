@@ -17,6 +17,7 @@ model User {
   email               String   @unique
   passwordHash        String
   createdAt           DateTime @default(now())
+  refreshTokens       RefreshToken[]
 }
 
 model PendingRegistration {
@@ -27,4 +28,13 @@ model PendingRegistration {
   createdAt           DateTime @default(now())
   verifCode           String
   verifCodeExpiresAt  DateTime
+}
+
+model RefreshToken {
+  id                  String    @id @default(uuid())
+  tokenHash           String    @unique
+  userId              String
+  user                User      @relation(fields: [userId], references: [id])
+  expiresAt           DateTime
+  createdAt           DateTime  @default(now())
 }

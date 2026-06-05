@@ -1,11 +1,9 @@
-import {BadGatewayException, Injectable} from "@nestjs/common";
+import {Injectable, UnauthorizedException, BadRequestException} from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "src/prisma/prisma.service";
 import * as bcrypt from 'bcrypt'
-import { UnauthorizedException } from "@nestjs/common";
 import { MailService } from "src/mail/mail.service";
-import { randomInt } from "crypto";
-import { BadRequestException } from "@nestjs/common";
+import { randomInt, randomBytes, createHash } from "crypto";
 
 @Injectable()
 export class AuthService
@@ -43,6 +41,13 @@ export class AuthService
         return { message: `Verification code sent to ${email}` };
     }
 
+    private async issueTokens(userId: string)
+    {
+        const refresh_token = await this.createRefreshToken(userId);
+        const access_token = this.createAccessToken(userId);
+        return {refresh_token, access_token};
+    }
+
     async verify(email: string, code: string)
     {
         const pending = await this.prisma.pendingRegistration.findUnique({ where: { email } });
@@ -62,7 +67,7 @@ export class AuthService
 
         await this.prisma.pendingRegistration.delete({where: { email }});
 
-        return this.createAccessToken(user.id);
+        return this.issueTokens(user.id);
     }
 
     async login(email: string, password:string)
@@ -75,7 +80,7 @@ export class AuthService
         if (!match)
                 throw new UnauthorizedException();
         
-        return this.createAccessToken(user.id);
+        return this.issueTokens(user.id);
     }
 
     async getProfile(userId: string)
@@ -86,5 +91,30 @@ export class AuthService
         });
     }
 
+    async createRefreshToken(userId: string)
+    {
+        const token = randomBytes(32).toString('hex');
+        const tokenHash = createHash('sha256').update(token).digest('hex');
+        const expiresAt = new Date(Date.now() + 7 * 60 * 60 * 24 * 1000);
+
+        await this.prisma.refreshToken.create({
+            data: {tokenHash, userId, expiresAt}
+        })
+
+        return token;
+    }
+
+    async refresh(refreshToken: string)
+    {
+        const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
+        const stored = await this.prisma.refreshToken.findUnique({ where: {tokenHash}});
+
+        if (!stored || stored.expiresAt < new Date())
+            throw new UnauthorizedException();
+
+        await this.prisma.refreshToken.delete({where: {tokenHash}});
+
+        return this.issueTokens(stored.userId);
+    }
 
 }
