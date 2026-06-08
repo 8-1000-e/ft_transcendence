@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt'
 import { MailService } from "src/mail/mail.service";
 import { randomInt, randomBytes, createHash } from "crypto";
 import { ConfigService } from "@nestjs/config";
+import { FtService } from "./ftService.service";
 
 @Injectable()
 export class AuthService
@@ -14,6 +15,7 @@ export class AuthService
         private readonly prisma: PrismaService,
         private readonly mail: MailService,
         private readonly config: ConfigService,
+        private readonly ft: FtService,
     ) {}
 
     createAccessToken(userId: string)
@@ -84,6 +86,7 @@ export class AuthService
         if (!match)
                 throw new UnauthorizedException();
         
+        this.ft.syncUserTeam(user.id).catch(() => {});
         return this.issueTokens(user.id);
     }
 
@@ -96,24 +99,7 @@ export class AuthService
 
     async getFtCallback(code: string)
     {
-        const res = await fetch('https://api.intra.42.fr/oauth/token', {
-            method: 'POST',
-            body: new URLSearchParams({
-                grant_type: 'authorization_code',
-                client_id: this.config.getOrThrow('FT_OAUTH_CLIENT_ID'),
-                client_secret: this.config.getOrThrow("FT_OAUTH_CLIENT_SECRET"),
-                code: code,
-                redirect_uri: this.config.getOrThrow("FT_OAUTH_REDIRECT_URI"),
-            })
-        });
-
-        const data = await res.json();
-        const ftAccessToken = data.access_token;
-
-        const profilRes = await fetch('https://api.intra.42.fr/v2/me', {
-            headers: {Authorization: `Bearer ${ftAccessToken}`}
-        });
-        const ftProfile = await profilRes.json();
+        const ftProfile = await this.ft.getProfileFromCode(code);
 
         const ftId = String(ftProfile.id);
         const email = ftProfile.email;
@@ -127,6 +113,7 @@ export class AuthService
             create: { ftId, email, name, ftPfpUrl, campus },
         });
 
+        this.ft.syncUserTeam(user.id).catch(() => {});
         return this.issueTokens(user.id);
 
     }
@@ -162,7 +149,7 @@ export class AuthService
             throw new UnauthorizedException();
 
         await this.prisma.refreshToken.delete({where: {tokenHash}});
-
+        this.ft.syncUserTeam(stored.userId).catch(() => {});
         return this.issueTokens(stored.userId);
     }
 
