@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Req, Post, Delete, Body, Redirect, Query, Res, UnauthorizedException} from "@nestjs/common";
+import { Controller, Get, UseGuards, Req, Post, Body, Query, Res, UnauthorizedException} from "@nestjs/common";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { AuthService } from "./auth.service";
 import { SignupDto } from "./dto/signup.dto";
@@ -13,14 +13,6 @@ import type { Response } from 'express';
 export class AuthController
 {
     constructor(private readonly authService: AuthService) {}
-
-    @Get('me')
-    @UseGuards(JwtAuthGuard)
-    getMe(@Req() request: any) 
-    {
-
-        return this.authService.getProfile(request.user.sub);
-    }
 
     @Post('signup')
     signup(@Body() body: SignupDto)
@@ -81,10 +73,4 @@ export class AuthController
         return this.authService.refresh(body.refresh_token);
     }
 
-    @Delete('me')
-    @UseGuards(JwtAuthGuard)
-    deleteMe(@Req() req: any)
-    {
-        return this.authService.deleteAccount(req.user.sub);
-    }
 }

@@ -1,11 +1,10 @@
-import {Injectable, UnauthorizedException, BadRequestException, Redirect} from "@nestjs/common";
+import {Injectable, UnauthorizedException, BadRequestException} from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "src/prisma/prisma.service";
 import * as bcrypt from 'bcrypt'
 import { MailService } from "src/mail/mail.service";
 import { randomInt, randomBytes, createHash } from "crypto";
 import { ConfigService } from "@nestjs/config";
-import { profile } from "console";
 
 @Injectable()
 export class AuthService
@@ -140,21 +139,7 @@ export class AuthService
         return {message: 'Logged out successfully'};
     }
 
-    async deleteAccount(id: string)
-    {
-        await this.prisma.user.delete({where: {id}});
-
-        return {message: "Account successfully deleted"};
-    }
     
-    async getProfile(userId: string)
-    {
-        return this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { id: true, email: true, name: true, createdAt: true },
-        });
-    }
-
     async createRefreshToken(userId: string)
     {
         const token = randomBytes(32).toString('hex');
