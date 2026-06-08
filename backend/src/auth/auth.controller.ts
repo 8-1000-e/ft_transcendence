@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Req, Post, Body, Redirect, Query, Res, UnauthorizedException} from "@nestjs/common";
+import { Controller, Get, UseGuards, Req, Post, Delete, Body, Redirect, Query, Res, UnauthorizedException} from "@nestjs/common";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { AuthService } from "./auth.service";
 import { SignupDto } from "./dto/signup.dto";
@@ -81,4 +81,10 @@ export class AuthController
         return this.authService.refresh(body.refresh_token);
     }
 
+    @Delete('me')
+    @UseGuards(JwtAuthGuard)
+    deleteMe(@Req() req: any)
+    {
+        return this.authService.deleteAccount(req.user.sub);
+    }
 }
