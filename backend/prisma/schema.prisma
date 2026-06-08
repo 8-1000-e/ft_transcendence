@@ -39,7 +39,7 @@ model RefreshToken {
   id                  String    @id @default(uuid())
   tokenHash           String    @unique
   userId              String
-  user                User      @relation(fields: [userId], references: [id])
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt           DateTime
   createdAt           DateTime  @default(now())
 }

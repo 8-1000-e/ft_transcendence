@@ -140,6 +140,13 @@ export class AuthService
         return {message: 'Logged out successfully'};
     }
 
+    async deleteAccount(id: string)
+    {
+        await this.prisma.user.delete({where: {id}});
+
+        return {message: "Account successfully deleted"};
+    }
+    
     async getProfile(userId: string)
     {
         return this.prisma.user.findUnique({
