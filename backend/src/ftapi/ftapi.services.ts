@@ -1,7 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { FtTokenResponse, FtProfile, FtProject, FtTeam } from './ftapi.types';
+import {
+  FtTokenResponse,
+  FtProfile,
+  FtProject,
+  FtTeam,
+  FtCursus,
+} from './ftapi.types';
+import { fetchWithRetry } from 'src/utils/http';
 
 @Injectable()
 export class FtApiService {
@@ -60,16 +67,11 @@ export class FtApiService {
   }
 
   async Get<T>(path: string, userToken?: string): Promise<T> {
-    const res = await fetch(`https://api.intra.42.fr/${path}`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${userToken ?? (await this.getAppToken())}`,
-      },
-    });
+    const token = userToken ?? (await this.getAppToken());
+    const res = await fetchWithRetry(`https://api.intra.42.fr/${path}`, token);
     if (!res.ok)
       throw new Error(`42 API request failed with status ${res.status}`);
-    const data = (await res.json()) as T;
-    return data;
+    return (await res.json()) as T;
   }
 
   async syncUserTeam(userId: string) {
@@ -103,6 +105,37 @@ export class FtApiService {
 
       if (teams.length < 100) break;
       page++;
+    }
+  }
+
+  private async getCursesIds(): Promise<FtCursus[]> {
+    return this.Get<FtCursus[]>('v2/cursus?page[size]=100');
+  }
+
+  async syncAllProjects() {
+    const cursusList = await this.getCursesIds();
+
+    for (const cursus of cursusList) {
+      let page = 1;
+      while (true) {
+        const projects = await this.Get<FtProject[]>(
+          `v2/cursus/${cursus.id}/projects?page[size]=100&page[number]=${page}`,
+        );
+
+        for (const project of projects) {
+          await this.prisma.projects.upsert({
+            where: { id: String(project.id) },
+            update: { name: project.name },
+            create: {
+              id: String(project.id),
+              name: project.name,
+            },
+          });
+        }
+
+        if (projects.length < 100) break;
+        page++;
+      }
     }
   }
 }
