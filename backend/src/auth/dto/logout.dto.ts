@@ -1,7 +1,6 @@
-import { Length} from "class-validator";
+import { Length } from 'class-validator';
 
-export class LogoutDto
-{
-    @Length(64, 64)
-    refresh_token: string;
+export class LogoutDto {
+  @Length(64, 64)
+  refresh_token: string;
 }

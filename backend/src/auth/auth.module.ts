@@ -8,20 +8,19 @@ import { MailModule } from 'src/mail/mail.module';
 import { FtService } from './ftService.service';
 
 @Module({
-  imports: [JwtModule.registerAsync({
-        inject: [ConfigService],
-          useFactory: (config: ConfigService) => ({
-              secret: config.get('JWT_SECRET'),
-              signOptions: {expiresIn: '15m'}
-              }),
-              }),
-          MailModule,
-          PrismaModule,
-        
-        ],
+  imports: [
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get('JWT_SECRET'),
+        signOptions: { expiresIn: '15m' },
+      }),
+    }),
+    MailModule,
+    PrismaModule,
+  ],
   controllers: [AuthController],
   providers: [AuthService, FtService],
   exports: [AuthService, JwtModule],
 })
-
 export class AuthModule {}
