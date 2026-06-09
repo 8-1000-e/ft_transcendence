@@ -1,7 +1,6 @@
-import { Length, MinLength } from "class-validator";
+import { Length } from 'class-validator';
 
-export class RefreshDto
-{
-    @Length(64, 64)
-    refresh_token: string;
+export class RefreshDto {
+  @Length(64, 64)
+  refresh_token: string;
 }

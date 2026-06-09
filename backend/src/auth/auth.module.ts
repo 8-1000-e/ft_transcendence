@@ -7,20 +7,19 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 import { MailModule } from 'src/mail/mail.module';
 
 @Module({
-  imports: [JwtModule.registerAsync({
-        inject: [ConfigService],
-          useFactory: (config: ConfigService) => ({
-              secret: config.get('JWT_SECRET'),
-              signOptions: {expiresIn: '15m'}
-              }),
-              }),
-          MailModule,
-          PrismaModule,
-        
-        ],
+  imports: [
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get('JWT_SECRET'),
+        signOptions: { expiresIn: '15m' },
+      }),
+    }),
+    MailModule,
+    PrismaModule,
+  ],
   controllers: [AuthController],
   providers: [AuthService],
   exports: [AuthService, JwtModule],
 })
-
 export class AuthModule {}
