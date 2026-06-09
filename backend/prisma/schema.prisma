@@ -23,6 +23,7 @@ model User {
   passwordHash        String?
   createdAt           DateTime @default(now())
   refreshTokens       RefreshToken[]
+  chats               Chats[]
 }
 
 model PendingRegistration {
@@ -42,4 +43,25 @@ model RefreshToken {
   user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt           DateTime
   createdAt           DateTime  @default(now())
+}
+
+model ProjectGroup {
+  id                  String    @id
+  githubLink          String?
+  groupName           String
+  groupProjectId      String
+  groupCampus         String?
+  projectName         String?
+  usersId             String[]
+  chats               Chats[]
+}
+
+model Chats {
+  id                String       @id @default(uuid())
+  content           String
+  sendTime          DateTime     @default(now())
+  sender            String
+  user              User         @relation(fields: [sender], references: [id], onDelete: Cascade)
+  group             String
+  groupId          ProjectGroup  @relation(fields: [group], references: [id])
 }

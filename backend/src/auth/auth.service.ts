@@ -9,18 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { MailService } from 'src/mail/mail.service';
 import { randomInt, randomBytes, createHash } from 'crypto';
 import { ConfigService } from '@nestjs/config';
-
-interface FtToken {
-  access_token: string;
-}
-
-interface FtProfile {
-  id: number;
-  email: string;
-  login: string;
-  image: { link: string };
-  campus: { name: string }[];
-}
+import { FtService } from './ftService.service';
 
 @Injectable()
 export class AuthService {
@@ -29,6 +18,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly config: ConfigService,
+    private readonly ft: FtService,
   ) {}
 
   createAccessToken(userId: string) {
@@ -104,11 +94,12 @@ export class AuthService {
       match = await bcrypt.compare(password, user.passwordHash);
     if (!match) throw new UnauthorizedException();
 
+    this.ft.syncUserTeam(user.id).catch(() => {});
     return this.issueTokens(user.id);
   }
 
   getFtAuthUrl(state: string) {
-    const clientId = this.config.get<string>('FT_OAUTH_CLIENT_ID');
+    const clientId = this.config.getOrThrow<string>('FT_OAUTH_CLIENT_ID');
     const redirectUri = encodeURIComponent(
       this.config.getOrThrow<string>('FT_OAUTH_REDIRECT_URI'),
     );
@@ -116,24 +107,7 @@ export class AuthService {
   }
 
   async getFtCallback(code: string) {
-    const res = await fetch('https://api.intra.42.fr/oauth/token', {
-      method: 'POST',
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: this.config.getOrThrow('FT_OAUTH_CLIENT_ID'),
-        client_secret: this.config.getOrThrow('FT_OAUTH_CLIENT_SECRET'),
-        code: code,
-        redirect_uri: this.config.getOrThrow('FT_OAUTH_REDIRECT_URI'),
-      }),
-    });
-
-    const data = (await res.json()) as FtToken; // Type assertion to FtToken
-    const ftAccessToken = data.access_token;
-
-    const profilRes = await fetch('https://api.intra.42.fr/v2/me', {
-      headers: { Authorization: `Bearer ${ftAccessToken}` },
-    });
-    const ftProfile = (await profilRes.json()) as FtProfile;
+    const ftProfile = await this.ft.getProfileFromCode(code);
 
     const ftId = String(ftProfile.id);
     const email = ftProfile.email;
@@ -147,6 +121,7 @@ export class AuthService {
       create: { ftId, email, name, ftPfpUrl, campus },
     });
 
+    this.ft.syncUserTeam(user.id).catch(() => {});
     return this.issueTokens(user.id);
   }
 
@@ -179,7 +154,7 @@ export class AuthService {
       throw new UnauthorizedException();
 
     await this.prisma.refreshToken.delete({ where: { tokenHash } });
-
+    this.ft.syncUserTeam(stored.userId).catch(() => {});
     return this.issueTokens(stored.userId);
   }
 }
