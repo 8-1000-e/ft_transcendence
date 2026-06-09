@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
@@ -34,7 +34,9 @@ export class FtApiService {
       }),
     });
     const data = (await res.json()) as FtTokenResponse;
-
+    if (!res.ok || !data.access_token) {
+      throw new UnauthorizedException('42 token exchange failed');
+    }
     const token = data.access_token;
     this.appToken = token;
     this.appTokenExpiresAt = Date.now() + (data.expires_in - 60) * 1000;
@@ -53,6 +55,9 @@ export class FtApiService {
       }),
     });
     const data = (await res.json()) as FtTokenResponse;
+    if (!res.ok || !data.access_token) {
+      throw new UnauthorizedException('42 token exchange failed');
+    }
     return this.Get<FtProfile>(`v2/me`, data.access_token);
   }
 
