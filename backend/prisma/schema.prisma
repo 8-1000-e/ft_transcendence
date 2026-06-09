@@ -3,8 +3,8 @@
 
 generator client {
   moduleFormat = "cjs"
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
 }
 
 datasource db {
@@ -12,56 +12,93 @@ datasource db {
 }
 
 model User {
-  id                  String   @id @default(uuid())
+  id            String         @id @default(uuid())
   //42 data
-  ftId                String?  @unique
-  ftPfpUrl            String?
-  campus              String?
+  ftId          String?        @unique
+  ftPfpUrl      String?
+  campus        String?
   //
-  name                String
-  email               String   @unique
-  passwordHash        String?
-  createdAt           DateTime @default(now())
-  refreshTokens       RefreshToken[]
-  chats               Chats[]
+  name          String
+  email         String         @unique
+  passwordHash  String?
+  createdAt     DateTime       @default(now())
+  refreshTokens RefreshToken[]
+  groupChats    GroupChat[]
+  projectPosts  ProjectsPost[]
+  projectChat   ProjectsChat[]
 }
 
 model PendingRegistration {
-  id                  String   @id @default(uuid())
-  name                String
-  email               String   @unique
-  passwordHash        String
-  createdAt           DateTime @default(now())
-  verifCode           String
-  verifCodeExpiresAt  DateTime
+  id                 String   @id @default(uuid())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  createdAt          DateTime @default(now())
+  verifCode          String
+  verifCodeExpiresAt DateTime
 }
 
 model RefreshToken {
-  id                  String    @id @default(uuid())
-  tokenHash           String    @unique
-  userId              String
-  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt           DateTime
-  createdAt           DateTime  @default(now())
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model ProjectGroup {
-  id                  String    @id
-  githubLink          String?
-  groupName           String
-  groupProjectId      String
-  groupCampus         String?
-  projectName         String?
-  usersId             String[]
-  chats               Chats[]
+  id             String   @id
+  githubLink     String?
+  groupName      String
+  groupProjectId String
+  groupCampus    String?
+  projectName    String?
+  usersId        String[]
+  chats          GroupChat[]
 }
 
-model Chats {
-  id                String       @id @default(uuid())
-  content           String
-  sendTime          DateTime     @default(now())
-  sender            String
-  user              User         @relation(fields: [sender], references: [id], onDelete: Cascade)
-  group             String
-  groupId          ProjectGroup  @relation(fields: [group], references: [id])
+model GroupChat {
+  id       String       @id @default(uuid())
+  content  String
+  sendTime DateTime     @default(now())
+  sender   String
+  user     User         @relation(fields: [sender], references: [id], onDelete: Cascade)
+  group    String
+  groupId  ProjectGroup @relation(fields: [group], references: [id])
+}
+
+model Projects {
+  id          String         @id
+  name        String
+  subject     String
+  description String
+  posts       ProjectsPost[]
+}
+
+model ProjectsPost {
+  id        String         @id @default(uuid())
+  projectId String
+  project   Projects       @relation(fields: [projectId], references: [id])
+  writer    String
+  user      User           @relation(fields: [writer], references: [id], onDelete: Cascade)
+  title     String?
+  content   String
+  postedAt  DateTime       @default(now())
+  editedAt  DateTime?      @default(now())
+  chats     ProjectsChat[]
+}
+
+model ProjectsChat {
+  id            String         @id @default(uuid())
+  answeringPost String?
+  post          ProjectsPost?  @relation(fields: [answeringPost], references: [id], onDelete: Cascade)
+  answeringChat String?
+  chat          ProjectsChat?  @relation("AnswerReplies", fields: [answeringChat], references: [id], onDelete: Cascade)
+  replies       ProjectsChat[] @relation("AnswerReplies")
+  writer        String
+  user          User           @relation(fields: [writer], references: [id], onDelete: Cascade)
+  content       String
+  editedAt      DateTime?      @default(now())
+  postedAt      DateTime       @default(now())
 }

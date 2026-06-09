@@ -1,14 +1,14 @@
 import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { ChatService } from './chat.service';
+import { GroupChatService } from './group-chat.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { Body } from '@nestjs/common';
 import { Param, Req } from '@nestjs/common';
 import type { AuthedRequest } from 'src/auth/authed-request';
 
 @Controller()
-export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+export class GroupChatController {
+  constructor(private readonly chatService: GroupChatService) {}
 
   @Post('groups/:groupId/message')
   @UseGuards(JwtAuthGuard)
