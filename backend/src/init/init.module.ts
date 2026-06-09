@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { InitService } from './init.service';
-import { FtModule } from 'src/ft/ft.module';
+import { FtApiModule } from 'src/ftapi/ftapi.module';
 
 @Module({
-  imports: [FtModule],
+  imports: [FtApiModule],
   providers: [InitService],
 })
 export class InitModule {}

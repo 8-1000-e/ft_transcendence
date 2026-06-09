@@ -7,11 +7,11 @@ import {
   FtProject,
   FtTeam,
   FtCursus,
-} from './ft-types';
+} from './ftapi.types';
 import { fetchWithRetry } from 'src/utils/http';
 
 @Injectable()
-export class FtService {
+export class FtApiService {
   private appToken: string | null = null;
   private appTokenExpiresAt: number = 0;
   private projectNameCache = new Map<string, string>();
@@ -53,44 +53,36 @@ export class FtService {
       }),
     });
     const data = (await res.json()) as FtTokenResponse;
-    const ftAccessToken = data.access_token;
-
-    const profileRes = await fetchWithRetry(
-      'https://api.intra.42.fr/v2/me',
-      ftAccessToken,
-    );
-    return (await profileRes.json()) as FtProfile;
+    return this.Get<FtProfile>(`v2/me`, data.access_token);
   }
 
   private async getProjectName(projectId: string): Promise<string> {
     const cached = this.projectNameCache.get(projectId);
     if (cached) return cached;
 
-    const token = await this.getAppToken();
-    const res = await fetchWithRetry(
-      `https://api.intra.42.fr/v2/projects/${projectId}`,
-      token,
-    );
-    const project = (await res.json()) as FtProject;
+    const project = await this.Get<FtProject>(`v2/projects/${projectId}`);
     const name = project.name;
     this.projectNameCache.set(projectId, name);
     return name;
+  }
+
+  async Get<T>(path: string, userToken?: string): Promise<T> {
+    const token = userToken ?? (await this.getAppToken());
+    const res = await fetchWithRetry(`https://api.intra.42.fr/${path}`, token);
+    if (!res.ok)
+      throw new Error(`42 API request failed with status ${res.status}`);
+    return (await res.json()) as T;
   }
 
   async syncUserTeam(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.ftId) return;
 
-    const token = await this.getAppToken();
-
     let page = 1;
     while (true) {
-      const res = await fetchWithRetry(
-        `https://api.intra.42.fr/v2/users/${user.ftId}/teams?page[size]=100&page[number]=${page}`,
-        token,
+      const teams = await this.Get<FtTeam[]>(
+        `v2/users/${user.ftId}/teams?page[size]=100&page[number]=${page}`,
       );
-      const teams = (await res.json()) as FtTeam[];
-
       for (const team of teams) {
         const memberFtIds = team.users.map((u) => String(u.id));
         if (memberFtIds.length === 1 || team['validated?'] === false) continue;
@@ -104,7 +96,7 @@ export class FtService {
             id: String(team.id),
             groupName: team.name,
             groupCampus: user.campus,
-            groupProjectId: String(team.project_id),
+            projectId: String(team.project_id),
             projectName,
             usersId: memberFtIds,
           },
@@ -116,29 +108,19 @@ export class FtService {
     }
   }
 
-  private async getCursesIds() {
-    const token = await this.getAppToken();
-    const res = await fetchWithRetry(
-      'https://api.intra.42.fr/v2/cursus?page[size]=100',
-      token,
-    );
-    const cursusList = (await res.json()) as FtCursus[];
-
-    return cursusList;
+  private async getCursesIds(): Promise<FtCursus[]> {
+    return this.Get<FtCursus[]>('v2/cursus?page[size]=100');
   }
 
   async syncAllProjects() {
-    const token = await this.getAppToken();
     const cursusList = await this.getCursesIds();
 
     for (const cursus of cursusList) {
       let page = 1;
       while (true) {
-        const projRes = await fetchWithRetry(
-          `https://api.intra.42.fr/v2/cursus/${cursus.id}/projects?page[size]=100&page[number]=${page}`,
-          token,
+        const projects = await this.Get<FtProject[]>(
+          `v2/cursus/${cursus.id}/projects?page[size]=100&page[number]=${page}`,
         );
-        const projects = (await projRes.json()) as FtProject[];
 
         for (const project of projects) {
           await this.prisma.projects.upsert({

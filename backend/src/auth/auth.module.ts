@@ -5,20 +5,20 @@ import { ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { MailModule } from 'src/mail/mail.module';
-import { FtModule } from 'src/ft/ft.module';
+import { FtApiModule } from 'src/ftapi/ftapi.module';
 
 @Module({
   imports: [
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get('JWT_SECRET'),
-        signOptions: { expiresIn: '15m' },
+        secret: config.getOrThrow('JWT_SECRET'),
+        signOptions: { expiresIn: '15m', algorithm: 'HS256' },
       }),
     }),
     MailModule,
     PrismaModule,
-    FtModule,
+    FtApiModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { FtService } from './ft.service';
+import { FtApiService } from './ftapi.services';
 import { PrismaModule } from 'src/prisma/prisma.module';
 
 @Module({
   imports: [PrismaModule],
-  providers: [FtService],
-  exports: [FtService],
+  providers: [FtApiService],
+  exports: [FtApiService],
 })
-export class FtModule {}
+export class FtApiModule {}

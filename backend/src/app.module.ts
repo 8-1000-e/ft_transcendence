@@ -7,6 +7,7 @@ import { GroupChatModule } from './group-chat/group-chat.module';
 import { GroupsModule } from './groups/groups.module';
 import { InitModule } from './init/init.module';
 import { PostsModule } from './posts/posts.module';
+import { FtApiModule } from './ftapi/ftapi.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { PostsModule } from './posts/posts.module';
     GroupsModule,
     InitModule,
     PostsModule,
+    FtApiModule,
   ],
 })
 export class AppModule {}
