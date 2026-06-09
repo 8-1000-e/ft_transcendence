@@ -47,6 +47,7 @@ model RefreshToken {
 
 model ProjectGroup {
   id                  String    @id
+  githubLink          String?
   groupName           String
   groupProjectId      String
   groupCampus         String?
