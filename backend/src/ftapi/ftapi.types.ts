@@ -1,5 +1,3 @@
-// Shapes of the 42 API responses we consume.
-
 export interface FtTokenResponse {
   access_token: string;
   expires_in: number;
