@@ -63,5 +63,5 @@ model Chats {
   sender            String
   user              User         @relation(fields: [sender], references: [id], onDelete: Cascade)
   group             String
-  groupeId          ProjectGroup @relation(fields: [group], references: [id])
+  groupId          ProjectGroup  @relation(fields: [group], references: [id])
 }
