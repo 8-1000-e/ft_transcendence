@@ -99,9 +99,9 @@ export class AuthService {
   }
 
   getFtAuthUrl(state: string) {
-    const clientId = this.config.get('FT_OAUTH_CLIENT_ID');
+    const clientId = this.config.getOrThrow<string>('FT_OAUTH_CLIENT_ID');
     const redirectUri = encodeURIComponent(
-      this.config.getOrThrow('FT_OAUTH_REDIRECT_URI'),
+      this.config.getOrThrow<string>('FT_OAUTH_REDIRECT_URI'),
     );
     return `https://api.intra.42.fr/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=public&state=${state}`;
   }
