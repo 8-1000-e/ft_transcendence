@@ -17,6 +17,7 @@ model User {
   ftId          String?        @unique
   ftPfpUrl      String?
   campus        String?
+  canSuggest    Boolean        @default(true)
   //
   name          String
   email         String         @unique
@@ -51,7 +52,7 @@ model ProjectGroup {
   id             String   @id
   githubLink     String?
   groupName      String
-  groupProjectId String
+  projectId      String
   groupCampus    String?
   projectName    String?
   usersId        String[]

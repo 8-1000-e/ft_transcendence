@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { FtTokenResponse, FtProfile, FtProject, FtTeam } from './ft-types';
+import { FtTokenResponse, FtProfile, FtProject, FtTeam } from './ftapi.types';
 
 @Injectable()
-export class FtService {
+export class FtApiService {
   private appToken: string | null = null;
   private appTokenExpiresAt: number = 0;
   private projectNameCache = new Map<string, string>();
@@ -46,45 +46,41 @@ export class FtService {
       }),
     });
     const data = (await res.json()) as FtTokenResponse;
-    const ftAccessToken = data.access_token;
-
-    const profileRes = await fetch('https://api.intra.42.fr/v2/me', {
-      headers: { Authorization: `Bearer ${ftAccessToken}` },
-    });
-    return (await profileRes.json()) as FtProfile;
+    return this.Get<FtProfile>(`v2/me`, data.access_token);
   }
 
   private async getProjectName(projectId: string): Promise<string> {
     const cached = this.projectNameCache.get(projectId);
     if (cached) return cached;
 
-    const token = await this.getAppToken();
-    const res = await fetch(
-      `https://api.intra.42.fr/v2/projects/${projectId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-    const project = (await res.json()) as FtProject;
+    const project = await this.Get<FtProject>(`v2/projects/${projectId}`);
     const name = project.name;
     this.projectNameCache.set(projectId, name);
     return name;
+  }
+
+  async Get<T>(path: string, userToken?: string): Promise<T> {
+    const res = await fetch(`https://api.intra.42.fr/${path}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${userToken ?? (await this.getAppToken())}`,
+      },
+    });
+    if (!res.ok)
+      throw new Error(`42 API request failed with status ${res.status}`);
+    const data = (await res.json()) as T;
+    return data;
   }
 
   async syncUserTeam(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.ftId) return;
 
-    const token = await this.getAppToken();
-
     let page = 1;
     while (true) {
-      const res = await fetch(
-        `https://api.intra.42.fr/v2/users/${user.ftId}/teams?page[size]=100&page[number]=${page}`,
-        { headers: { Authorization: `Bearer ${token}` } },
+      const teams = await this.Get<FtTeam[]>(
+        `v2/users/${user.ftId}/teams?page[size]=100&page[number]=${page}`,
       );
-      const teams = (await res.json()) as FtTeam[];
-
       for (const team of teams) {
         const memberFtIds = team.users.map((u) => String(u.id));
         if (memberFtIds.length === 1 || team['validated?'] === false) continue;
@@ -98,7 +94,7 @@ export class FtService {
             id: String(team.id),
             groupName: team.name,
             groupCampus: user.campus,
-            groupProjectId: String(team.project_id),
+            projectId: String(team.project_id),
             projectName,
             usersId: memberFtIds,
           },

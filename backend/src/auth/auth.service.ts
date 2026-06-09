@@ -9,7 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { MailService } from 'src/mail/mail.service';
 import { randomInt, randomBytes, createHash } from 'crypto';
 import { ConfigService } from '@nestjs/config';
-import { FtService } from './ftService.service';
+import { FtApiService } from 'src/ftapi/ftapi.services';
 
 @Injectable()
 export class AuthService {
@@ -18,7 +18,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly config: ConfigService,
-    private readonly ft: FtService,
+    private readonly ft: FtApiService,
   ) {}
 
   createAccessToken(userId: string) {
