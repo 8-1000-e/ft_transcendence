@@ -83,7 +83,7 @@ model ProjectsPost {
   title     String?
   content   String
   postedAt  DateTime       @default(now())
-  editedAt  DateTime?      @default(now())
+  editedAt  DateTime?
   chats     ProjectsChat[]
 }
 
