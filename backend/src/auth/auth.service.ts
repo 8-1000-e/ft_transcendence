@@ -11,14 +11,15 @@ import { randomInt, randomBytes, createHash } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 
 interface FtToken {
-  access_token: string;
+  access_token?: string;
+  error?: string;
 }
 
 interface FtProfile {
   id: number;
   email: string;
   login: string;
-  image: { link: string };
+  image: { link: string } | null;
   campus: { name: string }[];
 }
 
@@ -127,19 +128,25 @@ export class AuthService {
       }),
     });
 
-    const data = (await res.json()) as FtToken; // Type assertion to FtToken
+    const data = (await res.json()) as FtToken;
+    if (!res.ok || !data.access_token) {
+      throw new UnauthorizedException('42 token exchange failed');
+    }
     const ftAccessToken = data.access_token;
 
     const profilRes = await fetch('https://api.intra.42.fr/v2/me', {
       headers: { Authorization: `Bearer ${ftAccessToken}` },
     });
+    if (!profilRes.ok) {
+      throw new UnauthorizedException('42 profile fetch failed');
+    }
     const ftProfile = (await profilRes.json()) as FtProfile;
 
     const ftId = String(ftProfile.id);
     const email = ftProfile.email;
     const name = ftProfile.login;
-    const ftPfpUrl = ftProfile.image.link;
-    const campus = ftProfile.campus[0].name;
+    const ftPfpUrl = ftProfile.image?.link ?? null; // ?? null to handle undefined
+    const campus = ftProfile.campus?.[0]?.name ?? null; // ?? null to handle undefined
 
     const user = await this.prisma.user.upsert({
       where: { email },
@@ -149,7 +156,7 @@ export class AuthService {
 
     return this.issueTokens(user.id);
   }
-
+  // j
   async logout(refreshToken: string) {
     const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
     await this.prisma.refreshToken.deleteMany({ where: { tokenHash } });
