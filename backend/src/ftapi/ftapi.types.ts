@@ -1,5 +1,5 @@
-// Shapes of the 42 API responses we consume.
-
+// Type minimal pour la réponse OAuth "client_credentials" de 42.
+// On ne garde ici que les champs dont notre client API a besoin.
 export interface FtTokenResponse {
   access_token: string;
   expires_in: number;
