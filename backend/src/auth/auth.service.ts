@@ -112,8 +112,8 @@ export class AuthService {
     const ftId = String(ftProfile.id);
     const email = ftProfile.email;
     const name = ftProfile.login;
-    const ftPfpUrl = ftProfile.image.link;
-    const campus = ftProfile.campus[0].name;
+    const ftPfpUrl = ftProfile.image?.link ?? null;
+    const campus = ftProfile.campus?.[0]?.name ?? null;
 
     const user = await this.prisma.user.upsert({
       where: { email },
