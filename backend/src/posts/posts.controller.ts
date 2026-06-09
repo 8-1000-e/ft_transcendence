@@ -84,10 +84,10 @@ export class PostsController {
     return this.postsService.sendReply(id, body, req.user.sub);
   }
 
-  @Patch('project/:postId/comments')
+  @Patch('replies/:replyId')
   @UseGuards(JwtAuthGuard)
   editReply(
-    @Param('projectId') id: string,
+    @Param('replyId') id: string,
     @Body() body: CreateCommentDto,
     @Req() req: AuthedRequest,
   ) {
