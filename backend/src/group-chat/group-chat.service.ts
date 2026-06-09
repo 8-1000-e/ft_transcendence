@@ -3,7 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
-export class ChatService {
+export class GroupChatService {
   constructor(private readonly prisma: PrismaService) {}
 
   async sendMessage(groupId: string, userId: string, content: string) {
@@ -17,7 +17,7 @@ export class ChatService {
     if (!user.ftId || !group.usersId.includes(user.ftId))
       throw new ForbiddenException();
 
-    return this.prisma.chats.create({
+    return this.prisma.groupChat.create({
       data: { content, sender: userId, group: groupId },
     });
   }
@@ -33,7 +33,7 @@ export class ChatService {
     if (!user.ftId || !group.usersId.includes(user.ftId))
       throw new ForbiddenException();
 
-    return this.prisma.chats.findMany({
+    return this.prisma.groupChat.findMany({
       where: { group: groupId },
       orderBy: { sendTime: 'asc' },
     });
