@@ -9,7 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { MailService } from 'src/mail/mail.service';
 import { randomInt, randomBytes, createHash } from 'crypto';
 import { ConfigService } from '@nestjs/config';
-import { FtService } from './ftService.service';
+import { FtService } from 'src/ft/ft.service';
 
 @Injectable()
 export class AuthService {

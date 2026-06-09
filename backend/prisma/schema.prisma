@@ -71,8 +71,6 @@ model GroupChat {
 model Projects {
   id          String         @id
   name        String
-  subject     String
-  description String
   posts       ProjectsPost[]
 }
 

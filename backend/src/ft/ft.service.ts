@@ -1,7 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { FtTokenResponse, FtProfile, FtProject, FtTeam } from './ft-types';
+import {
+  FtTokenResponse,
+  FtProfile,
+  FtProject,
+  FtTeam,
+  FtCursus,
+} from './ft-types';
+import { fetchWithRetry } from 'src/utils/http';
 
 @Injectable()
 export class FtService {
@@ -48,9 +55,10 @@ export class FtService {
     const data = (await res.json()) as FtTokenResponse;
     const ftAccessToken = data.access_token;
 
-    const profileRes = await fetch('https://api.intra.42.fr/v2/me', {
-      headers: { Authorization: `Bearer ${ftAccessToken}` },
-    });
+    const profileRes = await fetchWithRetry(
+      'https://api.intra.42.fr/v2/me',
+      ftAccessToken,
+    );
     return (await profileRes.json()) as FtProfile;
   }
 
@@ -59,11 +67,9 @@ export class FtService {
     if (cached) return cached;
 
     const token = await this.getAppToken();
-    const res = await fetch(
+    const res = await fetchWithRetry(
       `https://api.intra.42.fr/v2/projects/${projectId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
+      token,
     );
     const project = (await res.json()) as FtProject;
     const name = project.name;
@@ -79,9 +85,9 @@ export class FtService {
 
     let page = 1;
     while (true) {
-      const res = await fetch(
+      const res = await fetchWithRetry(
         `https://api.intra.42.fr/v2/users/${user.ftId}/teams?page[size]=100&page[number]=${page}`,
-        { headers: { Authorization: `Bearer ${token}` } },
+        token,
       );
       const teams = (await res.json()) as FtTeam[];
 
@@ -107,6 +113,47 @@ export class FtService {
 
       if (teams.length < 100) break;
       page++;
+    }
+  }
+
+  private async getCursesIds() {
+    const token = await this.getAppToken();
+    const res = await fetchWithRetry(
+      'https://api.intra.42.fr/v2/cursus?page[size]=100',
+      token,
+    );
+    const cursusList = (await res.json()) as FtCursus[];
+
+    return cursusList;
+  }
+
+  async syncAllProjects() {
+    const token = await this.getAppToken();
+    const cursusList = await this.getCursesIds();
+
+    for (const cursus of cursusList) {
+      let page = 1;
+      while (true) {
+        const projRes = await fetchWithRetry(
+          `https://api.intra.42.fr/v2/cursus/${cursus.id}/projects?page[size]=100&page[number]=${page}`,
+          token,
+        );
+        const projects = (await projRes.json()) as FtProject[];
+
+        for (const project of projects) {
+          await this.prisma.projects.upsert({
+            where: { id: String(project.id) },
+            update: { name: project.name },
+            create: {
+              id: String(project.id),
+              name: project.name,
+            },
+          });
+        }
+
+        if (projects.length < 100) break;
+        page++;
+      }
     }
   }
 }
