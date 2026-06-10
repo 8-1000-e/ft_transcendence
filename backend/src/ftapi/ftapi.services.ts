@@ -58,7 +58,8 @@ export class FtApiService {
     if (!res.ok || !data.access_token) {
       throw new UnauthorizedException('42 token exchange failed');
     }
-    return this.Get<FtProfile>(`v2/me`, data.access_token);
+    const resl = await this.Get<FtProfile>(`v2/me`, data.access_token);
+    return resl;
   }
 
   private async getProjectName(projectId: string): Promise<string> {

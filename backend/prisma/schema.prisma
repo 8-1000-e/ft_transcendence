@@ -17,6 +17,7 @@ model User {
   ftId          String?        @unique
   ftPfpUrl      String?
   campus        String?
+  campusId      String?
   canSuggest    Boolean        @default(true)
   //
   //anon random data
@@ -54,14 +55,14 @@ model RefreshToken {
 }
 
 model ProjectGroup {
-  id             String   @id
-  githubLink     String?
-  groupName      String
-  projectId      String
-  groupCampus    String?
-  projectName    String?
-  usersId        String[]
-  chats          GroupChat[]
+  id          String      @id
+  githubLink  String?
+  groupName   String
+  projectId   String
+  groupCampus String?
+  projectName String?
+  usersId     String[]
+  chats       GroupChat[]
 }
 
 model GroupChat {
@@ -75,9 +76,9 @@ model GroupChat {
 }
 
 model Projects {
-  id          String         @id
-  name        String
-  posts       ProjectsPost[]
+  id    String         @id
+  name  String
+  posts ProjectsPost[]
 }
 
 model ProjectsPost {
