@@ -24,7 +24,7 @@ export async function randomIdentity(): Promise<RdmProfile> {
   } catch {
     const seed = randomBytes(6).toString('hex');
     return {
-      name: `Anonymous ${seed.slice(0, 4)}`,
+      name: `ft_user${seed.slice(0, 4)}`,
       pfp: `https://api.dicebear.com/9.x/identicon/svg?seed=${seed}`,
       city: 'Unknown',
     };
