@@ -19,6 +19,11 @@ model User {
   campus        String?
   canSuggest    Boolean        @default(true)
   //
+  //anon random data
+  rdmName       String?
+  rdmPfp        String?
+  rdmCampus     String?
+  //
   name          String
   email         String         @unique
   passwordHash  String?
