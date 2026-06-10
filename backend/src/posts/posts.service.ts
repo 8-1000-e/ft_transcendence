@@ -65,19 +65,27 @@ export class PostsService {
       include: {
         _count: { select: { chats: true } },
         user: {
-          select: { name: true, ftId: true, ftPfpUrl: true, campus: true },
+          select: {
+            name: true,
+            ftId: true,
+            ftPfpUrl: true,
+            campus: true,
+            rdmCampus: true,
+            rdmName: true,
+            rdmPfp: true,
+          },
         },
       },
     });
 
     return posts.map((post) => {
       if (user && !user.ftId) {
-        const name = `ft_user${post.writer.slice(0, 6)}`;
         return {
           ...post,
           user: {
-            name,
-            ftPfpUrl: `https://api.dicebear.com/9.x/identicon/svg?seed=${post.writer}`,
+            name: post.user.rdmName,
+            ftPfpUrl: post.user.rdmPfp,
+            campus: post.user.rdmCampus,
           },
         };
       }
@@ -128,23 +136,31 @@ export class PostsService {
       include: {
         _count: { select: { replies: true } },
         user: {
-          select: { name: true, ftId: true, ftPfpUrl: true, campus: true },
+          select: {
+            name: true,
+            ftId: true,
+            ftPfpUrl: true,
+            campus: true,
+            rdmCampus: true,
+            rdmName: true,
+            rdmPfp: true,
+          },
         },
       },
     });
 
-    return comments.map((reply) => {
+    return comments.map((comment) => {
       if (user && !user.ftId) {
-        const name = `ft_user${reply.writer.slice(0, 6)}`;
         return {
-          ...reply,
+          ...comment,
           user: {
-            name,
-            ftPfpUrl: `https://api.dicebear.com/9.x/identicon/svg?seed=${reply.writer}`,
+            name: comment.user.rdmName,
+            ftPfpUrl: comment.user.rdmPfp,
+            campus: comment.user.rdmCampus,
           },
         };
       }
-      return reply;
+      return comment;
     });
   }
 
@@ -194,19 +210,27 @@ export class PostsService {
       include: {
         _count: { select: { replies: true } },
         user: {
-          select: { name: true, ftId: true, ftPfpUrl: true, campus: true },
+          select: {
+            name: true,
+            ftId: true,
+            ftPfpUrl: true,
+            campus: true,
+            rdmName: true,
+            rdmPfp: true,
+            rdmCampus: true,
+          },
         },
       },
     });
 
     return replies.map((reply) => {
       if (user && !user.ftId) {
-        const name = `ft_user${reply.writer.slice(0, 6)}`;
         return {
           ...reply,
           user: {
-            name,
-            ftPfpUrl: `https://api.dicebear.com/9.x/identicon/svg?seed=${reply.writer}`,
+            name: reply.user.rdmName,
+            ftPfpUrl: reply.user.rdmPfp,
+            campus: reply.user.rdmCampus,
           },
         };
       }

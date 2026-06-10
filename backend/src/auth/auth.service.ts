@@ -10,7 +10,8 @@ import { MailService } from 'src/mail/mail.service';
 import { randomInt, randomBytes, createHash } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { FtApiService } from 'src/ftapi/ftapi.services';
-import { Prisma } from 'generated/prisma/client';
+import { Prisma, User } from 'generated/prisma/client';
+import { randomIdentity } from 'src/utils/anon';
 
 @Injectable()
 export class AuthService {
@@ -77,6 +78,8 @@ export class AuthService {
     if (pending.verifCodeExpiresAt < new Date())
       throw new BadRequestException('Code Expired');
 
+    const rdmData = await randomIdentity();
+
     try {
       const [user] = await this.prisma.$transaction([
         this.prisma.user.create({
@@ -84,6 +87,9 @@ export class AuthService {
             email,
             name: pending.name,
             passwordHash: pending.passwordHash,
+            rdmName: rdmData.name,
+            rdmCampus: rdmData.city,
+            rdmPfp: rdmData.pfp,
           },
         }),
         this.prisma.pendingRegistration.delete({ where: { email } }),
@@ -130,16 +136,30 @@ export class AuthService {
     const campus = ftProfile.campus?.[0]?.name ?? null;
 
     const existing = await this.prisma.user.findUnique({ where: { ftId } });
-    const user = existing
-      ? await this.prisma.user.update({
-          where: { ftId },
-          data: { ftPfpUrl, campus },
-        })
-      : await this.prisma.user.upsert({
-          where: { email },
-          update: { ftId, ftPfpUrl, campus },
-          create: { ftId, email, name, ftPfpUrl, campus },
-        });
+
+    let user: User;
+    if (existing) {
+      user = await this.prisma.user.update({
+        where: { ftId },
+        data: { ftPfpUrl, campus },
+      });
+    } else {
+      const rdmData = await randomIdentity();
+      user = await this.prisma.user.upsert({
+        where: { email },
+        update: { ftId, ftPfpUrl, campus },
+        create: {
+          ftId,
+          email,
+          name,
+          ftPfpUrl,
+          campus,
+          rdmName: rdmData.name,
+          rdmPfp: rdmData.pfp,
+          rdmCampus: rdmData.city,
+        },
+      });
+    }
 
     this.ft.syncUserTeam(user.id).catch(() => {});
     return this.issueTokens(user.id);
