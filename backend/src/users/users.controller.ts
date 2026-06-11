@@ -7,6 +7,7 @@ import {
   Patch,
   Body,
   Delete,
+  Post,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { UsersService } from './users.service';
@@ -32,7 +33,13 @@ export class UsersController {
   @Delete('me')
   @UseGuards(JwtAuthGuard)
   deleteMe(@Req() req: AuthedRequest) {
-    return this.usersService.deleteAccount(req.user.sub);
+    return this.usersService.requestDeletion(req.user.sub);
+  }
+
+  @Post('me/cancel')
+  @UseGuards(JwtAuthGuard)
+  cancelDelete(@Req() req: AuthedRequest) {
+    return this.usersService.cancelDelete(req.user.sub);
   }
 
   @Get('users/:id')

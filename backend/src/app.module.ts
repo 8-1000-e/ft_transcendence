@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -9,6 +10,7 @@ import { InitModule } from './init/init.module';
 import { PostsModule } from './posts/posts.module';
 import { FtApiModule } from './ftapi/ftapi.module';
 import { SuggestModule } from './suggest/suggest.module';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { SuggestModule } from './suggest/suggest.module';
     PostsModule,
     FtApiModule,
     SuggestModule,
+    ScheduleModule.forRoot(),
+    TasksModule,
   ],
 })
 export class AppModule {}
