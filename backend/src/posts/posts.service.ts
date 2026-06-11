@@ -7,6 +7,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { VoteDto } from './dto/vote.dto';
+import { VoteValue } from 'generated/prisma/client';
 
 @Injectable()
 export class PostsService {
@@ -65,6 +66,7 @@ export class PostsService {
       orderBy: { postedAt: 'desc' },
       include: {
         _count: { select: { chats: true } },
+        votes: true,
         user: {
           select: {
             name: true,
@@ -79,10 +81,17 @@ export class PostsService {
       },
     });
 
-    return posts.map((post) => {
+    return posts.map(({ votes, ...post }) => {
+      const upvotes = votes.filter((v) => v.vote === VoteValue.UP).length;
+      const downvotes = votes.filter((v) => v.vote === VoteValue.DOWN).length;
+      const myVote = votes.find((v) => v.userId === userId)?.vote ?? null;
+
       if (user && !user.ftId) {
         return {
           ...post,
+          upvotes,
+          downvotes,
+          myVote,
           user: {
             name: post.user.rdmName,
             ftPfpUrl: post.user.rdmPfp,
@@ -90,7 +99,7 @@ export class PostsService {
           },
         };
       }
-      return post;
+      return { ...post, upvotes, downvotes, myVote };
     });
   }
 
@@ -136,6 +145,7 @@ export class PostsService {
       orderBy: { postedAt: 'desc' },
       include: {
         _count: { select: { replies: true } },
+        votes: true,
         user: {
           select: {
             name: true,
@@ -150,10 +160,17 @@ export class PostsService {
       },
     });
 
-    return comments.map((comment) => {
+    return comments.map(({ votes, ...comment }) => {
+      const upvotes = votes.filter((v) => v.vote === VoteValue.UP).length;
+      const downvotes = votes.filter((v) => v.vote === VoteValue.DOWN).length;
+      const myVote = votes.find((v) => v.userId === userId)?.vote ?? null;
+
       if (user && !user.ftId) {
         return {
           ...comment,
+          upvotes,
+          downvotes,
+          myVote,
           user: {
             name: comment.user.rdmName,
             ftPfpUrl: comment.user.rdmPfp,
@@ -161,7 +178,7 @@ export class PostsService {
           },
         };
       }
-      return comment;
+      return { ...comment, upvotes, downvotes, myVote };
     });
   }
 
@@ -210,6 +227,7 @@ export class PostsService {
       orderBy: { postedAt: 'desc' },
       include: {
         _count: { select: { replies: true } },
+        votes: true,
         user: {
           select: {
             name: true,
@@ -224,10 +242,17 @@ export class PostsService {
       },
     });
 
-    return replies.map((reply) => {
+    return replies.map(({ votes, ...reply }) => {
+      const upvotes = votes.filter((v) => v.vote === VoteValue.UP).length;
+      const downvotes = votes.filter((v) => v.vote === VoteValue.DOWN).length;
+      const myVote = votes.find((v) => v.userId === userId)?.vote ?? null;
+
       if (user && !user.ftId) {
         return {
           ...reply,
+          upvotes,
+          downvotes,
+          myVote,
           user: {
             name: reply.user.rdmName,
             ftPfpUrl: reply.user.rdmPfp,
@@ -235,7 +260,7 @@ export class PostsService {
           },
         };
       }
-      return reply;
+      return { ...reply, upvotes, downvotes, myVote };
     });
   }
 
