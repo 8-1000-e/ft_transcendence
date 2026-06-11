@@ -78,6 +78,7 @@ export class GroupChatController {
       messageId,
       req.user.sub,
       body.content,
+      body.filesUrl,
     );
   }
 

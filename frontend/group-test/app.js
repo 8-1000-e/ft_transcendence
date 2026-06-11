@@ -333,6 +333,7 @@ function renderMessages(
       </div>
       ${renderReplyPreview(message.replyTo)}
       <div class="message-content">${escapeHtml(message.content)}</div>
+      ${renderFileList(message.filesUrl)}
     `;
 
     const replyButton = article.querySelector(".message-reply-button");
@@ -365,6 +366,10 @@ function renderEditMessage(article, message) {
   article.innerHTML = `
     <form class="message-edit-form">
       <textarea name="content" rows="4" maxlength="1000" required>${escapeHtml(message.content)}</textarea>
+      <label>
+        Fichiers
+        <textarea name="filesUrl" rows="3" placeholder="/files/example.png">${escapeHtml((message.filesUrl || []).join("\n"))}</textarea>
+      </label>
       <div class="message-edit-actions">
         <button type="submit">Enregistrer</button>
         <button type="button" data-cancel>Annuler</button>
@@ -384,11 +389,12 @@ function renderEditMessage(article, message) {
     event.preventDefault();
     const content = textarea.value.trim();
     if (!content) return;
+    const filesUrl = parseFilesUrl(form.elements.filesUrl.value);
 
     const updatedMessage = await api(
       `/groups/${state.selectedGroup.id}/messages/${message.id}`,
       "PATCH",
-      { content },
+      { content, filesUrl },
     );
     upsertMessage(updatedMessage);
   });
@@ -674,6 +680,25 @@ function renderReplyPreview(replyTo) {
       <span>${escapeHtml(truncate(replyTo.content, 20))}</span>
     </div>
   `;
+}
+
+function renderFileList(filesUrl) {
+  if (!Array.isArray(filesUrl) || filesUrl.length === 0) return "";
+
+  return `
+    <div class="message-files">
+      ${filesUrl
+        .map((fileUrl) => `<span>${escapeHtml(fileUrl)}</span>`)
+        .join("")}
+    </div>
+  `;
+}
+
+function parseFilesUrl(value) {
+  return String(value || "")
+    .split(/[,\n]/)
+    .map((fileUrl) => fileUrl.trim())
+    .filter(Boolean);
 }
 
 function escapeHtml(value) {

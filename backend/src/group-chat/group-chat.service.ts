@@ -91,6 +91,7 @@ export class GroupChatService implements OnModuleInit {
     messageId: string,
     userId: string,
     content: string,
+    filesUrl?: string[],
   ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -105,12 +106,15 @@ export class GroupChatService implements OnModuleInit {
       throw new NotFoundException();
     if (existingMessage.sender !== userId) throw new ForbiddenException();
 
+    assertPrivateFilesExist(filesUrl);
+
     const message = await this.prisma.groupChat.update({
       where: {
         id: messageId,
       },
       data: {
         content,
+        ...(filesUrl ? { filesUrl } : {}),
       },
       include: this.messageInclude(),
     });

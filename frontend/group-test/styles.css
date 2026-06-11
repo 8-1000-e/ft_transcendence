@@ -345,6 +345,22 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.message-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.message-files span {
+  border: 1px solid var(--line);
+  background: var(--surface-strong);
+  padding: 3px 6px;
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
 .reply-preview {
   margin: 0 0 8px 46px;
   border-left: 3px solid var(--accent);
