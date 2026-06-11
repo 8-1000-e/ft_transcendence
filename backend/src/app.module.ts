@@ -12,6 +12,7 @@ import { UploadModule } from './upload/upload.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { SuggestModule } from './suggest/suggest.module';
+import { PusherModule } from './pusher/pusher.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SuggestModule } from './suggest/suggest.module';
       serveRoot: '/uploads',
     }),
     SuggestModule,
+    PusherModule,
   ],
 })
 export class AppModule {}

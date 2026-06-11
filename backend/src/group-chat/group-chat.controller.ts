@@ -1,9 +1,19 @@
-import { Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { GroupChatService } from './group-chat.service';
 import { SendMessageDto } from './dto/send-message.dto';
-import { Body } from '@nestjs/common';
-import { Param, Req, Res } from '@nestjs/common';
 import type { AuthedRequest } from 'src/auth/authed-request';
 import type { Response } from 'express';
 import { join } from 'path';
@@ -27,10 +37,58 @@ export class GroupChatController {
     );
   }
 
+  @Post('groups/:groupId/message/:replyMessageId')
+  @UseGuards(JwtAuthGuard)
+  postReplyMessage(
+    @Param('groupId') groupId: string,
+    @Body() body: SendMessageDto,
+    @Req() req: AuthedRequest,
+    @Param('replyMessageId') replyMessageId?: string,
+  ) {
+    return this.chatService.sendMessage(
+      groupId,
+      req.user.sub,
+      body.content,
+      body.filesUrl,
+      replyMessageId,
+    );
+  }
+
   @Get('groups/:groupId/messages')
   @UseGuards(JwtAuthGuard)
-  getMessages(@Param('groupId') groupId: string, @Req() req: AuthedRequest) {
-    return this.chatService.getMessages(groupId, req.user.sub);
+  getMessages(
+    @Param('groupId') groupId: string,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.chatService.getMessages(groupId, req.user.sub, from, to);
+  }
+
+  @Patch('groups/:groupId/messages/:messageId')
+  @UseGuards(JwtAuthGuard)
+  editMessage(
+    @Param('groupId') groupId: string,
+    @Param('messageId') messageId: string,
+    @Body() body: SendMessageDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.chatService.editMessage(
+      groupId,
+      messageId,
+      req.user.sub,
+      body.content,
+    );
+  }
+
+  @Delete('groups/:groupId/messages/:messageId')
+  @UseGuards(JwtAuthGuard)
+  deleteMessage(
+    @Param('groupId') groupId: string,
+    @Param('messageId') messageId: string,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.chatService.deleteMessage(groupId, messageId, req.user.sub);
   }
 
   @Get('files/:filename')
