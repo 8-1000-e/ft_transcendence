@@ -32,7 +32,7 @@ export class JwtAuthGuard implements CanActivate {
       payload = this.jwtService.verify<JwtPayload>(token, {
         algorithms: ['HS256'],
       });
-      //request.user = payload;
+
     } catch {
       throw new UnauthorizedException();
     }
