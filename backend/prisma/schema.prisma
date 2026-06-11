@@ -32,6 +32,8 @@ model User {
   groupChats    GroupChat[]
   projectPosts  ProjectsPost[]
   projectChat   ProjectsChat[]
+  postVote      PostVote[]
+  chatVote      ChatVote[]
 }
 
 model PendingRegistration {
@@ -54,14 +56,14 @@ model RefreshToken {
 }
 
 model ProjectGroup {
-  id             String   @id
-  githubLink     String?
-  groupName      String
-  projectId      String
-  groupCampus    String?
-  projectName    String?
-  usersId        String[]
-  chats          GroupChat[]
+  id          String      @id
+  githubLink  String?
+  groupName   String
+  projectId   String
+  groupCampus String?
+  projectName String?
+  usersId     String[]
+  chats       GroupChat[]
 }
 
 model GroupChat {
@@ -75,9 +77,9 @@ model GroupChat {
 }
 
 model Projects {
-  id          String         @id
-  name        String
-  posts       ProjectsPost[]
+  id    String         @id
+  name  String
+  posts ProjectsPost[]
 }
 
 model ProjectsPost {
@@ -91,6 +93,7 @@ model ProjectsPost {
   postedAt  DateTime       @default(now())
   editedAt  DateTime?
   chats     ProjectsChat[]
+  votes     PostVote[]
 }
 
 model ProjectsChat {
@@ -105,4 +108,30 @@ model ProjectsChat {
   content       String
   editedAt      DateTime?      @default(now())
   postedAt      DateTime       @default(now())
+  votes         ChatVote[]
+}
+
+enum VoteValue {
+  UP
+  DOWN
+}
+
+model PostVote {
+  vote   VoteValue
+  userId String
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId String
+  post   ProjectsPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+}
+
+model ChatVote {
+  vote   VoteValue
+  userId String
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatId String
+  chat   ProjectsChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@id([userId, chatId])
 }

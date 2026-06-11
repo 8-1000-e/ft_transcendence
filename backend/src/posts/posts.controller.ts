@@ -13,6 +13,7 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import type { AuthedRequest } from 'src/auth/authed-request';
+import { VoteDto } from './dto/vote.dto';
 
 @Controller()
 export class PostsController {
@@ -98,5 +99,27 @@ export class PostsController {
   @UseGuards(JwtAuthGuard)
   getReplies(@Param('commentId') id: string, @Req() req: AuthedRequest) {
     return this.postsService.getReplies(id, req.user.sub);
+  }
+
+  //LIKES
+
+  @Post('posts/:postId/vote')
+  @UseGuards(JwtAuthGuard)
+  votePost(
+    @Param('postId') id: string,
+    @Body() body: VoteDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.postsService.votePost(id, body, req.user.sub);
+  }
+
+  @Post('comments/:commentId/vote')
+  @UseGuards(JwtAuthGuard)
+  voteChat(
+    @Param('commentId') id: string,
+    @Body() body: VoteDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.postsService.voteChat(id, body, req.user.sub);
   }
 }

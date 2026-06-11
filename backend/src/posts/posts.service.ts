@@ -6,6 +6,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { VoteDto } from './dto/vote.dto';
 
 @Injectable()
 export class PostsService {
@@ -235,6 +236,55 @@ export class PostsService {
         };
       }
       return reply;
+    });
+  }
+
+  //LIKES
+  async votePost(id: string, body: VoteDto, userId: string) {
+    const post = await this.prisma.projectsPost.findUnique({ where: { id } });
+    if (!post) throw new NotFoundException();
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.ftId) throw new UnauthorizedException();
+
+    const existing = await this.prisma.postVote.findUnique({
+      where: { userId_postId: { userId, postId: id } },
+    });
+
+    //remove on double click
+    if (existing && existing.vote == body.vote) {
+      return this.prisma.postVote.delete({
+        where: { userId_postId: { userId, postId: id } },
+      });
+    }
+
+    return this.prisma.postVote.upsert({
+      where: { userId_postId: { userId, postId: id } },
+      update: { vote: body.vote },
+      create: { userId, postId: id, vote: body.vote },
+    });
+  }
+
+  async voteChat(id: string, body: VoteDto, userId: string) {
+    const post = await this.prisma.projectsChat.findUnique({ where: { id } });
+    if (!post) throw new NotFoundException();
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.ftId) throw new UnauthorizedException();
+
+    const existing = await this.prisma.chatVote.findUnique({
+      where: { userId_chatId: { userId, chatId: id } },
+    });
+
+    //remove on double click
+    if (existing && existing.vote == body.vote) {
+      return this.prisma.chatVote.delete({
+        where: { userId_chatId: { userId, chatId: id } },
+      });
+    }
+
+    return this.prisma.chatVote.upsert({
+      where: { userId_chatId: { userId, chatId: id } },
+      update: { vote: body.vote },
+      create: { userId, chatId: id, vote: body.vote },
     });
   }
 }
