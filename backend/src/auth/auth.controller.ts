@@ -7,7 +7,6 @@ import {
   Body,
   Query,
   Res,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { AuthService } from './auth.service';
@@ -51,14 +50,20 @@ export class AuthController {
     @Query('code') code: string,
     @Query('state') state: string,
     @Req() req: RequestWithCookies,
+    @Res() res: Response,
   ) {
+    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
     const cookieState = req.cookies['oauth_state'];
     if (!cookieState || cookieState !== state)
-      throw new UnauthorizedException('Invalid Oauth state');
+      return res.redirect(`${frontendUrl}/login?error=invalid_state`);
     try {
-      return await this.authService.getFtCallback(code);
+      const { access_token, refresh_token } =
+        await this.authService.getFtCallback(code);
+      return res.redirect(
+        `${frontendUrl}/auth/callback#access_token=${access_token}&refresh_token=${refresh_token}`,
+      );
     } catch {
-      throw new UnauthorizedException('42 auth failed');
+      return res.redirect(`${frontendUrl}/login?error=ft_auth_failed`);
     }
   }
 
