@@ -54,9 +54,17 @@ export class FtApiService {
         redirect_uri: this.config.getOrThrow('FT_OAUTH_REDIRECT_URI'),
       }),
     });
-    const data = (await res.json()) as FtTokenResponse;
+    const data = (await res.json()) as FtTokenResponse & {
+      error?: string;
+      error_description?: string;
+    };
     if (!res.ok || !data.access_token) {
-      throw new UnauthorizedException('42 token exchange failed');
+      throw new UnauthorizedException({
+        message: '42 token exchange failed',
+        status: res.status,
+        ftError: data.error,
+        ftErrorDescription: data.error_description,
+      });
     }
     const resl = await this.Get<FtProfile>(`v2/me`, data.access_token);
     return resl;

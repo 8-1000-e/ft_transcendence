@@ -91,11 +91,6 @@ export class SuggestService {
         campusId,
         requestCounter,
       );
-      console.log({
-        ftApiRequests: requestCounter.locations + requestCounter.projectsUsers,
-        locationsRequests: requestCounter.locations,
-        projectsUsersRequests: requestCounter.projectsUsers,
-      });
       return suggestions;
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;

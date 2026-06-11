@@ -13,7 +13,7 @@ import { FtApiModule } from 'src/ftapi/ftapi.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow('JWT_SECRET'),
-        signOptions: { expiresIn: '15m', algorithm: 'HS256' },
+        signOptions: { expiresIn: '60m', algorithm: 'HS256' },
       }),
     }),
     MailModule,
