@@ -18,7 +18,7 @@ export class SendMessageDto {
   @IsArray()
   @ArrayMaxSize(10)
   @IsString({ each: true })
-  @Matches(/^\/uploads\/[\w-]+\.\w+$/, { each: true })
+  @Matches(/^\/files\/[\w-]+\.\w+$/, { each: true })
   @MaxLength(255, { each: true })
   filesUrl?: string[];
 }

@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { assertFilesExist } from 'src/utils/files';
+import { assertPrivateFilesExist } from 'src/utils/files';
 
 @Injectable()
 export class GroupChatService {
@@ -23,7 +23,7 @@ export class GroupChatService {
     if (!user.ftId || !group.usersId.includes(user.ftId))
       throw new ForbiddenException();
 
-    assertFilesExist(filesUrl);
+    assertPrivateFilesExist(filesUrl);
 
     return this.prisma.groupChat.create({
       data: { content, sender: userId, group: groupId, filesUrl },
@@ -45,5 +45,22 @@ export class GroupChatService {
       where: { group: groupId },
       orderBy: { sendTime: 'asc' },
     });
+  }
+
+  async getFile(filename: string, userId: string) {
+    const fileUrl = `/files/${filename}`;
+    const msg = await this.prisma.groupChat.findFirst({
+      where: { filesUrl: { has: fileUrl } },
+    });
+    if (!msg) throw new NotFoundException();
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const group = await this.prisma.projectGroup.findUnique({
+      where: { id: msg.group },
+    });
+    if (!user?.ftId || !group?.usersId.includes(user.ftId))
+      throw new ForbiddenException();
+
+    return filename;
   }
 }

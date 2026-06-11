@@ -7,3 +7,7 @@ node_modules
 # uploaded files
 uploads/*
 !uploads/.gitkeep
+
+# private (gated) uploads
+private-uploads/*
+!private-uploads/.gitkeep
