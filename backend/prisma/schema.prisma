@@ -69,13 +69,18 @@ model ProjectGroup {
 }
 
 model GroupChat {
-  id       String       @id @default(uuid())
-  content  String
-  sendTime DateTime     @default(now())
-  sender   String
-  user     User         @relation(fields: [sender], references: [id], onDelete: Cascade)
-  group    String
-  groupId  ProjectGroup @relation(fields: [group], references: [id])
+  id           String       @id @default(uuid())
+  content      String
+  filesUrl     String[]
+  sendTime     DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  sender       String
+  user         User         @relation(fields: [sender], references: [id], onDelete: Cascade)
+  group        String
+  groupId      ProjectGroup @relation(fields: [group], references: [id])
+  messageReply String?
+  replyTo      GroupChat?   @relation("GroupChatReplies", fields: [messageReply], references: [id], onDelete: SetNull)
+  replies      GroupChat[]  @relation("GroupChatReplies")
 }
 
 model Projects {
@@ -92,6 +97,7 @@ model ProjectsPost {
   user      User           @relation(fields: [writer], references: [id], onDelete: Cascade)
   title     String?
   content   String
+  filesUrl  String[]
   postedAt  DateTime       @default(now())
   editedAt  DateTime?
   chats     ProjectsChat[]
@@ -108,6 +114,7 @@ model ProjectsChat {
   writer        String
   user          User           @relation(fields: [writer], references: [id], onDelete: Cascade)
   content       String
+  filesUrl      String[]
   editedAt      DateTime?      @default(now())
   postedAt      DateTime       @default(now())
   votes         ChatVote[]

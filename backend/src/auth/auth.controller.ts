@@ -58,7 +58,8 @@ export class AuthController {
       throw new UnauthorizedException('Invalid Oauth state');
     try {
       return await this.authService.getFtCallback(code);
-    } catch {
+    } catch (error) {
+      console.error('42 auth callback failed:', error);
       throw new UnauthorizedException('42 auth failed');
     }
   }
