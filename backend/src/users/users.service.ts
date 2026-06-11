@@ -21,9 +21,20 @@ export class UsersService {
     });
   }
 
-  async deleteAccount(id: string) {
-    await this.prisma.user.delete({ where: { id } });
-    return { message: 'Account successfully deleted' };
+  async requestDeletion(id: string) {
+    await this.prisma.user.update({
+      where: { id },
+      data: { deleteAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) }, // 14Days
+    });
+    return { message: 'Account will be deleted in 14 days' };
+  }
+
+  async cancelDelete(id: string) {
+    await this.prisma.user.update({
+      where: { id },
+      data: { deleteAt: null }, // Turning off deleteAt
+    });
+    return { message: 'Delete request cancelled' };
   }
 
   async getUserProfile(id: string) {

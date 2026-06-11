@@ -19,6 +19,7 @@ import { LogoutDto } from './dto/logout.dto';
 import { randomBytes } from 'crypto';
 import type { Response } from 'express';
 import type { RequestWithCookies } from './authed-request';
+import { AllowWhilePending } from './allow-pending.decorator';
 
 @Controller()
 export class AuthController {
@@ -65,6 +66,7 @@ export class AuthController {
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
+  @AllowWhilePending()
   logout(@Body() body: LogoutDto) {
     return this.authService.logout(body.refresh_token);
   }
