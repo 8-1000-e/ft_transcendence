@@ -4,3 +4,10 @@ node_modules
 
 /generated
 /dist
+# uploaded files
+uploads/*
+!uploads/.gitkeep
+
+# private (gated) uploads
+private-uploads/*
+!private-uploads/.gitkeep
