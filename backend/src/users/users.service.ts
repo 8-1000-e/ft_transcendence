@@ -46,7 +46,6 @@ export class UsersService {
         ftPfpUrl: true,
         campus: true,
         createdAt: true,
-        deleteAt: true, // check on frontend
       },
     });
     if (!user) throw new NotFoundException();

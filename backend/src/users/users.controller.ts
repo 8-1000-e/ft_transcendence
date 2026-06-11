@@ -13,6 +13,7 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import type { AuthedRequest } from 'src/auth/authed-request';
+import { AllowWhilePending } from 'src/auth/allow-pending.decorator';
 
 @Controller()
 export class UsersController {
@@ -38,6 +39,7 @@ export class UsersController {
 
   @Post('me/cancel')
   @UseGuards(JwtAuthGuard)
+  @AllowWhilePending()
   cancelDelete(@Req() req: AuthedRequest) {
     return this.usersService.cancelDelete(req.user.sub);
   }
