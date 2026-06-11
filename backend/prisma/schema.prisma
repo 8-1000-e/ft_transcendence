@@ -17,6 +17,7 @@ model User {
   ftId          String?        @unique
   ftPfpUrl      String?
   campus        String?
+  campusId      String?
   canSuggest    Boolean        @default(true)
   //
   //anon random data

@@ -11,6 +11,7 @@ import { FtApiModule } from './ftapi/ftapi.module';
 import { UploadModule } from './upload/upload.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { SuggestModule } from './suggest/suggest.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { join } from 'path';
       rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
     }),
+    SuggestModule,
   ],
 })
 export class AppModule {}
