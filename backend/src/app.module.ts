@@ -8,6 +8,7 @@ import { GroupsModule } from './groups/groups.module';
 import { InitModule } from './init/init.module';
 import { PostsModule } from './posts/posts.module';
 import { FtApiModule } from './ftapi/ftapi.module';
+import { SuggestModule } from './suggest/suggest.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { FtApiModule } from './ftapi/ftapi.module';
     InitModule,
     PostsModule,
     FtApiModule,
+    SuggestModule,
   ],
 })
 export class AppModule {}

@@ -8,7 +8,7 @@ export interface FtProfile {
   login: string;
   email: string;
   image?: { link?: string };
-  campus?: { name: string }[];
+  campus?: { name: string; id: number }[];
 }
 
 export interface FtTeam {

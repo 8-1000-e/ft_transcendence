@@ -134,6 +134,8 @@ export class AuthService {
     const name = ftProfile.login;
     const ftPfpUrl = ftProfile.image?.link ?? null;
     const campus = ftProfile.campus?.[0]?.name ?? null;
+    const campusId =
+      ftProfile.campus?.[0]?.id != null ? String(ftProfile.campus[0].id) : null;
 
     const existing = await this.prisma.user.findUnique({ where: { ftId } });
 
@@ -141,19 +143,20 @@ export class AuthService {
     if (existing) {
       user = await this.prisma.user.update({
         where: { ftId },
-        data: { ftPfpUrl, campus },
+        data: { ftPfpUrl, campus, campusId },
       });
     } else {
       const rdmData = await randomIdentity();
       user = await this.prisma.user.upsert({
         where: { email },
-        update: { ftId, ftPfpUrl, campus },
+        update: { ftId, ftPfpUrl, campus, campusId },
         create: {
           ftId,
           email,
           name,
           ftPfpUrl,
           campus,
+          campusId,
           rdmName: rdmData.name,
           rdmPfp: rdmData.pfp,
           rdmCampus: rdmData.city,
