@@ -8,6 +8,9 @@ import { GroupsModule } from './groups/groups.module';
 import { InitModule } from './init/init.module';
 import { PostsModule } from './posts/posts.module';
 import { FtApiModule } from './ftapi/ftapi.module';
+import { UploadModule } from './upload/upload.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -20,6 +23,11 @@ import { FtApiModule } from './ftapi/ftapi.module';
     InitModule,
     PostsModule,
     FtApiModule,
+    UploadModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
+    }),
   ],
 })
 export class AppModule {}

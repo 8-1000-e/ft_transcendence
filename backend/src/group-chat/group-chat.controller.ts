@@ -17,7 +17,12 @@ export class GroupChatController {
     @Body() body: SendMessageDto,
     @Req() req: AuthedRequest,
   ) {
-    return this.chatService.sendMessage(groupId, req.user.sub, body.content);
+    return this.chatService.sendMessage(
+      groupId,
+      req.user.sub,
+      body.content,
+      body.filesUrl,
+    );
   }
 
   @Get('groups/:groupId/messages')

@@ -1,4 +1,12 @@
-import { IsOptional, IsString, IsNotEmpty, MaxLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsNotEmpty,
+  MaxLength,
+  IsArray,
+  ArrayMaxSize,
+  Matches,
+} from 'class-validator';
 
 export class CreatePostDto {
   @IsOptional()
@@ -10,4 +18,12 @@ export class CreatePostDto {
   @IsNotEmpty()
   @MaxLength(5000)
   content: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @Matches(/^\/uploads\/[\w-]+\.\w+$/, { each: true })
+  @MaxLength(255, { each: true })
+  filesUrl?: string[];
 }

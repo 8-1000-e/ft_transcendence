@@ -4,3 +4,6 @@ node_modules
 
 /generated
 /dist
+# uploaded files
+uploads/*
+!uploads/.gitkeep
