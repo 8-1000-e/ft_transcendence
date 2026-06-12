@@ -40,59 +40,67 @@ function loginWith42() {
 </script>
 
 <template>
-  <AuthShell title="Connexion" subtitle="Content de te revoir.">
-    <form class="space-y-4" @submit.prevent="submit">
-      <div>
-        <label class="block text-sm mb-1 text-muted" for="email">Email</label>
+  <AuthShell title="Connexion" subtitle="// content de te revoir, étudiant.">
+    <form class="ftp-form" @submit.prevent="submit">
+      <div class="ftp-field">
+        <label class="ftp-label" for="email">E-MAIL</label>
         <input
           id="email"
           v-model="email"
           type="email"
           required
           autocomplete="email"
-          class="w-full rounded-lg bg-surface-2 border border-border px-3 py-2 outline-none focus:border-accent"
+          class="ftp-input"
+          placeholder="prenom@student.42.fr"
         />
       </div>
-      <div>
-        <label class="block text-sm mb-1 text-muted" for="password">Mot de passe</label>
+
+      <div class="ftp-field">
+        <div class="ftp-field-row">
+          <label class="ftp-label" for="password">MOT DE PASSE</label>
+          <a href="#" class="ftp-link">Oublié ?</a>
+        </div>
         <input
           id="password"
           v-model="password"
           type="password"
           required
           autocomplete="current-password"
-          class="w-full rounded-lg bg-surface-2 border border-border px-3 py-2 outline-none focus:border-accent"
+          class="ftp-input"
+          placeholder="••••••••"
         />
       </div>
 
-      <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
+      <p v-if="error" class="ftp-error">! {{ error }}</p>
 
-      <button
-        type="submit"
-        :disabled="loading"
-        class="w-full rounded-lg bg-accent hover:bg-accent-hover text-black font-semibold py-2 transition disabled:opacity-50"
-      >
+      <button type="submit" :disabled="loading" class="ftp-btn">
         {{ loading ? 'Connexion…' : 'Se connecter' }}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M5 12h13M13 6l6 6-6 6"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
       </button>
     </form>
 
-    <div class="flex items-center gap-3 my-5">
-      <span class="h-px flex-1 bg-border" />
-      <span class="text-xs text-muted">ou</span>
-      <span class="h-px flex-1 bg-border" />
+    <div class="ftp-divider">
+      <span class="ftp-divider-line"></span>
+      <span class="ftp-divider-text">ou</span>
+      <span class="ftp-divider-line"></span>
     </div>
 
-    <button
-      type="button"
-      class="w-full rounded-lg border border-border bg-surface-2 hover:border-accent py-2 font-medium transition"
-      @click="loginWith42"
-    >
+    <button type="button" class="ftp-btn-42" @click="loginWith42">
+      <span class="ftp-42-badge">42</span>
       Se connecter avec 42
     </button>
 
     <template #footer>
       Pas de compte ?
-      <RouterLink to="/signup" class="text-accent hover:underline">Créer un compte</RouterLink>
+      <RouterLink to="/signup" class="ftp-link-strong">Créer un compte</RouterLink>
     </template>
   </AuthShell>
 </template>
