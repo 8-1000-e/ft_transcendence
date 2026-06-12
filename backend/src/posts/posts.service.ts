@@ -8,6 +8,7 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { VoteDto } from './dto/vote.dto';
 import { VoteValue } from 'generated/prisma/client';
+import { assertFilesExist } from 'src/utils/files';
 
 @Injectable()
 export class PostsService {
@@ -20,12 +21,15 @@ export class PostsService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user && !user.ftId) throw new UnauthorizedException();
 
+    assertFilesExist(body.filesUrl);
+
     return this.prisma.projectsPost.create({
       data: {
         projectId: id,
         writer: userId,
         title: body.title,
         content: body.content,
+        filesUrl: body.filesUrl,
       },
     });
   }
@@ -47,9 +51,16 @@ export class PostsService {
     });
     if (!post || post.writer !== userId) throw new UnauthorizedException();
 
+    assertFilesExist(body.filesUrl);
+
     const editedPost = await this.prisma.projectsPost.update({
       where: { id: postId },
-      data: { title: body.title, content: body.content, editedAt: new Date() },
+      data: {
+        title: body.title,
+        content: body.content,
+        editedAt: new Date(),
+        filesUrl: body.filesUrl,
+      },
     });
 
     return editedPost;
@@ -112,11 +123,14 @@ export class PostsService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user && !user.ftId) throw new UnauthorizedException();
 
+    assertFilesExist(body.filesUrl);
+
     return this.prisma.projectsChat.create({
       data: {
         answeringPost: id,
         writer: userId,
         content: body.content,
+        filesUrl: body.filesUrl,
       },
     });
   }
@@ -128,9 +142,15 @@ export class PostsService {
     if (!comment) throw new NotFoundException();
     if (comment.writer !== userId) throw new UnauthorizedException();
 
+    assertFilesExist(body.filesUrl);
+
     return this.prisma.projectsChat.update({
       where: { id: commentId },
-      data: { content: body.content, editedAt: new Date() },
+      data: {
+        content: body.content,
+        editedAt: new Date(),
+        filesUrl: body.filesUrl,
+      },
     });
   }
 
@@ -192,11 +212,14 @@ export class PostsService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user && !user.ftId) throw new UnauthorizedException();
 
+    assertFilesExist(body.filesUrl);
+
     return this.prisma.projectsChat.create({
       data: {
         answeringChat: id,
         writer: userId,
         content: body.content,
+        filesUrl: body.filesUrl,
       },
     });
   }
@@ -208,9 +231,15 @@ export class PostsService {
     if (!comment) throw new NotFoundException();
     if (comment.writer !== userId) throw new UnauthorizedException();
 
+    assertFilesExist(body.filesUrl);
+
     return this.prisma.projectsChat.update({
       where: { id: commentId },
-      data: { content: body.content, editedAt: new Date() },
+      data: {
+        content: body.content,
+        editedAt: new Date(),
+        filesUrl: body.filesUrl,
+      },
     });
   }
 

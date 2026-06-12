@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Groupes - Test API</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar" aria-label="Configuration API">
+        <div>
+          <p class="eyebrow">ft_transcendence</p>
+          <h1>Test groupes</h1>
+        </div>
+
+        <form id="configForm" class="config">
+          <label>
+            Backend
+            <input id="apiBaseInput" name="apiBase" type="url" required />
+          </label>
+          <label>
+            Access token
+            <input
+              id="tokenInput"
+              name="token"
+              type="password"
+              autocomplete="off"
+              placeholder="Bearer token JWT"
+              required
+            />
+          </label>
+          <label>
+            Pusher key
+            <input
+              id="pusherKeyInput"
+              name="pusherKey"
+              type="text"
+              autocomplete="off"
+              placeholder="app key publique"
+            />
+          </label>
+          <label>
+            Cluster
+            <input id="pusherClusterInput" name="pusherCluster" type="text" />
+          </label>
+          <button type="submit">Sauvegarder</button>
+        </form>
+      </section>
+
+      <section class="workspace">
+        <aside class="panel groups-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Endpoint</p>
+              <h2>GET /groups</h2>
+            </div>
+            <button id="refreshGroupsButton" type="button">Rafraichir</button>
+          </div>
+          <div id="groupsList" class="groups-list"></div>
+        </aside>
+
+        <section class="panel chat-panel">
+          <div id="emptyState" class="empty-state">
+            <h2>Selectionne un groupe</h2>
+            <p>Les messages et les infos du groupe apparaitront ici.</p>
+          </div>
+
+          <div id="chatState" class="chat-state hidden">
+            <div class="chat-header">
+              <div>
+                <p id="selectedProject" class="eyebrow"></p>
+                <h2 id="selectedGroupName"></h2>
+                <p id="selectedGroupMeta" class="muted"></p>
+              </div>
+              <button id="refreshMessagesButton" type="button">
+                Messages
+              </button>
+            </div>
+
+            <form id="editGroupForm" class="edit-form">
+              <label>
+                Nom du groupe
+                <input id="groupNameInput" name="groupName" type="text" />
+              </label>
+              <label>
+                GitHub
+                <input
+                  id="githubLinkInput"
+                  name="githubLink"
+                  type="url"
+                  placeholder="https://github.com/..."
+                />
+              </label>
+              <button type="submit">PATCH /groups/:id</button>
+            </form>
+
+            <div id="messagesList" class="messages-list"></div>
+
+            <form id="sendMessageForm" class="send-form">
+              <div id="replyTarget" class="reply-target hidden"></div>
+              <textarea
+                id="messageInput"
+                name="content"
+                rows="3"
+                maxlength="1000"
+                placeholder="Message..."
+                required
+              ></textarea>
+              <button type="submit">POST message</button>
+            </form>
+          </div>
+        </section>
+      </section>
+
+      <section class="panel log-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Debug</p>
+            <h2>Requetes</h2>
+          </div>
+          <button id="clearLogButton" type="button">Vider</button>
+        </div>
+        <pre id="logOutput"></pre>
+      </section>
+    </main>
+
+    <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

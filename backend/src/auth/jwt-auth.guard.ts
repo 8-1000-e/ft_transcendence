@@ -3,15 +3,23 @@ import {
   CanActivate,
   ExecutionContext,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import type { AuthedRequest, JwtPayload } from './authed-request';
+import { ALLOW_PENDING } from './allow-pending.decorator';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
+    private readonly reflector: Reflector,
+  ) {}
 
-  canActivate(ctx: ExecutionContext) {
+  async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const request = ctx.switchToHttp().getRequest<AuthedRequest>();
     const authHeader = request.headers.authorization;
 
@@ -19,15 +27,28 @@ export class JwtAuthGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
     if (!token) throw new UnauthorizedException();
 
+    let payload: JwtPayload;
     try {
-      const payload = this.jwtService.verify<JwtPayload>(token, {
+      payload = this.jwtService.verify<JwtPayload>(token, {
         algorithms: ['HS256'],
       });
-      request.user = payload;
     } catch {
       throw new UnauthorizedException();
     }
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, deleteAt: true },
+    });
+    if (!user) throw new UnauthorizedException();
 
+    const allowPending = this.reflector.getAllAndOverride<boolean>(
+      ALLOW_PENDING,
+      [ctx.getHandler(), ctx.getClass()],
+    );
+    if (user.deleteAt && !allowPending)
+      throw new ForbiddenException({ code: 'ACCOUNT_PENDING_DELETION' });
+
+    request.user = payload;
     return true;
   }
 }

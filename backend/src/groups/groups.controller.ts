@@ -1,7 +1,13 @@
-import { Controller, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { Body } from '@nestjs/common';
-import { Param, Req } from '@nestjs/common';
 import type { AuthedRequest } from 'src/auth/authed-request';
 import { EditGroupDto } from './dto/edit-group.dto';
 import { GroupService } from './groups.service';
@@ -9,6 +15,18 @@ import { GroupService } from './groups.service';
 @Controller()
 export class GroupController {
   constructor(private readonly groupService: GroupService) {}
+
+  @Get('groups')
+  @UseGuards(JwtAuthGuard)
+  getMyGroups(@Req() req: AuthedRequest) {
+    return this.groupService.getMyGroups(req.user.sub);
+  }
+
+  @Get('groups/:groupId')
+  @UseGuards(JwtAuthGuard)
+  getGroup(@Param('groupId') groupId: string, @Req() req: AuthedRequest) {
+    return this.groupService.getGroup(groupId, req.user.sub);
+  }
 
   @Patch('groups/:groupId')
   @UseGuards(JwtAuthGuard)
