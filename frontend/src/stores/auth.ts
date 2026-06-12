@@ -1,0 +1,102 @@
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
+import { api } from '@/api/client'
+import { ROUTES } from '@/api/routes'
+import type { Tokens, User } from '@/types/auth'
+
+const REFRESH_KEY = 'ft_refresh'
+
+export const useAuthStore = defineStore('auth', () => {
+  const accessToken = ref<string | null>(null)
+  const refreshToken = ref<string | null>(localStorage.getItem(REFRESH_KEY))
+  const user = ref<User | null>(null)
+
+  const isAuthenticated = computed(() => !!user.value)
+
+  function setTokens(tokens: Tokens) {
+    accessToken.value = tokens.access_token
+    refreshToken.value = tokens.refresh_token
+    localStorage.setItem(REFRESH_KEY, tokens.refresh_token)
+  }
+
+  function clear() {
+    accessToken.value = null
+    refreshToken.value = null
+    user.value = null
+    localStorage.removeItem(REFRESH_KEY)
+  }
+
+  async function fetchMe() {
+    user.value = await api.get<User>(ROUTES.users.me)
+  }
+
+  async function login(email: string, password: string) {
+    const tokens = await api.post<Tokens>(
+      ROUTES.auth.login,
+      { email, password },
+      { auth: false },
+    )
+    setTokens(tokens)
+    await fetchMe()
+  }
+
+  async function signup(email: string, password: string, name: string) {
+    await api.post<{ message: string }>(
+      ROUTES.auth.signup,
+      { email, password, name },
+      { auth: false },
+    )
+  }
+
+  async function verify(email: string, code: string) {
+    const tokens = await api.post<Tokens>(
+      ROUTES.auth.verify,
+      { email, code },
+      { auth: false },
+    )
+    setTokens(tokens)
+    await fetchMe()
+  }
+
+  async function logout() {
+    try {
+      if (refreshToken.value) {
+        await api.post(ROUTES.auth.logout, { refresh_token: refreshToken.value })
+      }
+    } finally {
+      clear()
+    }
+  }
+
+  async function tryRestoreSession(): Promise<boolean> {
+    if (!refreshToken.value) return false
+    try {
+      const tokens = await api.post<Tokens>(
+        ROUTES.auth.refresh,
+        { refresh_token: refreshToken.value },
+        { auth: false },
+      )
+      setTokens(tokens)
+      await fetchMe()
+      return true
+    } catch {
+      clear()
+      return false
+    }
+  }
+
+  return {
+    accessToken,
+    refreshToken,
+    user,
+    isAuthenticated,
+    setTokens,
+    clear,
+    fetchMe,
+    login,
+    signup,
+    verify,
+    logout,
+    tryRestoreSession,
+  }
+})
