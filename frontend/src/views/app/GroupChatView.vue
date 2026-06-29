@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import { ref, watch, nextTick, onBeforeUnmount, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
 import { uploadImage } from '@/api/upload'
+import { subscribeGroup, pusherEnabled } from '@/api/realtime'
 import { useAuthStore } from '@/stores/auth'
 import PrivateImage from '@/components/PrivateImage.vue'
 import type { Group, Message } from '@/types/api'
@@ -15,6 +16,7 @@ const group = ref<Group | null>(null)
 const messages = ref<Message[]>([])
 const draft = ref('')
 const pendingFile = ref<string[]>([])
+const replyingTo = ref<Message | null>(null)
 const loading = ref(false)
 const error = ref('')
 const listEl = ref<HTMLElement | null>(null)
@@ -27,9 +29,16 @@ const groupName = ref('')
 const githubLink = ref('')
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
+let unsub: (() => void) | null = null
+
+const live = computed(() => pusherEnabled())
 
 function groupId(): string {
   return route.params.groupId as string
+}
+
+function findMessage(id: string | null): Message | undefined {
+  return id ? messages.value.find((m) => m.id === id) : undefined
 }
 
 async function fetchMessages(scroll = false) {
@@ -70,10 +79,15 @@ async function send() {
   if (!draft.value.trim() && !pendingFile.value.length) return
   const content = draft.value || '(image)'
   const filesUrl = pendingFile.value
+  const replyId = replyingTo.value?.id
   draft.value = ''
   pendingFile.value = []
+  replyingTo.value = null
   try {
-    await api.post(ROUTES.groups.sendMessage(groupId()), {
+    const path = replyId
+      ? ROUTES.groups.replyMessage(groupId(), replyId)
+      : ROUTES.groups.sendMessage(groupId())
+    await api.post(path, {
       content,
       filesUrl: filesUrl.length ? filesUrl : undefined,
     })
@@ -123,19 +137,28 @@ async function saveGroup() {
   }
 }
 
+function teardown() {
+  if (pollTimer) clearInterval(pollTimer)
+  pollTimer = null
+  if (unsub) unsub()
+  unsub = null
+}
+
 watch(
   () => route.params.groupId,
   () => {
-    if (pollTimer) clearInterval(pollTimer)
+    teardown()
     load()
-    pollTimer = setInterval(() => fetchMessages(), 4000)
+    if (live.value) {
+      unsub = subscribeGroup(groupId(), () => fetchMessages())
+    } else {
+      pollTimer = setInterval(() => fetchMessages(), 4000)
+    }
   },
   { immediate: true },
 )
 
-onBeforeUnmount(() => {
-  if (pollTimer) clearInterval(pollTimer)
-})
+onBeforeUnmount(teardown)
 </script>
 
 <template>
@@ -152,6 +175,7 @@ onBeforeUnmount(() => {
             class="gh"
             >GitHub</a
           >
+          · <span>{{ live ? 'live' : 'polling' }}</span>
         </span>
       </div>
       <button class="link-btn" @click="showGroupEdit = !showGroupEdit">
@@ -180,6 +204,9 @@ onBeforeUnmount(() => {
         :class="{ mine: m.sender === auth.user?.id }"
       >
         <p class="msg-author">{{ m.user?.name ?? m.sender }}</p>
+        <p v-if="m.messageReply" class="msg-reply">
+          ↳ {{ findMessage(m.messageReply)?.content ?? 'message' }}
+        </p>
 
         <template v-if="editingId === m.id">
           <input v-model="editDraft" class="input" />
@@ -191,12 +218,20 @@ onBeforeUnmount(() => {
         <template v-else>
           <p class="msg-content">{{ m.content }}</p>
           <PrivateImage v-for="f in m.filesUrl" :key="f" :path="f" />
-          <div v-if="m.sender === auth.user?.id" class="msg-actions">
-            <button class="link-btn" @click="startEdit(m)">éditer</button>
-            <button class="link-btn" @click="remove(m)">suppr.</button>
+          <div class="msg-actions">
+            <button class="link-btn" @click="replyingTo = m">répondre</button>
+            <template v-if="m.sender === auth.user?.id">
+              <button class="link-btn" @click="startEdit(m)">éditer</button>
+              <button class="link-btn" @click="remove(m)">suppr.</button>
+            </template>
           </div>
         </template>
       </div>
+    </div>
+
+    <div v-if="replyingTo" class="reply-banner">
+      réponse à « {{ replyingTo.content }} »
+      <button class="link-btn" @click="replyingTo = null">×</button>
     </div>
 
     <form class="composer" @submit.prevent="send">
@@ -259,6 +294,13 @@ onBeforeUnmount(() => {
   color: var(--color-muted);
   margin: 0 0 2px;
 }
+.msg-reply {
+  font-size: 11px;
+  color: var(--color-muted);
+  border-left: 2px solid var(--color-border);
+  padding-left: 6px;
+  margin: 0 0 4px;
+}
 .msg-content {
   margin: 0;
   white-space: pre-wrap;
@@ -267,6 +309,17 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 10px;
   margin-top: 4px;
+}
+.reply-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-top: 8px;
 }
 .composer {
   display: flex;

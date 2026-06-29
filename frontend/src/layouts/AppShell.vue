@@ -16,9 +16,31 @@ async function logout() {
   await auth.logout()
   await router.push('/login')
 }
+
+async function cancelDeletion() {
+  try {
+    await auth.cancelDeletion()
+  } catch {
+    /* ignore */
+  }
+}
 </script>
 
 <template>
+  <div v-if="auth.pendingDeletion" class="overlay">
+    <div class="modal">
+      <h2 class="modal-title">Compte en cours de suppression</h2>
+      <p class="muted">
+        Ton compte est programmé pour suppression. Annule la demande pour
+        continuer à l'utiliser, ou déconnecte-toi.
+      </p>
+      <div class="modal-actions">
+        <button class="btn" @click="cancelDeletion">Annuler la suppression</button>
+        <button class="link-btn" @click="logout">Se déconnecter</button>
+      </div>
+    </div>
+  </div>
+
   <div class="shell">
     <header class="shell-header">
       <RouterLink :to="{ name: 'feed' }" class="brand">
@@ -180,5 +202,40 @@ async function logout() {
 .muted {
   color: var(--color-muted);
   font-size: 13px;
+}
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal {
+  max-width: 420px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 24px;
+}
+.modal-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+.btn {
+  border: none;
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
 }
 </style>

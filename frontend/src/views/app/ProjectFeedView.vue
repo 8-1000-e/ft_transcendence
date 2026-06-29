@@ -4,12 +4,18 @@ import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
 import { uploadImage, publicUrl } from '@/api/upload'
+import { useAuthStore } from '@/stores/auth'
 import type { Post, VoteValue } from '@/types/api'
 
 const route = useRoute()
+const auth = useAuthStore()
 const posts = ref<Post[]>([])
 const loading = ref(false)
 const error = ref('')
+
+const editId = ref('')
+const editTitle = ref('')
+const editContent = ref('')
 
 const newTitle = ref('')
 const newContent = ref('')
@@ -71,6 +77,25 @@ async function createPost() {
   }
 }
 
+function startEdit(p: Post) {
+  editId.value = p.id
+  editTitle.value = p.title ?? ''
+  editContent.value = p.content
+}
+
+async function saveEdit(p: Post) {
+  try {
+    await api.patch(ROUTES.posts.edit(projectId(), p.id), {
+      title: editTitle.value || undefined,
+      content: editContent.value,
+    })
+    editId.value = ''
+    await load()
+  } catch (e) {
+    error.value = (e as { message?: string }).message ?? 'Modification impossible'
+  }
+}
+
 watch(() => route.params.projectId, load, { immediate: true })
 </script>
 
@@ -123,25 +148,45 @@ watch(() => route.params.projectId, load, { immediate: true })
         </div>
         <div class="post-body">
           <p class="post-author">{{ p.user?.name ?? 'anonyme' }}</p>
-          <h3 v-if="p.title" class="post-title">{{ p.title }}</h3>
-          <p class="post-content">{{ p.content }}</p>
-          <img
-            v-for="f in p.filesUrl"
-            :key="f"
-            :src="publicUrl(f)"
-            class="post-img"
-            alt=""
-          />
-          <RouterLink
-            :to="{
-              name: 'post',
-              params: { postId: p.id },
-              query: { projectId: p.projectId ?? projectId() },
-            }"
-            class="post-link"
-          >
-            {{ p._count?.chats ?? 0 }} commentaire(s)
-          </RouterLink>
+
+          <template v-if="editId === p.id">
+            <input v-model="editTitle" class="input" placeholder="Titre" />
+            <textarea v-model="editContent" class="input" rows="3"></textarea>
+            <div class="composer-row">
+              <button class="btn" @click="saveEdit(p)">Enregistrer</button>
+              <button class="post-link" @click="editId = ''">annuler</button>
+            </div>
+          </template>
+          <template v-else>
+            <h3 v-if="p.title" class="post-title">{{ p.title }}</h3>
+            <p class="post-content">{{ p.content }}</p>
+            <img
+              v-for="f in p.filesUrl"
+              :key="f"
+              :src="publicUrl(f)"
+              class="post-img"
+              alt=""
+            />
+            <div class="post-meta">
+              <RouterLink
+                :to="{
+                  name: 'post',
+                  params: { postId: p.id },
+                  query: { projectId: p.projectId ?? projectId() },
+                }"
+                class="post-link"
+              >
+                {{ p._count?.chats ?? 0 }} commentaire(s)
+              </RouterLink>
+              <button
+                v-if="p.writer === auth.user?.id"
+                class="post-link"
+                @click="startEdit(p)"
+              >
+                éditer
+              </button>
+            </div>
+          </template>
         </div>
       </li>
     </ul>
@@ -247,10 +292,20 @@ watch(() => route.params.projectId, load, { immediate: true })
   margin: 0 0 8px;
   display: block;
 }
+.post-meta {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
 .post-link {
   font-size: 13px;
   color: var(--color-accent);
   text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
 }
 .muted {
   color: var(--color-muted);

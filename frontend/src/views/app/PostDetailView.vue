@@ -4,9 +4,11 @@ import { useRoute } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
 import { publicUrl } from '@/api/upload'
+import { useAuthStore } from '@/stores/auth'
 import type { Post, Comment, Reply, VoteValue } from '@/types/api'
 
 const route = useRoute()
+const auth = useAuthStore()
 const postId = route.params.postId as string
 const projectId = route.query.projectId as string | undefined
 
@@ -15,6 +17,8 @@ const comments = ref<Comment[]>([])
 const repliesByComment = ref<Record<string, Reply[]>>({})
 const newComment = ref('')
 const replyDrafts = ref<Record<string, string>>({})
+const editId = ref('')
+const editContent = ref('')
 const loading = ref(false)
 const error = ref('')
 
@@ -76,6 +80,25 @@ async function addReply(c: Comment) {
   )
 }
 
+function startEdit(id: string, content: string) {
+  editId.value = id
+  editContent.value = content
+}
+
+async function saveCommentEdit(c: Comment) {
+  await api.patch(ROUTES.comments.edit(c.id), { content: editContent.value })
+  editId.value = ''
+  await loadComments()
+}
+
+async function saveReplyEdit(c: Comment, r: Reply) {
+  await api.patch(ROUTES.replies.edit(r.id), { content: editContent.value })
+  editId.value = ''
+  repliesByComment.value[c.id] = await api.get<Reply[]>(
+    ROUTES.replies.listByComment(c.id),
+  )
+}
+
 onMounted(load)
 </script>
 
@@ -117,16 +140,50 @@ onMounted(load)
           <button class="vote" :class="{ active: c.myVote === 'DOWN' }" @click="voteComment(c, 'DOWN')">▼</button>
           <span class="author">{{ c.user?.name ?? 'anonyme' }}</span>
         </div>
-        <p class="content">{{ c.content }}</p>
-        <img v-for="f in c.filesUrl" :key="f" :src="publicUrl(f)" class="img" alt="" />
-        <button class="link-btn" @click="toggleReplies(c)">
-          {{ c._count?.replies ?? 0 }} réponse(s)
-        </button>
+        <template v-if="editId === c.id">
+          <input v-model="editContent" class="input" />
+          <div class="row">
+            <button class="link-btn" @click="saveCommentEdit(c)">OK</button>
+            <button class="link-btn" @click="editId = ''">annuler</button>
+          </div>
+        </template>
+        <template v-else>
+          <p class="content">{{ c.content }}</p>
+          <img v-for="f in c.filesUrl" :key="f" :src="publicUrl(f)" class="img" alt="" />
+          <div class="row">
+            <button class="link-btn" @click="toggleReplies(c)">
+              {{ c._count?.replies ?? 0 }} réponse(s)
+            </button>
+            <button
+              v-if="c.writer === auth.user?.id"
+              class="link-btn"
+              @click="startEdit(c.id, c.content)"
+            >
+              éditer
+            </button>
+          </div>
+        </template>
 
         <div v-if="repliesByComment[c.id]" class="replies">
           <div v-for="r in repliesByComment[c.id]" :key="r.id" class="reply">
             <span class="author">{{ r.user?.name ?? 'anonyme' }}</span>
-            <p class="content">{{ r.content }}</p>
+            <template v-if="editId === r.id">
+              <input v-model="editContent" class="input" />
+              <div class="row">
+                <button class="link-btn" @click="saveReplyEdit(c, r)">OK</button>
+                <button class="link-btn" @click="editId = ''">annuler</button>
+              </div>
+            </template>
+            <template v-else>
+              <p class="content">{{ r.content }}</p>
+              <button
+                v-if="r.writer === auth.user?.id"
+                class="link-btn"
+                @click="startEdit(r.id, r.content)"
+              >
+                éditer
+              </button>
+            </template>
           </div>
           <form class="composer" @submit.prevent="addReply(c)">
             <input
