@@ -53,6 +53,16 @@ const router = createRouter({
           component: () => import('@/views/app/GroupChatView.vue'),
         },
         {
+          path: 'suggest/:projectId',
+          name: 'suggest',
+          component: () => import('@/views/app/SuggestView.vue'),
+        },
+        {
+          path: 'u/:id',
+          name: 'user',
+          component: () => import('@/views/app/PublicProfileView.vue'),
+        },
+        {
           path: 'me',
           name: 'me',
           component: () => import('@/views/app/ProfileView.vue'),

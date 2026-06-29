@@ -58,6 +58,9 @@ async function logout() {
             <RouterLink :to="{ name: 'project', params: { projectId: p.projectId } }" class="group-item">
               {{ p.projectName }}
             </RouterLink>
+            <RouterLink :to="{ name: 'suggest', params: { projectId: p.projectId } }" class="suggest-link">
+              suggérer une équipe
+            </RouterLink>
           </li>
         </ul>
       </aside>
@@ -166,6 +169,13 @@ async function logout() {
 .group-project {
   font-size: 11px;
   color: var(--color-muted);
+}
+.suggest-link {
+  display: inline-block;
+  margin: 2px 0 8px 10px;
+  font-size: 11px;
+  color: var(--color-accent);
+  text-decoration: none;
 }
 .muted {
   color: var(--color-muted);

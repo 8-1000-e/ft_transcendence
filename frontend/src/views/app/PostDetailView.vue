@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
+import { publicUrl } from '@/api/upload'
 import type { Post, Comment, Reply, VoteValue } from '@/types/api'
 
 const route = useRoute()
@@ -94,6 +95,7 @@ onMounted(load)
       <p class="author">{{ post.user?.name ?? 'anonyme' }}</p>
       <h1 v-if="post.title" class="title">{{ post.title }}</h1>
       <p class="content">{{ post.content }}</p>
+      <img v-for="f in post.filesUrl" :key="f" :src="publicUrl(f)" class="img" alt="" />
     </article>
 
     <h2 class="subtitle">Commentaires</h2>
@@ -116,6 +118,7 @@ onMounted(load)
           <span class="author">{{ c.user?.name ?? 'anonyme' }}</span>
         </div>
         <p class="content">{{ c.content }}</p>
+        <img v-for="f in c.filesUrl" :key="f" :src="publicUrl(f)" class="img" alt="" />
         <button class="link-btn" @click="toggleReplies(c)">
           {{ c._count?.replies ?? 0 }} réponse(s)
         </button>
@@ -167,6 +170,12 @@ onMounted(load)
 .content {
   white-space: pre-wrap;
   margin: 6px 0;
+}
+.img {
+  max-width: 280px;
+  border-radius: 8px;
+  margin: 0 0 8px;
+  display: block;
 }
 .composer {
   display: flex;

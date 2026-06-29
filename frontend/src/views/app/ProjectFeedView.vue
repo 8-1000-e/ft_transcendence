@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
+import { uploadImage, publicUrl } from '@/api/upload'
 import type { Post, VoteValue } from '@/types/api'
 
 const route = useRoute()
@@ -12,6 +13,7 @@ const error = ref('')
 
 const newTitle = ref('')
 const newContent = ref('')
+const newFiles = ref<string[]>([])
 const creating = ref(false)
 
 function projectId(): string {
@@ -39,6 +41,16 @@ async function vote(post: Post, value: VoteValue) {
   }
 }
 
+async function onFile(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  try {
+    newFiles.value = [await uploadImage(file, false)]
+  } catch {
+    error.value = "Échec de l'upload"
+  }
+}
+
 async function createPost() {
   if (!newContent.value.trim()) return
   creating.value = true
@@ -46,9 +58,11 @@ async function createPost() {
     await api.post(ROUTES.posts.create(projectId()), {
       title: newTitle.value || undefined,
       content: newContent.value,
+      filesUrl: newFiles.value.length ? newFiles.value : undefined,
     })
     newTitle.value = ''
     newContent.value = ''
+    newFiles.value = []
     await load()
   } catch (e) {
     error.value = (e as { message?: string }).message ?? 'Publication impossible'
@@ -72,9 +86,16 @@ watch(() => route.params.projectId, load, { immediate: true })
         rows="3"
         placeholder="Écris un post…"
       ></textarea>
-      <button class="btn" :disabled="creating">
-        {{ creating ? 'Publication…' : 'Publier' }}
-      </button>
+      <div class="composer-row">
+        <label class="attach">
+          📎 image
+          <input type="file" accept="image/*" hidden @change="onFile" />
+        </label>
+        <span v-if="newFiles.length" class="muted">image prête</span>
+        <button class="btn" :disabled="creating">
+          {{ creating ? 'Publication…' : 'Publier' }}
+        </button>
+      </div>
     </form>
 
     <p v-if="error" class="error">{{ error }}</p>
@@ -104,6 +125,13 @@ watch(() => route.params.projectId, load, { immediate: true })
           <p class="post-author">{{ p.user?.name ?? 'anonyme' }}</p>
           <h3 v-if="p.title" class="post-title">{{ p.title }}</h3>
           <p class="post-content">{{ p.content }}</p>
+          <img
+            v-for="f in p.filesUrl"
+            :key="f"
+            :src="publicUrl(f)"
+            class="post-img"
+            alt=""
+          />
           <RouterLink
             :to="{
               name: 'post',
@@ -131,6 +159,16 @@ watch(() => route.params.projectId, load, { immediate: true })
   gap: 8px;
   margin-bottom: 24px;
 }
+.composer-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.attach {
+  cursor: pointer;
+  color: var(--color-muted);
+  font-size: 13px;
+}
 .input {
   width: 100%;
   border: 1px solid var(--color-border);
@@ -141,7 +179,7 @@ watch(() => route.params.projectId, load, { immediate: true })
   font: inherit;
 }
 .btn {
-  align-self: flex-start;
+  margin-left: auto;
   border: none;
   background: var(--color-accent);
   color: #fff;
@@ -202,6 +240,12 @@ watch(() => route.params.projectId, load, { immediate: true })
 .post-content {
   margin: 0 0 8px;
   white-space: pre-wrap;
+}
+.post-img {
+  max-width: 280px;
+  border-radius: 8px;
+  margin: 0 0 8px;
+  display: block;
 }
 .post-link {
   font-size: 13px;
