@@ -25,7 +25,7 @@ async function load() {
       ROUTES.users.byId(route.params.id as string),
     )
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Profil introuvable'
+    error.value = (e as { message?: string }).message ?? 'Profile not found'
   } finally {
     loading.value = false
   }
@@ -41,7 +41,7 @@ watch(() => route.params.id, load, { immediate: true })
       retour
     </button>
 
-    <p v-if="loading" class="muted">Chargement…</p>
+    <p v-if="loading" class="muted">Loading…</p>
     <p v-if="error" class="error">{{ error }}</p>
 
     <div v-if="user" class="card">
@@ -50,7 +50,7 @@ watch(() => route.params.id, load, { immediate: true })
       <span v-else class="av">{{ initials(user.name) }}</span>
       <h1 class="name">{{ user.name }}</h1>
       <p v-if="user.campus" class="campus">{{ user.campus }}</p>
-      <p v-if="user.createdAt" class="since">membre depuis {{ user.createdAt.slice(0, 10) }}</p>
+      <p v-if="user.createdAt" class="since">member since {{ user.createdAt.slice(0, 10) }}</p>
     </div>
   </section>
 </template>

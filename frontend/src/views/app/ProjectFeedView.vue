@@ -46,7 +46,7 @@ async function load() {
   try {
     posts.value = await api.get<Post[]>(ROUTES.posts.listByProject(projectId()))
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Erreur de chargement'
+    error.value = (e as { message?: string }).message ?? 'Loading error'
   } finally {
     loading.value = false
   }
@@ -67,7 +67,7 @@ async function onFile(e: Event) {
   try {
     newFiles.value = [await uploadImage(file, false)]
   } catch {
-    error.value = "Échec de l'upload"
+    error.value = "Upload failed"
   }
 }
 
@@ -85,7 +85,7 @@ async function createPost() {
     newFiles.value = []
     await load()
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Publication impossible'
+    error.value = (e as { message?: string }).message ?? 'Publishing failed'
   } finally {
     creating.value = false
   }
@@ -106,7 +106,7 @@ async function saveEdit(p: Post) {
     editId.value = ''
     await load()
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Modification impossible'
+    error.value = (e as { message?: string }).message ?? 'Update failed'
   }
 }
 
@@ -119,33 +119,33 @@ watch(() => route.params.projectId, load, { immediate: true })
       <span class="proj-name">{{ projectName() }}</span>
       <span class="proj-tag">42</span>
     </div>
-    <p class="sub">// le fil du projet · {{ posts.length }} posts</p>
+    <p class="sub">// the project thread · {{ posts.length }} posts</p>
 
     <div class="composer">
       <div class="sheen"><div class="sheen-move"></div></div>
-      <input v-model="newTitle" class="c-title" placeholder="Titre du post" />
+      <input v-model="newTitle" class="c-title" placeholder="Post title" />
       <textarea
         v-model="newContent"
         rows="3"
         class="c-body"
-        placeholder="Partage une prédiction, une analyse…"
+        placeholder="Share a prediction, an analysis…"
       ></textarea>
       <div class="c-row">
         <label class="c-img">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7" /><circle cx="9" cy="10" r="1.8" stroke="currentColor" stroke-width="1.7" /><path d="m4 18 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
-          {{ newFiles.length ? 'image prête' : 'Image' }}
+          {{ newFiles.length ? 'image ready' : 'Image' }}
           <input type="file" accept="image/*" hidden @change="onFile" />
         </label>
         <button class="c-send" :disabled="creating" @click="createPost">
-          {{ creating ? 'Publication…' : 'Publier' }}
+          {{ creating ? 'Publishing…' : 'Publish' }}
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
         </button>
       </div>
     </div>
 
     <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="loading" class="muted">Chargement…</p>
-    <p v-else-if="!posts.length" class="muted">Aucun post pour ce projet.</p>
+    <p v-if="loading" class="muted">Loading…</p>
+    <p v-else-if="!posts.length" class="muted">No posts for this project.</p>
 
     <div class="posts">
       <article v-for="p in posts" :key="p.id" class="post">
@@ -172,22 +172,22 @@ watch(() => route.params.projectId, load, { immediate: true })
         <div class="body">
           <div class="meta">
             <span class="av">{{ initials(p.user?.name) }}</span>
-            <span class="author">{{ p.user?.name ?? 'anonyme' }}</span>
+            <span class="author">{{ p.user?.name ?? 'anonymous' }}</span>
             <button
               v-if="p.writer === auth.user?.id && editId !== p.id"
               class="edit"
               @click="startEdit(p)"
             >
-              éditer
+              edit
             </button>
           </div>
 
           <template v-if="editId === p.id">
-            <input v-model="editTitle" class="c-title" placeholder="Titre" />
+            <input v-model="editTitle" class="c-title" placeholder="Title" />
             <textarea v-model="editContent" rows="3" class="c-body"></textarea>
             <div class="edit-row">
-              <button class="c-send small" @click="saveEdit(p)">Enregistrer</button>
-              <button class="txt-btn" @click="editId = ''">annuler</button>
+              <button class="c-send small" @click="saveEdit(p)">Save</button>
+              <button class="txt-btn" @click="editId = ''">cancel</button>
             </div>
           </template>
           <template v-else>
@@ -205,7 +205,7 @@ watch(() => route.params.projectId, load, { immediate: true })
                 class="cmt"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
-                {{ p._count?.chats ?? 0 }} commentaires
+                {{ p._count?.chats ?? 0 }} comments
               </RouterLink>
             </div>
           </template>

@@ -24,9 +24,9 @@ async function saveName() {
   try {
     await api.patch(ROUTES.users.updateMe, { name: name.value })
     await auth.fetchMe()
-    message.value = 'Profil mis à jour.'
+    message.value = 'Profile updated.'
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Échec de la mise à jour'
+    error.value = (e as { message?: string }).message ?? 'Update failed'
   }
 }
 
@@ -36,9 +36,9 @@ async function confirmDeletion() {
   showDelete.value = false
   try {
     const res = await api.del<{ message: string }>(ROUTES.users.deleteMe)
-    message.value = res?.message ?? 'Suppression programmée.'
+    message.value = res?.message ?? 'Deletion scheduled.'
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Échec'
+    error.value = (e as { message?: string }).message ?? 'Failed'
   }
 }
 
@@ -47,9 +47,9 @@ async function cancelDeletion() {
   error.value = ''
   try {
     const res = await api.post<{ message: string }>(ROUTES.users.cancelDelete)
-    message.value = res?.message ?? 'Suppression annulée.'
+    message.value = res?.message ?? 'Deletion canceled.'
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Échec'
+    error.value = (e as { message?: string }).message ?? 'Failed'
   }
 }
 
@@ -61,8 +61,8 @@ async function logout() {
 
 <template>
   <section class="profile">
-    <h1 class="title">Mon profil</h1>
-    <p class="sub">// gère ton compte ft_predict.</p>
+    <h1 class="title">My profile</h1>
+    <p class="sub">// manage your ft_predict account.</p>
 
     <div class="card">
       <div class="ident">
@@ -71,15 +71,15 @@ async function logout() {
           <div class="ident-name">{{ auth.user?.name }}</div>
           <div class="ident-mail">
             {{ auth.user?.email }}
-            <span v-if="auth.user?.createdAt"> · depuis {{ auth.user.createdAt.slice(0, 10) }}</span>
+            <span v-if="auth.user?.createdAt"> · since {{ auth.user.createdAt.slice(0, 10) }}</span>
           </div>
         </div>
       </div>
 
-      <label class="lab">NOM D'AFFICHAGE</label>
+      <label class="lab">DISPLAY NAME</label>
       <div class="row">
-        <input v-model="name" class="input" placeholder="Nom" />
-        <button class="save" @click="saveName">Enregistrer</button>
+        <input v-model="name" class="input" placeholder="Name" />
+        <button class="save" @click="saveName">Save</button>
       </div>
       <p v-if="message" class="ok">{{ message }}</p>
       <p v-if="error" class="error">{{ error }}</p>
@@ -88,16 +88,16 @@ async function logout() {
     <div class="danger">
       <div class="danger-head">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3z" stroke="#ef6d72" stroke-width="1.7" stroke-linejoin="round" /><path d="M12 10v4M12 17h0" stroke="#ef6d72" stroke-width="1.9" stroke-linecap="round" /></svg>
-        <span class="danger-lab">ZONE DANGER</span>
+        <span class="danger-lab">DANGER ZONE</span>
       </div>
       <p class="danger-text">
-        La suppression du compte est effective après un délai de grâce (14 jours).
-        Tu peux annuler tant que le délai court ; tes contenus sont anonymisés.
+        Account deletion takes effect after a grace period (14 days).
+        You can cancel while the delay is running; your content is anonymized.
       </p>
       <div class="danger-actions">
-        <button class="d-ghost" @click="logout">Se déconnecter</button>
-        <button class="d-cancel" @click="cancelDeletion">Annuler la suppression</button>
-        <button class="d-delete" @click="showDelete = true">Supprimer le compte</button>
+        <button class="d-ghost" @click="logout">Sign out</button>
+        <button class="d-cancel" @click="cancelDeletion">Cancel deletion</button>
+        <button class="d-delete" @click="showDelete = true">Delete account</button>
       </div>
     </div>
 
@@ -106,15 +106,15 @@ async function logout() {
         <div class="modal-ic">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3z" stroke="#ef6d72" stroke-width="1.7" stroke-linejoin="round" /><path d="M12 10v4M12 17h0" stroke="#ef6d72" stroke-width="1.9" stroke-linecap="round" /></svg>
         </div>
-        <h2 class="modal-title">Supprimer ton compte ?</h2>
+        <h2 class="modal-title">Delete your account?</h2>
         <p class="modal-text">
-          Ton compte sera marqué pour suppression et désactivé pendant le délai
-          de grâce. Tes posts et messages seront anonymisés. Cette action peut
-          être annulée avant l'échéance.
+          Your account will be marked for deletion and disabled during the grace
+          period. Your posts and messages will be anonymized. This action can
+          be canceled before the deadline.
         </p>
         <div class="modal-actions">
-          <button class="d-ghost grow" @click="showDelete = false">Annuler</button>
-          <button class="d-delete grow" @click="confirmDeletion">Confirmer</button>
+          <button class="d-ghost grow" @click="showDelete = false">Cancel</button>
+          <button class="d-delete grow" @click="confirmDeletion">Confirm</button>
         </div>
       </div>
     </div>
