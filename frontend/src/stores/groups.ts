@@ -6,6 +6,7 @@ import type { Group, ProjectRef } from '@/types/api'
 
 export const useGroupsStore = defineStore('groups', () => {
   const groups = ref<Group[]>([])
+  const unread = ref<Record<string, number>>({})
   const loaded = ref(false)
   const loading = ref(false)
   const error = ref('')
@@ -23,6 +24,27 @@ export const useGroupsStore = defineStore('groups', () => {
     }
   }
 
+  async function fetchUnread() {
+    try {
+      unread.value = await api.get<Record<string, number>>(ROUTES.groups.unread)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function markRead(groupId: string) {
+    try {
+      await api.post(ROUTES.groups.read(groupId))
+      await fetchUnread()
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function totalUnread(): number {
+    return Object.values(unread.value).reduce((a, b) => a + b, 0)
+  }
+
   function projects(): ProjectRef[] {
     const seen = new Map<string, string>()
     for (const g of groups.value) {
@@ -33,5 +55,16 @@ export const useGroupsStore = defineStore('groups', () => {
     return [...seen].map(([projectId, projectName]) => ({ projectId, projectName }))
   }
 
-  return { groups, loaded, loading, error, fetchGroups, projects }
+  return {
+    groups,
+    unread,
+    loaded,
+    loading,
+    error,
+    fetchGroups,
+    fetchUnread,
+    markRead,
+    totalUnread,
+    projects,
+  }
 })

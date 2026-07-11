@@ -144,3 +144,11 @@ model ChatVote {
 
   @@id([userId, chatId])
 }
+
+model GroupRead {
+  userId     String
+  groupId    String
+  lastReadAt DateTime @default(now())
+
+  @@id([userId, groupId])
+}

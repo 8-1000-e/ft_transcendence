@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Patch,
+  Post,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -20,6 +21,18 @@ export class GroupController {
   @UseGuards(JwtAuthGuard)
   getMyGroups(@Req() req: AuthedRequest) {
     return this.groupService.getMyGroups(req.user.sub);
+  }
+
+  @Get('groups/unread')
+  @UseGuards(JwtAuthGuard)
+  getUnread(@Req() req: AuthedRequest) {
+    return this.groupService.getUnread(req.user.sub);
+  }
+
+  @Post('groups/:groupId/read')
+  @UseGuards(JwtAuthGuard)
+  markRead(@Param('groupId') groupId: string, @Req() req: AuthedRequest) {
+    return this.groupService.markRead(groupId, req.user.sub);
   }
 
   @Get('groups/:groupId')
