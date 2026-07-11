@@ -15,6 +15,7 @@ import { join } from 'path';
 import { SuggestModule } from './suggest/suggest.module';
 import { TasksModule } from './tasks/tasks.module';
 import { PusherModule } from './pusher/pusher.module';
+import { SearchModule } from './search/search.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { PusherModule } from './pusher/pusher.module';
     ScheduleModule.forRoot(),
     TasksModule,
     PusherModule,
+    SearchModule,
   ],
 })
 export class AppModule {}

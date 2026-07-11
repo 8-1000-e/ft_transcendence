@@ -1,12 +1,53 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter, RouterLink, RouterView } from 'vue-router'
+import { api } from '@/api/client'
+import { ROUTES } from '@/api/routes'
 import { useAuthStore } from '@/stores/auth'
 import { useGroupsStore } from '@/stores/groups'
+
+interface SearchResults {
+  projects: { id: string; name: string }[]
+  users: { id: string; name: string; ftPfpUrl: string | null; campus: string | null }[]
+}
 
 const auth = useAuthStore()
 const groups = useGroupsStore()
 const router = useRouter()
+
+const query = ref('')
+const results = ref<SearchResults>({ projects: [], users: [] })
+const showResults = ref(false)
+let timer: ReturnType<typeof setTimeout> | null = null
+
+function onSearchInput() {
+  showResults.value = true
+  if (timer) clearTimeout(timer)
+  const q = query.value.trim()
+  if (!q) {
+    results.value = { projects: [], users: [] }
+    return
+  }
+  timer = setTimeout(async () => {
+    try {
+      results.value = await api.get<SearchResults>(ROUTES.search(q))
+    } catch {
+      results.value = { projects: [], users: [] }
+    }
+  }, 250)
+}
+
+function pick() {
+  query.value = ''
+  results.value = { projects: [], users: [] }
+  showResults.value = false
+}
+
+function onBlur() {
+  setTimeout(() => {
+    showResults.value = false
+  }, 150)
+}
 
 onMounted(() => {
   if (!groups.loaded) groups.fetchGroups()
@@ -58,7 +99,46 @@ async function cancelDeletion() {
         <span class="search-ic">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" /><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
         </span>
-        <input class="search-in" placeholder="Rechercher un projet, un étudiant…" />
+        <input
+          v-model="query"
+          class="search-in"
+          placeholder="Rechercher un projet, un étudiant…"
+          @input="onSearchInput"
+          @focus="showResults = true"
+          @blur="onBlur"
+        />
+        <div
+          v-if="showResults && query.trim() && (results.projects.length || results.users.length)"
+          class="results"
+        >
+          <template v-if="results.projects.length">
+            <p class="res-cat">PROJETS</p>
+            <RouterLink
+              v-for="p in results.projects"
+              :key="p.id"
+              :to="{ name: 'project', params: { projectId: p.id } }"
+              class="res-item"
+              @click="pick"
+            >
+              <span class="res-code">{{ code(p.name) }}</span>
+              <span class="res-label">{{ p.name }}</span>
+            </RouterLink>
+          </template>
+          <template v-if="results.users.length">
+            <p class="res-cat">ÉTUDIANTS</p>
+            <RouterLink
+              v-for="u in results.users"
+              :key="u.id"
+              :to="{ name: 'user', params: { id: u.id } }"
+              class="res-item"
+              @click="pick"
+            >
+              <span class="res-av">{{ initials(u.name) }}</span>
+              <span class="res-label">{{ u.name }}</span>
+              <span v-if="u.campus" class="res-campus">{{ u.campus }}</span>
+            </RouterLink>
+          </template>
+        </div>
       </div>
 
       <div class="hd-right">
@@ -225,6 +305,73 @@ async function cancelDeletion() {
 .search-in:focus {
   border-color: #6e7bf2;
   box-shadow: 0 0 0 3px rgba(110, 123, 242, 0.16);
+}
+.results {
+  position: absolute;
+  top: 46px;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(17, 17, 21, 0.96);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.9);
+  padding: 8px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.res-cat {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: #74747e;
+  margin: 8px 8px 4px;
+}
+.res-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  text-decoration: none;
+  color: #ededee;
+}
+.res-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.res-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8c97f7;
+  width: 34px;
+}
+.res-av {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3a3a52, #54547a);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: #dfe2ff;
+}
+.res-label {
+  flex: 1;
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.res-campus {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  color: #74747e;
 }
 .hd-right {
   margin-left: auto;
