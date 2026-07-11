@@ -114,6 +114,56 @@ export class PostsService {
     });
   }
 
+  async getFeed(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    const posts = await this.prisma.projectsPost.findMany({
+      orderBy: { postedAt: 'desc' },
+      take: 30,
+      include: {
+        _count: { select: { chats: true } },
+        votes: true,
+        project: { select: { name: true } },
+        user: {
+          select: {
+            name: true,
+            ftId: true,
+            ftPfpUrl: true,
+            campus: true,
+            rdmCampus: true,
+            rdmName: true,
+            rdmPfp: true,
+          },
+        },
+      },
+    });
+
+    return posts.map(({ votes, project, ...post }) => {
+      const upvotes = votes.filter((v) => v.vote === VoteValue.UP).length;
+      const downvotes = votes.filter((v) => v.vote === VoteValue.DOWN).length;
+      const myVote = votes.find((v) => v.userId === userId)?.vote ?? null;
+      const base = {
+        ...post,
+        projectName: project.name,
+        upvotes,
+        downvotes,
+        myVote,
+      };
+
+      if (user && !user.ftId) {
+        return {
+          ...base,
+          user: {
+            name: post.user.rdmName,
+            ftPfpUrl: post.user.rdmPfp,
+            campus: post.user.rdmCampus,
+          },
+        };
+      }
+      return base;
+    });
+  }
+
   ////COMMENT
 
   async sendComment(id: string, body: CreateCommentDto, userId: string) {
