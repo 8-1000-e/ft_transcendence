@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
 import { publicUrl } from '@/api/upload'
@@ -21,6 +21,11 @@ const editId = ref('')
 const editContent = ref('')
 const loading = ref(false)
 const error = ref('')
+
+function initials(name?: string | null): string {
+  if (!name) return '??'
+  return name.trim().slice(0, 2).toUpperCase()
+}
 
 async function loadPost() {
   if (!projectId) return
@@ -108,200 +113,335 @@ onMounted(load)
       v-if="projectId"
       :to="{ name: 'project', params: { projectId } }"
       class="back"
-      >← retour au projet</RouterLink
     >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      retour au fil
+    </RouterLink>
 
     <p v-if="error" class="error">{{ error }}</p>
     <p v-if="loading" class="muted">Chargement…</p>
 
     <article v-if="post" class="post">
-      <p class="author">{{ post.user?.name ?? 'anonyme' }}</p>
-      <h1 v-if="post.title" class="title">{{ post.title }}</h1>
-      <p class="content">{{ post.content }}</p>
-      <img v-for="f in post.filesUrl" :key="f" :src="publicUrl(f)" class="img" alt="" />
+      <div class="body">
+        <div class="meta">
+          <span class="av big">{{ initials(post.user?.name) }}</span>
+          <span class="author">{{ post.user?.name ?? 'anonyme' }}</span>
+        </div>
+        <h1 v-if="post.title" class="p-title">{{ post.title }}</h1>
+        <p class="p-content">{{ post.content }}</p>
+        <img v-for="f in post.filesUrl" :key="f" :src="publicUrl(f)" class="p-img" alt="" />
+      </div>
     </article>
 
-    <h2 class="subtitle">Commentaires</h2>
-    <form class="composer" @submit.prevent="addComment">
-      <textarea
+    <div class="divider">
+      <span class="divider-lab">COMMENTAIRES</span>
+      <span class="divider-line"></span>
+      <span class="divider-n">{{ comments.length }}</span>
+    </div>
+
+    <div class="cmt-composer">
+      <input
         v-model="newComment"
         class="input"
-        rows="2"
-        placeholder="Ajouter un commentaire…"
-      ></textarea>
-      <button class="btn">Commenter</button>
-    </form>
+        placeholder="Ajoute un commentaire…"
+        @keyup.enter="addComment"
+      />
+      <button class="send-sq" @click="addComment">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      </button>
+    </div>
 
-    <ul class="list">
-      <li v-for="c in comments" :key="c.id" class="comment">
-        <div class="row">
-          <button class="vote" :class="{ active: c.myVote === 'UP' }" @click="voteComment(c, 'UP')">▲</button>
-          <span class="score">{{ c.upvotes - c.downvotes }}</span>
-          <button class="vote" :class="{ active: c.myVote === 'DOWN' }" @click="voteComment(c, 'DOWN')">▼</button>
-          <span class="author">{{ c.user?.name ?? 'anonyme' }}</span>
+    <div class="comments">
+      <div v-for="c in comments" :key="c.id" class="comment">
+        <div class="meta">
+          <span class="av sm">{{ initials(c.user?.name) }}</span>
+          <span class="author sm">{{ c.user?.name ?? 'anonyme' }}</span>
+          <div class="cvotes">
+            <button class="cvote" :class="{ up: c.myVote === 'UP' }" @click="voteComment(c, 'UP')">▲</button>
+            <span class="cscore">{{ c.upvotes - c.downvotes }}</span>
+            <button class="cvote" :class="{ down: c.myVote === 'DOWN' }" @click="voteComment(c, 'DOWN')">▼</button>
+          </div>
         </div>
+
         <template v-if="editId === c.id">
           <input v-model="editContent" class="input" />
-          <div class="row">
-            <button class="link-btn" @click="saveCommentEdit(c)">OK</button>
-            <button class="link-btn" @click="editId = ''">annuler</button>
+          <div class="c-actions">
+            <button class="txt-btn accent" @click="saveCommentEdit(c)">OK</button>
+            <button class="txt-btn" @click="editId = ''">annuler</button>
           </div>
         </template>
         <template v-else>
-          <p class="content">{{ c.content }}</p>
-          <img v-for="f in c.filesUrl" :key="f" :src="publicUrl(f)" class="img" alt="" />
-          <div class="row">
-            <button class="link-btn" @click="toggleReplies(c)">
+          <p class="c-content">{{ c.content }}</p>
+          <img v-for="f in c.filesUrl" :key="f" :src="publicUrl(f)" class="c-img" alt="" />
+          <div class="c-actions">
+            <button class="txt-btn" @click="toggleReplies(c)">
               {{ c._count?.replies ?? 0 }} réponse(s)
             </button>
-            <button
-              v-if="c.writer === auth.user?.id"
-              class="link-btn"
-              @click="startEdit(c.id, c.content)"
-            >
-              éditer
-            </button>
+            <button v-if="c.writer === auth.user?.id" class="txt-btn" @click="startEdit(c.id, c.content)">éditer</button>
           </div>
         </template>
 
         <div v-if="repliesByComment[c.id]" class="replies">
           <div v-for="r in repliesByComment[c.id]" :key="r.id" class="reply">
-            <span class="author">{{ r.user?.name ?? 'anonyme' }}</span>
+            <div class="meta">
+              <span class="av xs">{{ initials(r.user?.name) }}</span>
+              <span class="author sm">{{ r.user?.name ?? 'anonyme' }}</span>
+            </div>
             <template v-if="editId === r.id">
               <input v-model="editContent" class="input" />
-              <div class="row">
-                <button class="link-btn" @click="saveReplyEdit(c, r)">OK</button>
-                <button class="link-btn" @click="editId = ''">annuler</button>
+              <div class="c-actions">
+                <button class="txt-btn accent" @click="saveReplyEdit(c, r)">OK</button>
+                <button class="txt-btn" @click="editId = ''">annuler</button>
               </div>
             </template>
             <template v-else>
-              <p class="content">{{ r.content }}</p>
-              <button
-                v-if="r.writer === auth.user?.id"
-                class="link-btn"
-                @click="startEdit(r.id, r.content)"
-              >
-                éditer
-              </button>
+              <p class="c-content">{{ r.content }}</p>
+              <button v-if="r.writer === auth.user?.id" class="txt-btn" @click="startEdit(r.id, r.content)">éditer</button>
             </template>
           </div>
-          <form class="composer" @submit.prevent="addReply(c)">
-            <input
-              v-model="replyDrafts[c.id]"
-              class="input"
-              placeholder="Répondre…"
-            />
-            <button class="btn">Répondre</button>
-          </form>
+          <div class="reply-composer">
+            <input v-model="replyDrafts[c.id]" class="input" placeholder="Répondre…" @keyup.enter="addReply(c)" />
+            <button class="txt-btn accent" @click="addReply(c)">Répondre</button>
+          </div>
         </div>
-      </li>
-    </ul>
+      </div>
+    </div>
   </section>
 </template>
 
 <style scoped>
 .back {
-  color: var(--color-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #74747e;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
   text-decoration: none;
-  font-size: 13px;
+  margin-bottom: 16px;
+}
+.back:hover {
+  color: #8c97f7;
 }
 .post {
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 14px;
-  margin: 12px 0 20px;
-  background: var(--color-surface);
+  display: flex;
+  gap: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(17, 17, 21, 0.72);
+  padding: 22px;
 }
-.title {
-  font-size: 20px;
-  margin: 4px 0;
+.body {
+  flex: 1;
+  min-width: 0;
 }
-.subtitle {
-  font-size: 15px;
-  margin: 16px 0 10px;
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.av {
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5e6cf0, #8c97f7);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: #fff;
+}
+.av.big {
+  width: 26px;
+  height: 26px;
+  font-size: 10px;
+}
+.av.sm {
+  width: 22px;
+  height: 22px;
+  font-size: 9px;
+  background: linear-gradient(135deg, #3a3a52, #54547a);
+  color: #dfe2ff;
+}
+.av.xs {
+  width: 20px;
+  height: 20px;
+  font-size: 9px;
 }
 .author {
-  font-size: 12px;
-  color: var(--color-muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #cfcfd4;
 }
-.content {
+.author.sm {
+  font-size: 12.5px;
+}
+.p-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #f6f6f7;
+  margin: 0 0 12px;
+  letter-spacing: -0.01em;
+}
+.p-content {
+  font-size: 14.5px;
+  color: #c2c2c8;
+  line-height: 1.7;
+  margin: 0;
   white-space: pre-wrap;
-  margin: 6px 0;
 }
-.img {
-  max-width: 280px;
+.p-img {
+  margin-top: 12px;
+  max-width: 100%;
+  max-height: 340px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: block;
+}
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 26px 0 14px;
+}
+.divider-lab {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: #74747e;
+}
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+}
+.divider-n {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #5c5c66;
+}
+.cmt-composer {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.input {
+  flex: 1;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.035);
+  color: #f3f3f4;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+.input:focus {
+  border-color: #6e7bf2;
+  box-shadow: 0 0 0 3px rgba(110, 123, 242, 0.2);
+}
+.send-sq {
+  width: 44px;
+  border-radius: 11px;
+  border: none;
+  background: linear-gradient(180deg, #5e6cf0, #4a5fe8);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.comments {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.comment {
+  border-radius: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 14px 16px;
+}
+.cvotes {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cvote {
+  background: none;
+  border: none;
+  color: #5c5c66;
+  cursor: pointer;
+  font-size: 12px;
+}
+.cvote.up {
+  color: #8c97f7;
+}
+.cvote.down {
+  color: #ef6d72;
+}
+.cscore {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #b6b6be;
+}
+.c-content {
+  font-size: 13.5px;
+  color: #b6b6be;
+  line-height: 1.6;
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+}
+.c-img {
+  max-width: 240px;
   border-radius: 8px;
   margin: 0 0 8px;
   display: block;
 }
-.composer {
+.c-actions {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 14px;
 }
-.input {
-  flex: 1;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-2);
-  color: #f3f3f4;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font: inherit;
-}
-.btn {
-  border: none;
-  background: var(--color-accent);
-  color: #fff;
-  border-radius: 8px;
-  padding: 8px 14px;
-  cursor: pointer;
-}
-.list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.comment {
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 12px;
-  background: var(--color-surface);
-}
-.row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.vote {
+.txt-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #74747e;
   background: none;
   border: none;
-  color: var(--color-muted);
-  cursor: pointer;
-}
-.vote.active {
-  color: var(--color-accent);
-}
-.link-btn {
-  background: none;
-  border: none;
-  color: var(--color-accent);
   cursor: pointer;
   padding: 0;
-  font-size: 13px;
+}
+.txt-btn:hover {
+  color: #8c97f7;
+}
+.txt-btn.accent {
+  color: #8c97f7;
 }
 .replies {
-  margin: 10px 0 0 16px;
-  padding-left: 12px;
-  border-left: 1px solid var(--color-border);
+  margin: 12px 0 0 20px;
+  padding-left: 14px;
+  border-left: 2px solid #23232b;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .reply {
-  margin-bottom: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 12px 14px;
+}
+.reply-composer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 .muted {
-  color: var(--color-muted);
+  color: #74747e;
 }
 .error {
   color: #ef6d72;
