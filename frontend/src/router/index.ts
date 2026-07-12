@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { navigationGuard } from './guard'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -73,15 +73,6 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
-  const auth = useAuthStore()
-  if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    return { name: 'login' }
-  }
-  if (to.meta.guestOnly && auth.isAuthenticated) {
-    return { name: 'feed' }
-  }
-  return true
-})
+router.beforeEach(navigationGuard)
 
 export default router
