@@ -46,6 +46,12 @@ export class PostsController {
     return this.postsService.getPosts(id, req.user.sub);
   }
 
+  @Get('feed')
+  @UseGuards(JwtAuthGuard)
+  getFeed(@Req() req: AuthedRequest) {
+    return this.postsService.getFeed(req.user.sub);
+  }
+
   //COMMENT
   @Post('posts/:postId/comments')
   @UseGuards(JwtAuthGuard)

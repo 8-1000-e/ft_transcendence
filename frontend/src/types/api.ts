@@ -24,6 +24,7 @@ export interface ProjectRef {
 export interface Post {
   id: string
   projectId: string
+  projectName?: string
   title: string | null
   content: string
   filesUrl: string[]

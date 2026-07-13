@@ -21,6 +21,7 @@ export const ROUTES = {
   },
 
   posts: {
+    feed: '/feed',
     listByProject: (projectId: string) => `/project/${projectId}/posts`,
     create: (projectId: string) => `/project/${projectId}/posts`,
     edit: (projectId: string, postId: string) =>
