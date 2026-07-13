@@ -10,6 +10,7 @@ export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(null)
   const refreshToken = ref<string | null>(localStorage.getItem(REFRESH_KEY))
   const user = ref<User | null>(null)
+  const pendingDeletion = ref(false)
 
   const isAuthenticated = computed(() => !!user.value)
 
@@ -68,6 +69,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function cancelDeletion() {
+    await api.post(ROUTES.users.cancelDelete)
+    pendingDeletion.value = false
+  }
+
   async function tryRestoreSession(): Promise<boolean> {
     if (!refreshToken.value) return false
     try {
@@ -89,6 +95,7 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken,
     refreshToken,
     user,
+    pendingDeletion,
     isAuthenticated,
     setTokens,
     clear,
@@ -97,6 +104,7 @@ export const useAuthStore = defineStore('auth', () => {
     signup,
     verify,
     logout,
+    cancelDeletion,
     tryRestoreSession,
   }
 })

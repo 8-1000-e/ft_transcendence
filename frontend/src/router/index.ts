@@ -29,9 +29,45 @@ const router = createRouter({
     },
     {
       path: '/',
-      name: 'home',
-      component: () => import('@/views/Home.vue'),
+      component: () => import('@/layouts/AppShell.vue'),
       meta: { requiresAuth: true },
+      children: [
+        {
+          path: '',
+          name: 'feed',
+          component: () => import('@/views/app/FeedView.vue'),
+        },
+        {
+          path: 'p/:projectId',
+          name: 'project',
+          component: () => import('@/views/app/ProjectFeedView.vue'),
+        },
+        {
+          path: 'post/:postId',
+          name: 'post',
+          component: () => import('@/views/app/PostDetailView.vue'),
+        },
+        {
+          path: 'g/:groupId',
+          name: 'group',
+          component: () => import('@/views/app/GroupChatView.vue'),
+        },
+        {
+          path: 'suggest/:projectId',
+          name: 'suggest',
+          component: () => import('@/views/app/SuggestView.vue'),
+        },
+        {
+          path: 'u/:id',
+          name: 'user',
+          component: () => import('@/views/app/PublicProfileView.vue'),
+        },
+        {
+          path: 'me',
+          name: 'me',
+          component: () => import('@/views/app/ProfileView.vue'),
+        },
+      ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
@@ -43,7 +79,7 @@ router.beforeEach((to) => {
     return { name: 'login' }
   }
   if (to.meta.guestOnly && auth.isAuthenticated) {
-    return { name: 'home' }
+    return { name: 'feed' }
   }
   return true
 })
