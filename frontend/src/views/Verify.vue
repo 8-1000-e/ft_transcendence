@@ -34,13 +34,10 @@ async function submit() {
 </script>
 
 <template>
-  <AuthShell
-    title="Vérifie ton email"
-    :subtitle="`Code envoyé à ${email}`"
-  >
-    <form class="space-y-4" @submit.prevent="submit">
-      <div>
-        <label class="block text-sm mb-1 text-muted" for="code">Code (6 chiffres)</label>
+  <AuthShell title="Vérification" :subtitle="`// code envoyé à ${email}`">
+    <form class="ftp-form" @submit.prevent="submit">
+      <div class="ftp-field">
+        <label class="ftp-label" for="code">CODE (6 CHIFFRES)</label>
         <input
           id="code"
           v-model="code"
@@ -48,24 +45,30 @@ async function submit() {
           pattern="[0-9]{6}"
           maxlength="6"
           required
-          class="w-full rounded-lg bg-surface-2 border border-border px-3 py-2 text-center text-2xl tracking-[0.5em] outline-none focus:border-accent"
+          class="ftp-input ftp-code"
+          placeholder="000000"
         />
       </div>
 
-      <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
+      <p v-if="error" class="ftp-error">! {{ error }}</p>
 
-      <button
-        type="submit"
-        :disabled="loading"
-        class="w-full rounded-lg bg-accent hover:bg-accent-hover text-black font-semibold py-2 transition disabled:opacity-50"
-      >
+      <button type="submit" :disabled="loading" class="ftp-btn">
         {{ loading ? 'Vérification…' : 'Valider' }}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M5 12h13M13 6l6 6-6 6"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
       </button>
     </form>
 
     <template #footer>
       Mauvais email ?
-      <RouterLink to="/signup" class="text-accent hover:underline">Recommencer</RouterLink>
+      <RouterLink to="/signup" class="ftp-link-strong">Recommencer</RouterLink>
     </template>
   </AuthShell>
 </template>

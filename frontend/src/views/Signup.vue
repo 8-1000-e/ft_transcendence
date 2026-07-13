@@ -29,32 +29,36 @@ async function submit() {
 </script>
 
 <template>
-  <AuthShell title="Créer un compte" subtitle="Rejoins la communauté.">
-    <form class="space-y-4" @submit.prevent="submit">
-      <div>
-        <label class="block text-sm mb-1 text-muted" for="name">Nom</label>
+  <AuthShell title="Inscription" subtitle="// crée ton compte étudiant.">
+    <form class="ftp-form" @submit.prevent="submit">
+      <div class="ftp-field">
+        <label class="ftp-label" for="name">NOM</label>
         <input
           id="name"
           v-model="name"
           type="text"
           required
           minlength="2"
-          class="w-full rounded-lg bg-surface-2 border border-border px-3 py-2 outline-none focus:border-accent"
+          class="ftp-input"
+          placeholder="ton nom"
         />
       </div>
-      <div>
-        <label class="block text-sm mb-1 text-muted" for="email">Email</label>
+
+      <div class="ftp-field">
+        <label class="ftp-label" for="email">E-MAIL</label>
         <input
           id="email"
           v-model="email"
           type="email"
           required
           autocomplete="email"
-          class="w-full rounded-lg bg-surface-2 border border-border px-3 py-2 outline-none focus:border-accent"
+          class="ftp-input"
+          placeholder="prenom@student.42.fr"
         />
       </div>
-      <div>
-        <label class="block text-sm mb-1 text-muted" for="password">Mot de passe</label>
+
+      <div class="ftp-field">
+        <label class="ftp-label" for="password">MOT DE PASSE</label>
         <input
           id="password"
           v-model="password"
@@ -62,25 +66,31 @@ async function submit() {
           required
           minlength="8"
           autocomplete="new-password"
-          class="w-full rounded-lg bg-surface-2 border border-border px-3 py-2 outline-none focus:border-accent"
+          class="ftp-input"
+          placeholder="••••••••"
         />
-        <p class="text-xs text-muted mt-1">8 caractères minimum.</p>
+        <p class="ftp-hint">8 caractères minimum.</p>
       </div>
 
-      <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
+      <p v-if="error" class="ftp-error">! {{ error }}</p>
 
-      <button
-        type="submit"
-        :disabled="loading"
-        class="w-full rounded-lg bg-accent hover:bg-accent-hover text-black font-semibold py-2 transition disabled:opacity-50"
-      >
+      <button type="submit" :disabled="loading" class="ftp-btn">
         {{ loading ? 'Envoi…' : 'Créer mon compte' }}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M5 12h13M13 6l6 6-6 6"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
       </button>
     </form>
 
     <template #footer>
       Déjà inscrit ?
-      <RouterLink to="/login" class="text-accent hover:underline">Se connecter</RouterLink>
+      <RouterLink to="/login" class="ftp-link-strong">Se connecter</RouterLink>
     </template>
   </AuthShell>
 </template>

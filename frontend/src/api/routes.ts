@@ -16,6 +16,7 @@ export const ROUTES = {
     me: '/me',
     updateMe: '/me',
     deleteMe: '/me',
+    cancelDelete: '/me/cancel',
     byId: (id: string) => `/users/${id}`,
   },
 
@@ -41,9 +42,17 @@ export const ROUTES = {
   },
 
   groups: {
+    list: '/groups',
+    byId: (groupId: string) => `/groups/${groupId}`,
     edit: (groupId: string) => `/groups/${groupId}`,
     messages: (groupId: string) => `/groups/${groupId}/messages`,
     sendMessage: (groupId: string) => `/groups/${groupId}/message`,
+    replyMessage: (groupId: string, replyMessageId: string) =>
+      `/groups/${groupId}/message/${replyMessageId}`,
+    editMessage: (groupId: string, messageId: string) =>
+      `/groups/${groupId}/messages/${messageId}`,
+    deleteMessage: (groupId: string, messageId: string) =>
+      `/groups/${groupId}/messages/${messageId}`,
   },
 
   suggest: {
@@ -54,4 +63,8 @@ export const ROUTES = {
 
 export function apiUrl(path: string): string {
   return `${API_BASE_URL}${path}`;
+}
+
+export function fileUrl(filename: string): string {
+  return `${API_BASE_URL}/files/${filename}`;
 }

@@ -88,6 +88,15 @@ export async function request<T>(
     } catch {
       payload = null
     }
+    if (
+      res.status === 403 &&
+      payload &&
+      typeof payload === 'object' &&
+      (payload as { code?: string }).code === 'ACCOUNT_PENDING_DELETION'
+    ) {
+      const store = await getAuthStore()
+      store.pendingDeletion = true
+    }
     throw buildError(res.status, payload)
   }
 
