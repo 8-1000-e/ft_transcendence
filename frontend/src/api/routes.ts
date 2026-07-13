@@ -59,6 +59,8 @@ export const ROUTES = {
     byProject: (projectId: string, campusId: string) =>
       `/suggest/${projectId}/${campusId}`,
   },
+
+  search: (q: string) => `/search?q=${encodeURIComponent(q)}`,
 } as const;
 
 export function apiUrl(path: string): string {
