@@ -115,7 +115,7 @@ onBeforeUnmount(() => {
           <div class="ftp-card-head">
             <h1 class="ftp-title">{{ title }}</h1>
             <span class="ftp-badge"
-              ><span class="ftp-badge-dot"></span>RÉSEAU OK</span
+              ><span class="ftp-badge-dot"></span>NETWORK OK</span
             >
           </div>
           <p v-if="subtitle" class="ftp-subtitle">{{ subtitle }}</p>

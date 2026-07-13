@@ -17,8 +17,8 @@ const loading = ref(false)
 
 onMounted(() => {
   const err = route.query.error
-  if (err === 'invalid_state') error.value = 'Session OAuth invalide, réessaie.'
-  else if (err === 'ft_auth_failed') error.value = 'La connexion 42 a échoué.'
+  if (err === 'invalid_state') error.value = 'Invalid OAuth session, try again.'
+  else if (err === 'ft_auth_failed') error.value = '42 sign-in failed.'
 })
 
 async function submit() {
@@ -28,7 +28,7 @@ async function submit() {
     await auth.login(email.value, password.value)
     await router.push('/')
   } catch (e) {
-    error.value = (e as ApiError).message ?? 'Identifiants invalides'
+    error.value = (e as ApiError).message ?? 'Invalid credentials'
   } finally {
     loading.value = false
   }
@@ -40,7 +40,7 @@ function loginWith42() {
 </script>
 
 <template>
-  <AuthShell title="Connexion" subtitle="// content de te revoir, étudiant.">
+  <AuthShell title="Sign in" subtitle="// welcome back, student.">
     <form class="ftp-form" @submit.prevent="submit">
       <div class="ftp-field">
         <label class="ftp-label" for="email">E-MAIL</label>
@@ -57,8 +57,8 @@ function loginWith42() {
 
       <div class="ftp-field">
         <div class="ftp-field-row">
-          <label class="ftp-label" for="password">MOT DE PASSE</label>
-          <a href="#" class="ftp-link">Oublié ?</a>
+          <label class="ftp-label" for="password">PASSWORD</label>
+          <a href="#" class="ftp-link">Forgot?</a>
         </div>
         <input
           id="password"
@@ -74,7 +74,7 @@ function loginWith42() {
       <p v-if="error" class="ftp-error">! {{ error }}</p>
 
       <button type="submit" :disabled="loading" class="ftp-btn">
-        {{ loading ? 'Connexion…' : 'Se connecter' }}
+        {{ loading ? 'Signing in…' : 'Sign in' }}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path
             d="M5 12h13M13 6l6 6-6 6"
@@ -89,18 +89,18 @@ function loginWith42() {
 
     <div class="ftp-divider">
       <span class="ftp-divider-line"></span>
-      <span class="ftp-divider-text">ou</span>
+      <span class="ftp-divider-text">or</span>
       <span class="ftp-divider-line"></span>
     </div>
 
     <button type="button" class="ftp-btn-42" @click="loginWith42">
       <span class="ftp-42-badge">42</span>
-      Se connecter avec 42
+      Sign in with 42
     </button>
 
     <template #footer>
-      Pas de compte ?
-      <RouterLink to="/signup" class="ftp-link-strong">Créer un compte</RouterLink>
+      No account?
+      <RouterLink to="/signup" class="ftp-link-strong">Create an account</RouterLink>
     </template>
   </AuthShell>
 </template>

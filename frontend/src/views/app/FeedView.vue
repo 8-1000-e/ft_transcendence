@@ -21,7 +21,7 @@ async function load() {
   try {
     posts.value = await api.get<Post[]>(ROUTES.posts.feed)
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Erreur de chargement'
+    error.value = (e as { message?: string }).message ?? 'Loading error'
   } finally {
     loading.value = false
   }
@@ -42,12 +42,12 @@ onMounted(load)
 <template>
   <section>
     <h1 class="title">Feed</h1>
-    <p class="sub">// les derniers posts du campus, tous projets confondus.</p>
+    <p class="sub">// the latest posts on campus, across all projects.</p>
 
     <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="loading" class="muted">Chargement…</p>
+    <p v-if="loading" class="muted">Loading…</p>
     <p v-else-if="!posts.length" class="muted">
-      Aucun post pour l'instant. Ouvre un projet pour publier le premier.
+      No posts yet. Open a project to publish the first one.
     </p>
 
     <div class="posts">
@@ -68,10 +68,10 @@ onMounted(load)
               :to="{ name: 'project', params: { projectId: p.projectId } }"
               class="proj-tag"
             >
-              {{ p.projectName ?? 'projet' }}
+              {{ p.projectName ?? 'project' }}
             </RouterLink>
             <span class="av">{{ initials(p.user?.name) }}</span>
-            <span class="author">{{ p.user?.name ?? 'anonyme' }}</span>
+            <span class="author">{{ p.user?.name ?? 'anonymous' }}</span>
           </div>
           <RouterLink
             :to="{ name: 'post', params: { postId: p.id }, query: { projectId: p.projectId } }"
@@ -86,7 +86,7 @@ onMounted(load)
             class="cmt"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
-            {{ p._count?.chats ?? 0 }} commentaires
+            {{ p._count?.chats ?? 0 }} comments
           </RouterLink>
         </div>
       </article>

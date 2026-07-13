@@ -71,7 +71,7 @@ async function load() {
     await fetchMessages(true)
     groupsStore.markRead(groupId())
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Erreur de chargement'
+    error.value = (e as { message?: string }).message ?? 'Loading error'
   } finally {
     loading.value = false
   }
@@ -83,7 +83,7 @@ async function onFile(e: Event) {
   try {
     pendingFile.value = [await uploadImage(file, true)]
   } catch {
-    error.value = "Échec de l'upload"
+    error.value = "Upload failed"
   }
 }
 
@@ -105,7 +105,7 @@ async function send() {
     })
     await fetchMessages(true)
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Envoi impossible'
+    error.value = (e as { message?: string }).message ?? 'Send failed'
   }
 }
 
@@ -122,17 +122,17 @@ async function saveEdit(m: Message) {
     editingId.value = ''
     await fetchMessages()
   } catch {
-    error.value = 'Modification impossible'
+    error.value = 'Update failed'
   }
 }
 
 async function remove(m: Message) {
-  if (!confirm('Supprimer ce message ?')) return
+  if (!confirm('Delete this message?')) return
   try {
     await api.del(ROUTES.groups.deleteMessage(groupId(), m.id))
     await fetchMessages()
   } catch {
-    error.value = 'Suppression impossible'
+    error.value = 'Delete failed'
   }
 }
 
@@ -145,7 +145,7 @@ async function saveGroup() {
     group.value = await api.get<Group>(ROUTES.groups.byId(groupId()))
     showGroupEdit.value = false
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Mise à jour impossible'
+    error.value = (e as { message?: string }).message ?? 'Update failed'
   }
 }
 
@@ -179,7 +179,7 @@ onBeforeUnmount(teardown)
       <span class="ch-av">{{ initials(group?.groupName) }}</span>
       <div class="ch-main">
         <div class="ch-top">
-          <span class="ch-name">{{ group?.groupName ?? 'Groupe' }}</span>
+          <span class="ch-name">{{ group?.groupName ?? 'Group' }}</span>
           <span class="badge">
             <span class="badge-dot"></span>{{ live ? 'LIVE' : 'POLLING' }}
           </span>
@@ -189,21 +189,21 @@ onBeforeUnmount(teardown)
       <a v-if="group?.githubLink" :href="group.githubLink" target="_blank" class="ch-ic" aria-label="GitHub">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.6 2 12.3c0 4.5 2.9 8.3 6.8 9.7.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.4-3.4-1.4-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5.1 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9 9 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 4-2.4 4.8-4.7 5.1.4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5 3.9-1.4 6.8-5.2 6.8-9.7C22 6.6 17.5 2 12 2z" /></svg>
       </a>
-      <button class="ch-ic" aria-label="éditer" @click="showGroupEdit = !showGroupEdit">
+      <button class="ch-ic" aria-label="edit" @click="showGroupEdit = !showGroupEdit">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 20h4L18 10l-4-4L4 16v4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="1.7" /></svg>
       </button>
     </header>
 
     <div v-if="showGroupEdit" class="grp-edit">
-      <input v-model="groupName" class="input" placeholder="Nom du groupe" />
-      <input v-model="githubLink" class="input" placeholder="Lien GitHub" />
+      <input v-model="groupName" class="input" placeholder="Group name" />
+      <input v-model="githubLink" class="input" placeholder="GitHub link" />
       <button class="send-btn" @click="saveGroup">OK</button>
     </div>
 
     <p v-if="error" class="error">{{ error }}</p>
 
     <div ref="listEl" class="messages scroll">
-      <p v-if="loading" class="muted center">Chargement…</p>
+      <p v-if="loading" class="muted center">Loading…</p>
       <div
         v-for="m in messages"
         :key="m.id"
@@ -213,7 +213,7 @@ onBeforeUnmount(teardown)
         <span v-if="!mine(m)" class="m-av">{{ initials(m.user?.name ?? m.sender) }}</span>
         <div class="m-body">
           <div class="m-meta">
-            <span class="m-author">{{ mine(m) ? 'moi' : (m.user?.name ?? m.sender) }}</span>
+            <span class="m-author">{{ mine(m) ? 'me' : (m.user?.name ?? m.sender) }}</span>
           </div>
           <div class="bubble" :class="{ mine: mine(m) }">
             <div v-if="m.messageReply" class="quote">
@@ -223,7 +223,7 @@ onBeforeUnmount(teardown)
               <input v-model="editDraft" class="input dark" @keyup.enter="saveEdit(m)" />
               <div class="m-actions">
                 <button class="txt-btn accent" @click="saveEdit(m)">OK</button>
-                <button class="txt-btn" @click="editingId = ''">annuler</button>
+                <button class="txt-btn" @click="editingId = ''">cancel</button>
               </div>
             </template>
             <template v-else>
@@ -232,10 +232,10 @@ onBeforeUnmount(teardown)
             </template>
           </div>
           <div v-if="editingId !== m.id" class="m-actions">
-            <button class="txt-btn" @click="replyingTo = m">répondre</button>
+            <button class="txt-btn" @click="replyingTo = m">reply</button>
             <template v-if="mine(m)">
-              <button class="txt-btn" @click="startEdit(m)">éditer</button>
-              <button class="txt-btn" @click="remove(m)">suppr.</button>
+              <button class="txt-btn" @click="startEdit(m)">edit</button>
+              <button class="txt-btn" @click="remove(m)">del.</button>
             </template>
           </div>
         </div>
@@ -245,7 +245,7 @@ onBeforeUnmount(teardown)
     <div v-if="replyingTo" class="reply-banner">
       <span class="reply-bar"></span>
       <div class="reply-main">
-        <span class="reply-to">réponse à {{ replyingTo.user?.name ?? replyingTo.sender }}</span>
+        <span class="reply-to">reply to {{ replyingTo.user?.name ?? replyingTo.sender }}</span>
         <span class="reply-content">{{ replyingTo.content }}</span>
       </div>
       <button class="reply-x" aria-label="annuler" @click="replyingTo = null">
@@ -258,8 +258,8 @@ onBeforeUnmount(teardown)
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.5 12.5 21a5 5 0 0 1-7-7l8-8a3.3 3.3 0 0 1 4.7 4.7l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.3-7.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
         <input type="file" accept="image/*" hidden @change="onFile" />
       </label>
-      <span v-if="pendingFile.length" class="chip">image prête</span>
-      <input v-model="draft" class="input" placeholder="Écris un message…" @keyup.enter="send" />
+      <span v-if="pendingFile.length" class="chip">image ready</span>
+      <input v-model="draft" class="input" placeholder="Type a message…" @keyup.enter="send" />
       <button class="send-btn sq" @click="send">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </button>

@@ -130,7 +130,7 @@ async function cancelDeletion() {
         <input
           v-model="query"
           class="search-in"
-          placeholder="Rechercher un projet, un étudiant…"
+          placeholder="Search a project, a student…"
           @input="onSearchInput"
           @focus="showResults = true"
           @blur="onBlur"
@@ -140,7 +140,7 @@ async function cancelDeletion() {
           class="results"
         >
           <template v-if="results.projects.length">
-            <p class="res-cat">PROJETS</p>
+            <p class="res-cat">PROJECTS</p>
             <RouterLink
               v-for="p in results.projects"
               :key="p.id"
@@ -153,7 +153,7 @@ async function cancelDeletion() {
             </RouterLink>
           </template>
           <template v-if="results.users.length">
-            <p class="res-cat">ÉTUDIANTS</p>
+            <p class="res-cat">STUDENTS</p>
             <RouterLink
               v-for="u in results.users"
               :key="u.id"
@@ -172,9 +172,9 @@ async function cancelDeletion() {
       <div class="hd-right">
         <RouterLink :to="{ name: 'me' }" class="pill">
           <span class="pill-av">{{ initials(auth.user?.name) }}</span>
-          <span class="pill-name">{{ auth.user?.name ?? 'Profil' }}</span>
+          <span class="pill-name">{{ auth.user?.name ?? 'Profile' }}</span>
         </RouterLink>
-        <button class="icon-btn logout" aria-label="Déconnexion" @click="logout">
+        <button class="icon-btn logout" aria-label="Sign out" @click="logout">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /><path d="M10 8l-4 4 4 4M6 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
         </button>
       </div>
@@ -186,9 +186,9 @@ async function cancelDeletion() {
           <span class="rail-title">YOUR GROUPCHAT</span>
           <span class="rail-count">{{ groups.groups.length }}</span>
         </div>
-        <p v-if="groups.loading" class="muted">Chargement…</p>
+        <p v-if="groups.loading" class="muted">Loading…</p>
         <p v-else-if="groups.error" class="muted">{{ groups.error }}</p>
-        <p v-else-if="!groups.groups.length" class="muted">Aucun groupe.</p>
+        <p v-else-if="!groups.groups.length" class="muted">No group.</p>
         <RouterLink
           v-for="g in groups.groups"
           :key="g.id"
@@ -204,7 +204,7 @@ async function cancelDeletion() {
         </RouterLink>
 
         <div v-if="groups.totalUnread()" class="unread-total">
-          <span>Total non-lus</span>
+          <span>Total unread</span>
           <span class="unread-n">{{ groups.totalUnread() }} unread</span>
         </div>
       </aside>
@@ -214,7 +214,7 @@ async function cancelDeletion() {
       </main>
 
       <aside class="rail rail-right scroll">
-        <div class="rail-head"><span class="rail-title">PROJETS</span></div>
+        <div class="rail-head"><span class="rail-title">PROJECTS</span></div>
         <RouterLink
           v-for="p in groups.projects()"
           :key="p.projectId"
@@ -237,7 +237,7 @@ async function cancelDeletion() {
         </div>
 
         <div v-if="latest.length" class="panel">
-          <p class="panel-title">DERNIERS POSTS</p>
+          <p class="panel-title">LATEST POSTS</p>
           <RouterLink
             v-for="p in latest"
             :key="p.id"
@@ -256,14 +256,14 @@ async function cancelDeletion() {
         <div class="modal-ic">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3z" stroke="#ef6d72" stroke-width="1.7" stroke-linejoin="round" /><path d="M12 10v4M12 17h0" stroke="#ef6d72" stroke-width="1.9" stroke-linecap="round" /></svg>
         </div>
-        <h2 class="modal-title">Compte en cours de suppression</h2>
+        <h2 class="modal-title">Account being deleted</h2>
         <p class="modal-text">
-          Ton compte est programmé pour suppression. Annule la demande pour
-          continuer à l'utiliser, ou déconnecte-toi.
+          Your account is scheduled for deletion. Cancel the request to
+          keep using it, or sign out.
         </p>
         <div class="modal-actions">
-          <button class="btn-ghost" @click="logout">Se déconnecter</button>
-          <button class="btn-primary" @click="cancelDeletion">Annuler la suppression</button>
+          <button class="btn-ghost" @click="logout">Sign out</button>
+          <button class="btn-primary" @click="cancelDeletion">Cancel deletion</button>
         </div>
       </div>
     </div>

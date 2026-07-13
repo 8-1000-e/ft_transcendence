@@ -44,7 +44,7 @@ async function search() {
     )
     done.value = true
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Suggestion impossible'
+    error.value = (e as { message?: string }).message ?? 'Suggestion failed'
   } finally {
     loading.value = false
   }
@@ -53,29 +53,29 @@ async function search() {
 
 <template>
   <section class="wrap">
-    <h1 class="title">Suggérer une équipe</h1>
-    <p class="sub">// entre un campus pour découvrir les équipes actives.</p>
+    <h1 class="title">Suggest a team</h1>
+    <p class="sub">// enter a campus to discover active teams.</p>
 
     <div class="row">
       <input
         v-model="campusId"
         class="input"
-        placeholder="campusId (ex. 31 = Angoulême)"
+        placeholder="campusId (e.g. 31 = Angoulême)"
         @keyup.enter="search"
       />
       <button class="btn" :disabled="loading" @click="search">
-        {{ loading ? 'Recherche…' : 'Chercher' }}
+        {{ loading ? 'Searching…' : 'Search' }}
       </button>
     </div>
 
     <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="done && !teams.length" class="muted">Aucune équipe trouvée.</p>
+    <p v-if="done && !teams.length" class="muted">No team found.</p>
 
     <div class="teams">
       <div v-for="t in teams" :key="t.teamId" class="team">
         <div class="team-head">
-          <span class="team-name">Équipe · note {{ t.final_mark ?? '?' }}</span>
-          <span class="team-n">{{ t.users.length }} membres</span>
+          <span class="team-name">Team · mark {{ t.final_mark ?? '?' }}</span>
+          <span class="team-n">{{ t.users.length }} members</span>
         </div>
         <div class="members">
           <span

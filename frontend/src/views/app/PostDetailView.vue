@@ -47,7 +47,7 @@ async function load() {
   try {
     await Promise.all([loadPost(), loadComments()])
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Erreur de chargement'
+    error.value = (e as { message?: string }).message ?? 'Loading error'
   } finally {
     loading.value = false
   }
@@ -115,17 +115,17 @@ onMounted(load)
       class="back"
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
-      retour au fil
+      back to thread
     </RouterLink>
 
     <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="loading" class="muted">Chargement…</p>
+    <p v-if="loading" class="muted">Loading…</p>
 
     <article v-if="post" class="post">
       <div class="body">
         <div class="meta">
           <span class="av big">{{ initials(post.user?.name) }}</span>
-          <span class="author">{{ post.user?.name ?? 'anonyme' }}</span>
+          <span class="author">{{ post.user?.name ?? 'anonymous' }}</span>
         </div>
         <h1 v-if="post.title" class="p-title">{{ post.title }}</h1>
         <p class="p-content">{{ post.content }}</p>
@@ -134,7 +134,7 @@ onMounted(load)
     </article>
 
     <div class="divider">
-      <span class="divider-lab">COMMENTAIRES</span>
+      <span class="divider-lab">COMMENTS</span>
       <span class="divider-line"></span>
       <span class="divider-n">{{ comments.length }}</span>
     </div>
@@ -143,7 +143,7 @@ onMounted(load)
       <input
         v-model="newComment"
         class="input"
-        placeholder="Ajoute un commentaire…"
+        placeholder="Add a comment…"
         @keyup.enter="addComment"
       />
       <button class="send-sq" @click="addComment">
@@ -155,7 +155,7 @@ onMounted(load)
       <div v-for="c in comments" :key="c.id" class="comment">
         <div class="meta">
           <span class="av sm">{{ initials(c.user?.name) }}</span>
-          <span class="author sm">{{ c.user?.name ?? 'anonyme' }}</span>
+          <span class="author sm">{{ c.user?.name ?? 'anonymous' }}</span>
           <div class="cvotes">
             <button class="cvote" :class="{ up: c.myVote === 'UP' }" @click="voteComment(c, 'UP')">▲</button>
             <span class="cscore">{{ c.upvotes - c.downvotes }}</span>
@@ -167,7 +167,7 @@ onMounted(load)
           <input v-model="editContent" class="input" />
           <div class="c-actions">
             <button class="txt-btn accent" @click="saveCommentEdit(c)">OK</button>
-            <button class="txt-btn" @click="editId = ''">annuler</button>
+            <button class="txt-btn" @click="editId = ''">cancel</button>
           </div>
         </template>
         <template v-else>
@@ -175,9 +175,9 @@ onMounted(load)
           <img v-for="f in c.filesUrl" :key="f" :src="publicUrl(f)" class="c-img" alt="" />
           <div class="c-actions">
             <button class="txt-btn" @click="toggleReplies(c)">
-              {{ c._count?.replies ?? 0 }} réponse(s)
+              {{ c._count?.replies ?? 0 }} replies
             </button>
-            <button v-if="c.writer === auth.user?.id" class="txt-btn" @click="startEdit(c.id, c.content)">éditer</button>
+            <button v-if="c.writer === auth.user?.id" class="txt-btn" @click="startEdit(c.id, c.content)">edit</button>
           </div>
         </template>
 
@@ -185,23 +185,23 @@ onMounted(load)
           <div v-for="r in repliesByComment[c.id]" :key="r.id" class="reply">
             <div class="meta">
               <span class="av xs">{{ initials(r.user?.name) }}</span>
-              <span class="author sm">{{ r.user?.name ?? 'anonyme' }}</span>
+              <span class="author sm">{{ r.user?.name ?? 'anonymous' }}</span>
             </div>
             <template v-if="editId === r.id">
               <input v-model="editContent" class="input" />
               <div class="c-actions">
                 <button class="txt-btn accent" @click="saveReplyEdit(c, r)">OK</button>
-                <button class="txt-btn" @click="editId = ''">annuler</button>
+                <button class="txt-btn" @click="editId = ''">cancel</button>
               </div>
             </template>
             <template v-else>
               <p class="c-content">{{ r.content }}</p>
-              <button v-if="r.writer === auth.user?.id" class="txt-btn" @click="startEdit(r.id, r.content)">éditer</button>
+              <button v-if="r.writer === auth.user?.id" class="txt-btn" @click="startEdit(r.id, r.content)">edit</button>
             </template>
           </div>
           <div class="reply-composer">
-            <input v-model="replyDrafts[c.id]" class="input" placeholder="Répondre…" @keyup.enter="addReply(c)" />
-            <button class="txt-btn accent" @click="addReply(c)">Répondre</button>
+            <input v-model="replyDrafts[c.id]" class="input" placeholder="Reply…" @keyup.enter="addReply(c)" />
+            <button class="txt-btn accent" @click="addReply(c)">Reply</button>
           </div>
         </div>
       </div>
