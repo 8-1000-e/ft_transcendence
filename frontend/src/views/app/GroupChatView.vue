@@ -6,11 +6,13 @@ import { ROUTES } from '@/api/routes'
 import { uploadImage } from '@/api/upload'
 import { subscribeGroup, pusherEnabled } from '@/api/realtime'
 import { useAuthStore } from '@/stores/auth'
+import { useGroupsStore } from '@/stores/groups'
 import PrivateImage from '@/components/PrivateImage.vue'
 import type { Group, Message } from '@/types/api'
 
 const route = useRoute()
 const auth = useAuthStore()
+const groupsStore = useGroupsStore()
 
 const group = ref<Group | null>(null)
 const messages = ref<Message[]>([])
@@ -67,6 +69,7 @@ async function load() {
     groupName.value = group.value.groupName
     githubLink.value = group.value.githubLink ?? ''
     await fetchMessages(true)
+    groupsStore.markRead(groupId())
   } catch (e) {
     error.value = (e as { message?: string }).message ?? 'Erreur de chargement'
   } finally {

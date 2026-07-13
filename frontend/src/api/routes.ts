@@ -44,6 +44,8 @@ export const ROUTES = {
 
   groups: {
     list: '/groups',
+    unread: '/groups/unread',
+    read: (groupId: string) => `/groups/${groupId}/read`,
     byId: (groupId: string) => `/groups/${groupId}`,
     edit: (groupId: string) => `/groups/${groupId}`,
     messages: (groupId: string) => `/groups/${groupId}/messages`,

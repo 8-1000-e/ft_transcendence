@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, onBeforeUnmount, ref } from 'vue'
 import { useRouter, RouterLink, RouterView } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
@@ -59,8 +59,12 @@ function onBlur() {
   }, 150)
 }
 
+let unreadTimer: ReturnType<typeof setInterval> | null = null
+
 onMounted(async () => {
   if (!groups.loaded) groups.fetchGroups()
+  groups.fetchUnread()
+  unreadTimer = setInterval(() => groups.fetchUnread(), 15000)
   try {
     posters.value = await api.get<Poster[]>(ROUTES.leaderboard.posters)
   } catch {
@@ -71,6 +75,10 @@ onMounted(async () => {
   } catch {
     /* ignore */
   }
+})
+
+onBeforeUnmount(() => {
+  if (unreadTimer) clearInterval(unreadTimer)
 })
 
 function initials(name?: string | null): string {
@@ -192,7 +200,13 @@ async function cancelDeletion() {
             <span class="grp-name">{{ g.groupName }}</span>
             <span class="grp-proj">{{ g.projectName }}</span>
           </span>
+          <span v-if="groups.unread[g.id]" class="grp-badge">{{ groups.unread[g.id] }}</span>
         </RouterLink>
+
+        <div v-if="groups.totalUnread()" class="unread-total">
+          <span>Total non-lus</span>
+          <span class="unread-n">{{ groups.totalUnread() }} unread</span>
+        </div>
       </aside>
 
       <main class="main scroll">
@@ -564,6 +578,39 @@ async function cancelDeletion() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.grp-badge {
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #4a5fe8;
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.unread-total {
+  margin-top: 14px;
+  padding: 11px 12px;
+  border-radius: 11px;
+  border: 1px solid #1c1c22;
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: #9a9aa2;
+}
+.unread-n {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #8c97f7;
 }
 .main {
   min-height: calc(100vh - 60px);
