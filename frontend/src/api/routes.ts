@@ -62,6 +62,10 @@ export const ROUTES = {
   },
 
   search: (q: string) => `/search?q=${encodeURIComponent(q)}`,
+
+  leaderboard: {
+    posters: '/leaderboard/posters',
+  },
 } as const;
 
 export function apiUrl(path: string): string {

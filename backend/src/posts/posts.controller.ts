@@ -52,6 +52,12 @@ export class PostsController {
     return this.postsService.getFeed(req.user.sub);
   }
 
+  @Get('leaderboard/posters')
+  @UseGuards(JwtAuthGuard)
+  bestPosters() {
+    return this.postsService.bestPosters();
+  }
+
   //COMMENT
   @Post('posts/:postId/comments')
   @UseGuards(JwtAuthGuard)

@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter, RouterLink, RouterView } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
+import type { Post } from '@/types/api'
 import { useAuthStore } from '@/stores/auth'
 import { useGroupsStore } from '@/stores/groups'
 
@@ -14,6 +15,15 @@ interface SearchResults {
 const auth = useAuthStore()
 const groups = useGroupsStore()
 const router = useRouter()
+
+interface Poster {
+  id: string
+  name: string
+  ftPfpUrl: string | null
+  posts: number
+}
+const posters = ref<Poster[]>([])
+const latest = ref<Post[]>([])
 
 const query = ref('')
 const results = ref<SearchResults>({ projects: [], users: [] })
@@ -49,8 +59,18 @@ function onBlur() {
   }, 150)
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (!groups.loaded) groups.fetchGroups()
+  try {
+    posters.value = await api.get<Poster[]>(ROUTES.leaderboard.posters)
+  } catch {
+    /* ignore */
+  }
+  try {
+    latest.value = (await api.get<Post[]>(ROUTES.posts.feed)).slice(0, 5)
+  } catch {
+    /* ignore */
+  }
 })
 
 function initials(name?: string | null): string {
@@ -190,6 +210,30 @@ async function cancelDeletion() {
           <span class="proj-code">{{ code(p.projectName) }}</span>
           <span class="proj-name">{{ p.projectName }}</span>
         </RouterLink>
+
+        <div v-if="posters.length" class="panel">
+          <p class="panel-title">BEST POSTER</p>
+          <div v-for="(u, i) in posters" :key="u.id" class="rank">
+            <span class="rank-n" :class="{ top: i === 0 }">{{ i + 1 }}</span>
+            <img v-if="u.ftPfpUrl" :src="u.ftPfpUrl" class="rank-pp" alt="" />
+            <span v-else class="rank-av">{{ initials(u.name) }}</span>
+            <RouterLink :to="{ name: 'user', params: { id: u.id } }" class="rank-name">{{ u.name }}</RouterLink>
+            <span class="rank-score">{{ u.posts }}</span>
+          </div>
+        </div>
+
+        <div v-if="latest.length" class="panel">
+          <p class="panel-title">DERNIERS POSTS</p>
+          <RouterLink
+            v-for="p in latest"
+            :key="p.id"
+            :to="{ name: 'post', params: { postId: p.id }, query: { projectId: p.projectId } }"
+            class="last"
+          >
+            <span class="last-title">{{ p.title || p.content }}</span>
+            <span class="last-proj">{{ p.projectName }}</span>
+          </RouterLink>
+        </div>
       </aside>
     </div>
 
@@ -553,6 +597,98 @@ async function cancelDeletion() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.panel {
+  margin-top: 22px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(17, 17, 21, 0.5);
+  padding: 14px 16px;
+}
+.panel-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: #74747e;
+  margin: 0 0 12px;
+}
+.rank {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+.rank-n {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #74747e;
+  width: 16px;
+}
+.rank-n.top {
+  color: #8c97f7;
+}
+.rank-pp,
+.rank-av {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.rank-av {
+  background: linear-gradient(135deg, #3a3a52, #54547a);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #dfe2ff;
+}
+.rank-name {
+  flex: 1;
+  font-size: 13px;
+  color: #cfcfd4;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rank-name:hover {
+  color: #8c97f7;
+}
+.rank-score {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #8c97f7;
+}
+.last {
+  display: block;
+  padding: 7px 0;
+  text-decoration: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.last:first-of-type {
+  border-top: none;
+}
+.last-title {
+  display: block;
+  font-size: 12.5px;
+  color: #cfcfd4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.last:hover .last-title {
+  color: #8c97f7;
+}
+.last-proj {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #74747e;
 }
 .muted {
   color: #74747e;
