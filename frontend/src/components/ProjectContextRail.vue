@@ -1,18 +1,6 @@
 <script setup lang="ts">
-/**
- * Per-project context rail (right column of the shell) — the "reconciled"
- * design: on a project (subreddit) or a group chat, it surfaces the project's
- * live context. Rendered as a named router-view (`rail`) so the shell shows it
- * only on those routes.
- *
- *   - Best students  → the mentor-matching feature, done RIGHT: who to ask for
- *     help on THIS project (links to the 42-gated Suggest view).
- *   - Best posters   → per-project post-count leaderboard (GET /project/:id/posters).
- *   - Latest         → the newest posts in the project.
- *
- * Data degrades gracefully: any endpoint that isn't live yet just yields an
- * empty panel with an honest message — never fabricated rows.
- */
+// Per-project context rail (named router-view `rail`): mentors (42-gated Suggest), best posters, latest posts.
+// Panels degrade gracefully — a not-yet-live endpoint yields an empty message, never fabricated rows.
 import { computed, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/api/client'
@@ -91,8 +79,7 @@ async function resolveProject(): Promise<void> {
   }
 }
 
-// Mentors come from the live 42 API, so load them separately (non-blocking) and
-// never let their latency hold up the cheap posters/latest panels.
+// Mentors hit the live 42 API — load them separately (non-blocking) so their latency never stalls the cheap panels.
 async function loadMentors(pid: string): Promise<void> {
   if (!canSuggest.value) {
     mentors.value = []
@@ -148,7 +135,6 @@ watch(
 
 <template>
   <div>
-    <!-- Best students — mentor-matching done right (42-only) -->
     <div v-if="canSuggest" class="panel">
       <p class="panel-title">{{ $t('forum.bestStudents', { name: projectName }) }}</p>
       <p class="panel-sub">// {{ $t('forum.whoToAsk') }}</p>
@@ -192,7 +178,6 @@ watch(
       <p v-else class="panel-empty">{{ $t('forum.noTopStudents') }}</p>
     </div>
 
-    <!-- Best posters — per-project leaderboard -->
     <div class="panel">
       <p class="panel-title">{{ $t('forum.bestPosters', { name: projectName }) }}</p>
       <p class="panel-sub">// {{ $t('forum.mostHelpful') }}</p>
@@ -213,7 +198,6 @@ watch(
       <p v-else class="panel-empty">{{ $t('forum.noPostsHere') }}</p>
     </div>
 
-    <!-- Latest posts -->
     <div class="panel">
       <p class="panel-title">{{ $t('forum.latestIn', { name: projectName }) }}</p>
       <div class="panel-divider"></div>

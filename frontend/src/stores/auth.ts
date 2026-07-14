@@ -27,13 +27,9 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     pendingDeletion.value = false
     localStorage.removeItem(REFRESH_KEY)
-    // Tear down the realtime socket so the next user gets a fresh client and
-    // never reuses the previous session's authenticated Pusher connection.
+    // Tear down the socket so the next user never reuses this authed connection.
     disconnectRealtime()
-    // Reset the rest of the app's stores so a newly logged-in account never
-    // inherits the previous session's cached data (groups, projects, messages)
-    // — the "must Cmd+R when switching accounts" bug. Dynamic import breaks the
-    // store<->store cycle, mirroring how the api client reaches this store.
+    // Reset other stores so a new login doesn't inherit cached data; dynamic import breaks the store<->store cycle.
     void import('@/stores/groups').then(({ useGroupsStore }) => {
       useGroupsStore().reset()
     })
@@ -41,14 +37,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchMe() {
     user.value = await api.get<User>(ROUTES.users.me)
-    // Keep the pending-deletion barrier in sync with the loaded profile so a
-    // user who logs back in sees the "scheduled for deletion" modal (and can
-    // cancel) instead of a broken session.
+    // Sync the pending-deletion barrier so a returning user still sees the cancel modal.
     pendingDeletion.value = !!user.value?.pendingDeletion
   }
 
-  // Heartbeat: touch lastSeenAt so friends see us as online (2-min window).
-  // Best-effort — a failed ping must never disrupt the UI.
+  // Heartbeat: touch lastSeenAt (2-min online window); best-effort, ignore failures.
   async function ping(): Promise<void> {
     try {
       await api.post(ROUTES.users.ping)
@@ -100,8 +93,7 @@ export const useAuthStore = defineStore('auth', () => {
     pendingDeletion.value = false
   }
 
-  // Start the 42 OAuth "link to current account" flow. Refreshes the access
-  // token first so the short-lived token in the redirect URL is always valid.
+  // Refresh the token first so the short-lived one in the 42-link redirect URL is valid.
   async function link42(): Promise<void> {
     try {
       if (refreshToken.value) {

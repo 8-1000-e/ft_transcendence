@@ -8,8 +8,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { NotifType } from 'generated/prisma/client';
 import { NotificationsService } from 'src/notifications/notifications.service';
 
-// A user is "online" if seen in the last 2 minutes (lastSeenAt is touched by the
-// heartbeat POST /me/ping and by GET /me).
+// Online = seen in the last 2 minutes; lastSeenAt is touched by POST /me/ping
+// and GET /me.
 const ONLINE_WINDOW_MS = 2 * 60 * 1000;
 function isOnline(lastSeenAt: Date): boolean {
   return Date.now() - lastSeenAt.getTime() < ONLINE_WINDOW_MS;

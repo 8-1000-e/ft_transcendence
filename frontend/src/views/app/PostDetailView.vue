@@ -93,9 +93,7 @@ async function addComment() {
       { content: body },
     )
     newComment.value = ''
-    // Append locally instead of reloadComments(): the thread is oldest-first, so
-    // the new comment belongs at the bottom, and a reload would reset to page 1
-    // (potentially hiding a comment that lives on a later page).
+    // Append locally (thread is oldest-first, new comment goes at the bottom); reloadComments() would reset to page 1 and hide later-page comments.
     comments.value.push({
       id: created.id,
       content: created.content ?? body,
@@ -142,7 +140,6 @@ onMounted(load)
     </div>
 
     <template v-else>
-      <!-- ── Post ── -->
       <article class="card">
         <div class="c-head">
           <RouterLink
@@ -168,7 +165,6 @@ onMounted(load)
         </div>
       </article>
 
-      <!-- ── Comment composer ── -->
       <div v-if="has42" class="composer" style="margin: 18px 0">
         <input v-model="newComment" class="msg-input" :placeholder="$t('forum.addComment')" :aria-label="$t('forum.addComment')" @keyup.enter="addComment" />
         <button class="send-sq" :aria-label="$t('forum.sendComment')" @click="addComment"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
@@ -184,7 +180,7 @@ onMounted(load)
       </div>
       <p v-if="!comments.length && commentsDone" class="muted">{{ $t('forum.noComments') }}</p>
 
-      <!-- ── Comment thread (oldest first; replies recurse via CommentNode) ── -->
+      <!-- Oldest first; replies recurse via CommentNode -->
       <div class="thread">
         <CommentNode
           v-for="c in comments"

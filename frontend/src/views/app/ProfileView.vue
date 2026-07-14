@@ -53,7 +53,6 @@ onMounted(loadActivity)
 
 <template>
   <section>
-    <!-- ── Header ── -->
     <div class="prof-head">
       <Avatar
         class="av av-a prof-av"
@@ -92,7 +91,7 @@ onMounted(loadActivity)
       </div>
     </div>
 
-    <!-- ── Non-42: read-only browser, no activity ── -->
+    <!-- Non-42: read-only, no activity -->
     <div v-if="!has42" class="empty-state">
       <p>{{ $t('profile.guestBlurb') }}</p>
       <RouterLink :to="{ name: 'settings' }" class="pbtn primary" style="display: inline-flex">
@@ -100,7 +99,6 @@ onMounted(loadActivity)
       </RouterLink>
     </div>
 
-    <!-- ── 42: activity ── -->
     <template v-else>
       <p v-if="activityLoading" class="muted" style="padding: 20px 6px">{{ $t('profile.loadingActivity') }}</p>
       <ProfileActivity v-else :posts="activity.posts" :comments="activity.comments" />

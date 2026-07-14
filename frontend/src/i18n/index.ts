@@ -24,8 +24,7 @@ export function setLocale(l: Locale): void {
   document.documentElement.lang = l
 }
 
-// Reactive translation: reads locale.value, so any template/computed using it
-// re-evaluates when the language changes. Falls back to English, then the key.
+// Reactive: reads locale.value so templates re-render on language change; falls back to en, then the key.
 export function t(key: string, params?: Record<string, string | number>): string {
   const dict = messages[locale.value]
   let str = dict[key] ?? messages.en[key] ?? key

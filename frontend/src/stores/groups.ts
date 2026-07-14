@@ -23,12 +23,7 @@ export const useGroupsStore = defineStore('groups', () => {
     }
   }
 
-  /**
-   * Wipe all cached state back to its initial values. Called from the auth
-   * store's clear()/logout flow so a newly logged-in account never inherits the
-   * previous session's groups/projects (the "must Cmd+R when switching
-   * accounts" bug).
-   */
+  // Reset cached state on logout so a new login doesn't inherit the previous groups.
   function reset() {
     groups.value = []
     loaded.value = false

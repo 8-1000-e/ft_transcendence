@@ -33,7 +33,7 @@ const has42 = computed(() => !!auth.user?.has42)
 const hasPassword = computed(() => !!auth.user?.hasPassword)
 const login = computed(() => auth.user?.login ?? '')
 
-// ── Password (set for 42-only accounts, change for email accounts)
+// Password (set for 42-only accounts, change for email accounts)
 const showPassword = ref(false)
 const curPw = ref('')
 const newPw = ref('')
@@ -61,8 +61,7 @@ async function submitPassword() {
     })
     showPassword.value = false
     if (wasChange) {
-      // A password change revokes every session server-side (tokenVersion bump +
-      // refresh-token wipe) → drop this session too and send the user to log in.
+      // A password change revokes every session server-side (tokenVersion bump + refresh-token wipe) → drop this one too and send the user to log in.
       auth.clear()
       await router.push({ path: '/login', query: { pwchanged: '1' } })
       return
@@ -172,7 +171,6 @@ async function logout() {
       <p v-if="message" class="ok-banner">{{ message }}</p>
       <p v-if="error" class="err" style="margin: 0 0 12px">{{ error }}</p>
 
-      <!-- 42 connection -->
       <div class="set-card">
         <h2 class="set-h">{{ $t('settings.42.h') }}</h2>
         <p class="set-sub">{{ $t('settings.42.desc') }}</p>
@@ -194,7 +192,6 @@ async function logout() {
         </div>
       </div>
 
-      <!-- Account -->
       <div class="set-card">
         <h2 class="set-h">{{ $t('settings.account.h') }}</h2>
         <p class="set-sub">{{ $t('settings.account.desc') }}</p>
@@ -255,7 +252,6 @@ async function logout() {
         </div>
       </div>
 
-      <!-- Preferences -->
       <div class="set-card">
         <h2 class="set-h">{{ $t('settings.prefs.h') }}</h2>
         <p class="set-sub">{{ $t('settings.prefs.desc') }}</p>
@@ -284,7 +280,6 @@ async function logout() {
         </div>
       </div>
 
-      <!-- Danger zone -->
       <div class="set-card danger">
         <h2 class="set-h d">{{ $t('settings.delete.h') }}</h2>
         <p class="set-sub">{{ $t('settings.delete.desc') }}</p>

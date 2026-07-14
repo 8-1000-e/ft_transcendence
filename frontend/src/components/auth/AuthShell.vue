@@ -13,8 +13,7 @@ onMounted(() => {
   const ctx = c?.getContext('2d')
   if (!c || !ctx) return
 
-  // Respect the user's reduced-motion preference: this canvas is purely
-  // decorative, so skip the rAF loop and the mousemove listener entirely.
+  // Reduced-motion: the canvas is purely decorative, so skip the rAF loop and listeners.
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
   let w = 0
@@ -118,9 +117,6 @@ onBeforeUnmount(() => {
 
           <div class="ftp-card-head">
             <h1 class="ftp-title">{{ title }}</h1>
-            <span class="ftp-badge"
-              ><span class="ftp-badge-dot"></span>NETWORK OK</span
-            >
           </div>
           <p v-if="subtitle" class="ftp-subtitle">{{ subtitle }}</p>
 

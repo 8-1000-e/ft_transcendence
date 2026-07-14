@@ -19,8 +19,7 @@ export class SuggestService {
     private readonly prisma: PrismaService,
   ) {}
 
-  // Mentor-matching for the logged-in 42 user, using THEIR campus automatically
-  // (no hand-typed campusId). Empty list if the account has no resolved campus.
+  // Mentor-matching using the logged-in user's own campus; empty list if none resolved.
   async getSuggestForMe(
     projectId: string,
     userId: string,

@@ -85,16 +85,15 @@ export class UsersController {
     return this.usersService.getUserProfile(id, req.user.sub);
   }
 
-  // Public activity (posts + comments) for another user's profile — the content
-  // is public forum content; reuses the same shape as GET /me/activity.
+  // Another user's public forum activity; same shape as GET /me/activity.
   @Get('users/:id/activity')
   @UseGuards(JwtAuthGuard)
   getUserActivity(@Param('id') id: string) {
     return this.usersService.getActivity(id);
   }
 
-  // Proxy a 42-CDN image URL (suggested mentors aren't app users). 42-only data,
-  // SSRF-guarded server-side. Declared before avatar/:id (different path).
+  // Proxy a 42-CDN image URL (suggested mentors aren't app users); 42-only data,
+  // SSRF-guarded server-side.
   @Get('ft-avatar')
   @UseGuards(JwtAuthGuard)
   async getFtAvatar(

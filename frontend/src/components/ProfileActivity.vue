@@ -7,7 +7,7 @@ const props = defineProps<{ posts: ActivityPost[]; comments: ActivityComment[] }
 
 const tab = ref<'posts' | 'comments'>('posts')
 
-// Paginate each tab independently: show a page at a time, reveal more on demand.
+// Paginate each tab independently.
 const PAGE = 6
 const postsShown = ref(PAGE)
 const commentsShown = ref(PAGE)
@@ -34,7 +34,6 @@ function fmtDate(iso?: string | null): string {
       </button>
     </div>
 
-    <!-- Posts -->
     <div v-if="tab === 'posts'">
       <RouterLink
         v-for="p in visiblePosts"
@@ -61,7 +60,6 @@ function fmtDate(iso?: string | null): string {
       >{{ $t('common.loadMore') }}</button>
     </div>
 
-    <!-- Comments (Reddit-style: context + parent post) -->
     <div v-else>
       <component
         :is="c.postId ? 'RouterLink' : 'div'"

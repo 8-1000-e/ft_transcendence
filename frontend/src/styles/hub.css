@@ -1,11 +1,5 @@
-/* ============================================================================
-   hub.css — ft_hub app design system (Reddit × Discord shell).
-   ONE shared stylesheet for the whole authenticated app so every view draws
-   from the same tokens/components → coherence by construction.
-   Tokens live in :root here; fonts + Tailwind live in style.css.
-   Account-awareness (42 vs email/pass) is done in Vue templates with v-if,
-   never in CSS.
-   ========================================================================= */
+/* hub.css — ft_hub design system: one shared stylesheet so every view draws from the same
+   tokens/components. Tokens live in :root here; fonts + Tailwind live in style.css. */
 
 :root {
   --bg: #08080a;
@@ -351,8 +345,7 @@
   background: rgba(255, 255, 255, 0.045);
   color: var(--text);
 }
-/* exact-active only: '/' is a prefix of every route, so a loose match would
-   keep Home highlighted everywhere. */
+/* exact-active only: '/' prefixes every route, so a loose match would highlight Home everywhere. */
 .lnav a.router-link-exact-active {
   background: rgba(110, 123, 242, 0.12);
   border-color: rgba(110, 123, 242, 0.28);
@@ -529,8 +522,7 @@
   width: 20px;
   height: 20px;
   border-radius: 5px;
-  /* Real 42 logo on the chip (the official "42" mark), replacing the plain "42"
-     text — which is kept inline for a11y/fallback but hidden via font-size:0. */
+  /* Real 42 logo on the chip; the inline "42" text stays for a11y but is hidden via font-size:0. */
   background: #f4f4f2 url('/favicon-42.png') center / 58% no-repeat;
   color: transparent;
   font-size: 0;

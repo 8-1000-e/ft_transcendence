@@ -21,8 +21,7 @@ const cancelError = ref('')
 const drawerOpen = ref(false)
 watch(() => route.fullPath, () => (drawerOpen.value = false))
 
-// Only the leaf route declares a named `rail` view; when absent we collapse the
-// grid to two columns (Home / Explore / Profile / Settings have no context rail).
+// Only leaf routes declare a named `rail` view; without it the grid collapses to two columns.
 const hasRail = computed(() =>
   route.matched.some((r) => r.components && 'rail' in r.components),
 )
@@ -84,8 +83,7 @@ function notifTime(iso: string): string {
 onMounted(() => {
   // Only 42-linked accounts have group chats (GET /groups returns [] otherwise).
   if (auth.user?.has42 && !groups.loaded) groups.fetchGroups()
-  // 42 accounts: online heartbeat (2-min window → 60s beat) + poll friend
-  // requests and notifications for the topbar badges.
+  // 42 accounts: online heartbeat (2-min window → 60s beat) plus polling requests/notifications for the badges.
   if (auth.user?.has42) {
     void auth.ping()
     void refreshRequests()
@@ -136,7 +134,6 @@ async function cancelDeletion() {
     <div class="hub-bg-dots"></div>
     <div class="hub-bg-glow"></div>
 
-    <!-- ============ TOP BAR ============ -->
     <header class="topbar">
       <button class="hamburger" aria-label="Open menu" @click="drawerOpen = true">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" /></svg>
@@ -225,7 +222,6 @@ async function cancelDeletion() {
     <div class="app">
       <button v-if="drawerOpen" class="drawer-backdrop" aria-label="Close menu" @click="drawerOpen = false"></button>
       <div class="grid" :class="{ 'no-rail': !hasRail }">
-        <!-- ============ LEFT RAIL ============ -->
         <aside class="rail rail-left" :class="{ 'drawer-open': drawerOpen }">
           <nav class="lnav">
             <RouterLink :to="{ name: 'feed' }">
@@ -277,12 +273,10 @@ async function cancelDeletion() {
           </div>
         </aside>
 
-        <!-- ============ CENTER ============ -->
         <main class="main" :class="{ 'chat-main': route.name === 'group' }">
           <RouterView />
         </main>
 
-        <!-- ============ RIGHT RAIL (contextual, per-route) ============ -->
         <aside v-if="hasRail" class="rail ctx-rail">
           <RouterView name="rail" />
         </aside>

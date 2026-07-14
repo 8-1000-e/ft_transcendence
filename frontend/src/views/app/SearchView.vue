@@ -33,7 +33,6 @@ async function run() {
   loading.value = true
   try {
     results.value = await api.get<SearchResults>(ROUTES.search(term))
-    // Land on the first section that has results.
     tab.value =
       (['posts', 'comments', 'projects'] as Tab[]).find((t) => count(t) > 0) ?? 'posts'
   } catch (e) {
@@ -79,7 +78,6 @@ watch(q, run, { immediate: true })
         {{ $t('search.none') }}
       </p>
 
-      <!-- Posts -->
       <div v-show="tab === 'posts'" class="list">
         <p v-if="!results.posts.length" class="muted">{{ $t('search.none.posts') }}</p>
         <RouterLink
@@ -98,7 +96,6 @@ watch(q, run, { immediate: true })
         </RouterLink>
       </div>
 
-      <!-- Comments -->
       <div v-show="tab === 'comments'" class="list">
         <p v-if="!results.comments.length" class="muted">{{ $t('search.none.comments') }}</p>
         <RouterLink
@@ -117,7 +114,6 @@ watch(q, run, { immediate: true })
         </RouterLink>
       </div>
 
-      <!-- Projects -->
       <div v-show="tab === 'projects'" class="list">
         <p v-if="!results.projects.length" class="muted">{{ $t('search.none.projects') }}</p>
         <RouterLink

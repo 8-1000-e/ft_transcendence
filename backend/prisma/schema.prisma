@@ -133,8 +133,7 @@ model GroupChat {
 model Projects {
   id       String         @id
   name     String
-  // 'core' | 'specialization' for synced 42cursus projects; null for the
-  // legacy junk rows created by earlier syncs (filtered out of GET /projects).
+  // 'core' | 'specialization' for synced projects; null = legacy junk rows, filtered out of GET /projects.
   category String?
   posts    ProjectsPost[]
 }

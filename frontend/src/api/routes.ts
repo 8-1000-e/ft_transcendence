@@ -1,6 +1,4 @@
-// Backend routes are served under /api (see backend setGlobalPrefix). In Docker
-// the reverse proxy forwards /api to the backend, so VITE_API_URL is just '/api'
-// (same origin). This default keeps `npm run dev` working against a local backend.
+// Backend lives under /api; the localhost default keeps `npm run dev` working.
 export const API_BASE_URL: string =
   import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 

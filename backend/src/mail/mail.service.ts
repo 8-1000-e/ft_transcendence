@@ -12,8 +12,7 @@ export class MailService {
     const smtpHost = this.config.get<string>('SMTP_HOST');
 
     if (smtpHost) {
-      // Dev / demo: plain SMTP sink such as Maildev (no auth, no TLS).
-      // Verification codes are visible in the Maildev web UI.
+      // Dev/demo: plain SMTP sink such as Maildev (no auth, no TLS).
       this.transporter = nodemailer.createTransport({
         host: smtpHost,
         port: Number(this.config.get('SMTP_PORT') ?? 1025),

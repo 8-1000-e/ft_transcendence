@@ -59,8 +59,7 @@ async function doFriend(action: 'request' | 'accept' | 'remove') {
   }
 }
 
-// The @handle is the real 42 login (only present for 42 viewers; hidden for
-// anonymised non-42 viewers).
+// @handle = real 42 login: present only for 42 viewers, hidden for anonymised non-42 viewers.
 const handle = computed(() => (user.value?.login ? '@' + user.value.login : ''))
 const memberSince = computed(() => {
   const iso = user.value?.createdAt

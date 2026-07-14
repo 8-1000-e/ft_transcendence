@@ -72,7 +72,6 @@ onMounted(load)
     <p v-if="loading" class="muted">{{ $t('common.loading') }}</p>
 
     <template v-else>
-      <!-- Incoming requests -->
       <template v-if="requests.length">
         <div class="fr-head">
           <span class="fr-title">{{ $t('friends.requests') }}</span>
@@ -98,7 +97,6 @@ onMounted(load)
         </div>
       </template>
 
-      <!-- Friends list -->
       <div class="fr-head">
         <span class="fr-title">{{ $t('friends.all') }}</span>
         <span class="fr-count">{{ friends.length }}</span>

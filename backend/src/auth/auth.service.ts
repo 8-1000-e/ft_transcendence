@@ -132,8 +132,8 @@ export class AuthService {
     return payload.sub;
   }
 
-  // Attach a 42 identity to an EXISTING (email) account, rather than creating a
-  // new one. Refuses if that 42 account is already linked elsewhere.
+  // Attach a 42 identity to an existing account; refuses if that 42 account is
+  // already linked to another user.
   async linkFtAccount(userId: string, code: string) {
     const ftProfile = await this.ft.getProfileFromCode(code);
     const ftId = String(ftProfile.id);

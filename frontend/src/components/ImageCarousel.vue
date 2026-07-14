@@ -4,9 +4,7 @@ import { ref, watch } from 'vue'
 const props = defineProps<{ images: string[]; alt?: string }>()
 const i = ref(0)
 
-// Reset only when the actual set of images changes — NOT on every parent
-// re-render (the prop is often a fresh array literal, which would snap back to
-// the first slide on any reactive update elsewhere).
+// Reset only when the image set actually changes, not on every re-render (the prop is often a fresh array literal).
 watch(
   () => props.images.join('|'),
   () => (i.value = 0),

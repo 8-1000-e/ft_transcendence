@@ -13,7 +13,7 @@ export class NotificationsService {
     entityLabel?: string | null;
     link?: string | null;
   }) {
-    if (params.recipientId === params.actorId) return; // never notify yourself
+    if (params.recipientId === params.actorId) return;
     const actor = await this.prisma.user.findUnique({
       where: { id: params.actorId },
       select: { name: true },

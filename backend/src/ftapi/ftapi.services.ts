@@ -4,36 +4,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { FtTokenResponse, FtProfile, FtProject, FtTeam } from './ftapi.types';
 import { fetchWithRetry } from 'src/utils/http';
 
-// The 42 API has no "kind of project" flag: common-core, outer-circle
-// specializations, exams, piscine modules, administrative/internship entries,
-// old duplicates and fakes all live under the same cursus. We sync only the
-// real, current *projects* (common core + outer-circle specializations) and
-// tag each with a `category`; everything else is left untagged and filtered
-// out of GET /projects.
-//
-// Discrimination rule (see COMMON_CORE_SLUGS / SPECIALIZATION_SLUGS below):
-//   1. Restrict to cursus 21 ("42cursus", kind "main") — the main student
-//      cursus — and to top-level, non-exam entries (`parent === null &&
-//      exam === false`). This already drops every exam and every piscine
-//      sub-module (those have a parent).
-//   2. Match against two explicit slug allow-lists. Slugs (not names/ids) are
-//      used because they are stable and unambiguous. A slug in
-//      COMMON_CORE_SLUGS -> category 'core'; a slug in SPECIALIZATION_SLUGS
-//      -> category 'specialization'; anything else (piscines, rushes,
-//      apprenticeship/internship/onboarding entries, old-*/42adv-*/42next-*
-//      and uuid-suffixed duplicates, core duplicates like 42cursus-cub3d) is
-//      junk and skipped.
-//
-// Why allow-lists and not a deny-list: the API exposes no "is this a real
-// current specialization" signal, and the junk set is open-ended (dozens of
-// piscine tracks + modules, admin entries, near-duplicates). An allow-list is
-// deterministic, yields zero junk, and mirrors how core is already selected.
-// SPECIALIZATION_SLUGS was derived against the live API as: every top-level
-// non-exam project in the canonical `42cursus-` slug namespace, minus core,
-// minus a few non-project `42cursus-` entries (piscine-ocaml, rushes,
-// apprentissage, fix-me, the cinema/fwa/restful web-rush cluster and the
-// cub3d/minirt core duplicates), plus the newer standalone specialties that
-// dropped the `42cursus-` prefix (ready-set-boole, matrix, ft_kalman, ...).
+// The 42 API has no "project kind" flag: real projects, exams, piscine modules,
+// admin entries and duplicates all share cursus 21. So we keep only top-level
+// non-exam entries and match two slug allow-lists (core / specialization); a
+// deny-list is impossible since the junk set is open-ended. Anything unmatched
+// stays untagged and is filtered out of GET /projects.
 const COMMON_CORE_CURSUS_ID = 21;
 const COMMON_CORE_SLUGS = new Set<string>([
   '42cursus-libft',
@@ -67,9 +42,7 @@ const COMMON_CORE_SLUGS = new Set<string>([
   'cpp-module-09',
 ]);
 
-// 42 outer-circle (post-common-core) specialization projects. Verified against
-// the live cursus-21 API on 2026-07: real, current specialties only — no
-// piscines, exams, rushes, admin/internship entries or duplicates.
+// 42 outer-circle specialization projects; verified against the live cursus-21 API (2026-07): real specialties only.
 const SPECIALIZATION_SLUGS = new Set<string>([
   // Graphics
   '42cursus-scop',
@@ -297,12 +270,8 @@ export class FtApiService {
     }
   }
 
-  // Sync the 42 common-core AND outer-circle specialization projects (see
-  // COMMON_CORE_SLUGS / SPECIALIZATION_SLUGS above). Walks the 42cursus
-  // (id 21) projects, keeps only the top-level, non-exam entries, and tags
-  // each allow-listed slug with its category ('core' | 'specialization').
-  // Everything else (junk: piscines, exams, admin/internship, duplicates) is
-  // skipped and left untagged, so it is filtered out of GET /projects.
+  // Walk the 42cursus (id 21) projects, keep top-level non-exam entries and tag
+  // each allow-listed slug 'core' | 'specialization'; the rest stays untagged.
   async syncAllProjects() {
     let page = 1;
     while (true) {
@@ -311,8 +280,7 @@ export class FtApiService {
       );
 
       for (const project of projects) {
-        // Only top-level, non-exam entries can be real projects; this drops
-        // every exam and every piscine sub-module (those carry a parent).
+        // Only top-level, non-exam entries are real projects (exams and piscine sub-modules carry a parent).
         if (project.parent != null || project.exam === true) continue;
 
         const category = COMMON_CORE_SLUGS.has(project.slug)

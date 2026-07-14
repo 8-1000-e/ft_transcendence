@@ -3,18 +3,8 @@ import { ref, watch, onBeforeUnmount } from 'vue'
 import { API_BASE_URL } from '@/api/routes'
 import { useAuthStore } from '@/stores/auth'
 
-/**
- * Renders a user's 42 profile picture, loaded through the authenticated,
- * proxied `GET /avatar/:userId` endpoint (never a raw 42 CDN URL). On 404 /
- * error / empty response — or when no `userId` is known — it falls back to the
- * initials of `name`. Visual skin (shape, colour, shadow) comes from the class
- * the call site passes; `size` drives the pixel dimensions.
- */
-/**
- * `userId` → proxied app-user picture (`GET /avatar/:id`, RGPD-gated).
- * `pfpUrl` → a raw 42-CDN url (e.g. a suggested mentor who isn't an app user),
- *            proxied SSRF-safe through `GET /ft-avatar?url=`. Takes precedence.
- */
+// 42 avatar via the auth-proxied endpoint (never a raw CDN URL); falls back to initials of `name`.
+// userId → app-user picture (GET /avatar/:id, RGPD-gated); pfpUrl → raw 42-CDN url proxied SSRF-safe, takes precedence.
 const props = withDefaults(
   defineProps<{ userId?: string; pfpUrl?: string; name: string; size?: number }>(),
   { size: 40, userId: '', pfpUrl: '' },

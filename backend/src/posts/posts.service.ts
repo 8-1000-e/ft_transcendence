@@ -20,10 +20,7 @@ export class PostsService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  // Browse-all forum list: the synced 42 projects (common core + outer-circle
-  // specializations) with their category and post count, ordered by name.
-  // Untagged junk rows (piscine, exams, admin, duplicates) have a null
-  // category and are excluded. The frontend splits core vs specialization.
+  // Forum list of synced 42 projects with category + post count; untagged junk rows (piscine/exams/admin/dupes) are excluded.
   async getProjects() {
     const projects = await this.prisma.projects.findMany({
       where: { category: { not: null } },
@@ -39,9 +36,7 @@ export class PostsService {
     }));
   }
 
-  // Lightweight project meta (name/category/post count) so a project's forum
-  // and its context rail can show the real name even for a non-member viewer
-  // (whose `groups` list wouldn't contain it).
+  // Project meta so a non-member viewer (whose `groups` list omits it) still sees the real name.
   async getProject(id: string) {
     const project = await this.prisma.projects.findUnique({
       where: { id },
@@ -149,7 +144,6 @@ export class PostsService {
     };
   }
 
-  // Cursor-paginated project feed: returns one page + the cursor for the next.
   async getPosts(id: string, userId: string, cursor?: string, limit?: string) {
     const project = await this.prisma.projects.findUnique({ where: { id } });
     if (!project) throw new NotFoundException();
@@ -193,9 +187,7 @@ export class PostsService {
     return this.mapVoted(row, user, userId);
   }
 
-  // Per-project post-count leaderboard ("best posters" in the context rail).
-  // Scoped to ONE project (never a global cross-user leaderboard), and every
-  // identity goes through authorView so non-42 viewers only ever see `rdm*`.
+  // Per-project post-count leaderboard, never a global cross-user one; every identity goes through authorView.
   async getPosters(projectId: string, userId: string) {
     const project = await this.prisma.projects.findUnique({
       where: { id: projectId },
@@ -305,8 +297,7 @@ export class PostsService {
 
     const rows = await this.prisma.projectsChat.findMany({
       where: { answeringPost: id },
-      // Oldest-first (Reddit-style thread): comments read top→bottom, newest at
-      // the end. Cursor paginates forward to newer comments.
+      // Oldest-first (Reddit thread): read top→bottom; cursor paginates forward to newer comments.
       orderBy: [{ postedAt: 'asc' }, { id: 'asc' }],
       take: take + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -471,9 +462,7 @@ export class PostsService {
 
   //SEARCH
 
-  // Reddit-style search across project names, post titles/bodies, and
-  // comment/reply content. Sectioned results with the anon authorView already
-  // applied (via mapVoted); comments resolve to the post they live under.
+  // Search across project names, post titles/bodies and comment/reply content; anon authorView applied, comments resolve to their post.
   async search(q: string, userId: string) {
     const term = q.trim();
     if (term.length < 2) return { projects: [], posts: [], comments: [] };
@@ -526,8 +515,7 @@ export class PostsService {
     };
   }
 
-  // Resolve a comment/reply to the post it ultimately belongs to (walk up the
-  // reply chain) so a search hit can link to the right thread.
+  // Resolve a comment/reply to its post (walk up the reply chain) so a search hit can link to the thread.
   private async resolveRoot(chat: {
     answeringPost: string | null;
     answeringChat: string | null;

@@ -16,10 +16,7 @@ function client(): Pusher {
   if (!pusher) {
     pusher = new Pusher(KEY as string, {
       cluster: CLUSTER,
-      // Read the access token DYNAMICALLY on every channel-authorization POST
-      // so realtime keeps working after a token refresh (client.ts tryRefresh
-      // -> store.setTokens). Interpolating the token at construction time froze
-      // the old token and broke auth once it expired.
+      // Read the token dynamically per auth POST so realtime survives a token refresh.
       channelAuthorization: {
         transport: 'ajax',
         endpoint: `${API_BASE_URL}/pusher/auth`,
@@ -32,12 +29,7 @@ function client(): Pusher {
   return pusher
 }
 
-/**
- * Disconnect the Pusher socket and reset the singleton so the next session
- * builds a fresh client. Called from the auth store's clear()/logout() flow to
- * avoid a cross-user realtime leak (a new user reusing the previous user's
- * authenticated socket + stale token).
- */
+// Reset the socket on logout so the next user can't reuse the previous authed connection.
 export function disconnectRealtime(): void {
   pusher?.disconnect()
   pusher = null

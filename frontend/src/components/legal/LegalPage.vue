@@ -6,8 +6,7 @@ defineProps<{ title: string; updated?: string }>()
 const router = useRouter()
 
 function goBack() {
-  // Return to wherever the visitor came from; if they deep-linked straight
-  // here (no history), fall back to the app root.
+  // Back to where they came from; if deep-linked (no history), fall back to root.
   if (window.history.length > 1) router.back()
   else router.push('/')
 }

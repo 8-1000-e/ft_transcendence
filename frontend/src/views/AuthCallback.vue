@@ -29,8 +29,7 @@ onMounted(async () => {
     await router.replace(linked ? { name: 'settings', query: { linked: '1' } } : '/')
   } catch {
     if (linked) {
-      // The link already succeeded and the tokens are valid — a transient /me
-      // failure must NOT log the user out of the account they just linked.
+      // The link already succeeded and tokens are valid — a transient /me failure must NOT log the user out.
       try {
         await auth.fetchMe()
       } catch {

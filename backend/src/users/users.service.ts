@@ -196,9 +196,8 @@ export class UsersService {
     const isChange = !!user.passwordHash;
     const passwordHash = await bcrypt.hash(newPassword, 10);
     if (isChange) {
-      // Changing an existing password revokes every session: bump tokenVersion
-      // (kills outstanding access tokens via the guard) and drop all refresh
-      // tokens. Setting a first password (42-only account) keeps the session.
+      // Changing an existing password revokes every session (bump tokenVersion,
+      // drop refresh tokens); setting a first password keeps the session.
       await this.prisma.$transaction([
         this.prisma.user.update({
           where: { id: userId },
@@ -340,7 +339,7 @@ export class UsersService {
 
     await this.prisma.user.update({
       where: { id },
-      data: { deleteAt: null }, // Turning off deleteAt
+      data: { deleteAt: null },
     });
     return { message: 'Deletion cancelled' };
   }
@@ -394,8 +393,7 @@ export class UsersService {
   }
 
   // Proxy a user's 42 profile picture server-side: the intra CDN blocks
-  // hotlinking, so we refetch it here and stream the bytes back. 404 when the
-  // user has no picture or the upstream fetch fails.
+  // hotlinking, so we refetch it here and stream the bytes back.
   async getAvatar(
     id: string,
     viewerId: string,
@@ -411,8 +409,7 @@ export class UsersService {
       }),
     ]);
     // Default-deny: a non-42 viewer must NOT see another user's real 42 photo —
-    // the name is already anonymised to rdm*, the avatar has to be too, else the
-    // picture de-anonymises the account. (Own avatar is always allowed.)
+    // it would de-anonymise an account whose name is already rdm*. (Own avatar ok.)
     if (!viewer?.ftId && id !== viewerId) throw new NotFoundException();
     if (!user?.ftPfpUrl) throw new NotFoundException();
 

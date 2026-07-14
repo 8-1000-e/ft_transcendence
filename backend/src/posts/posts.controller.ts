@@ -20,15 +20,12 @@ import { VoteDto } from './dto/vote.dto';
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
-  // Browse-all forum list: every project + its post count.
   @Get('projects')
   @UseGuards(JwtAuthGuard)
   getProjects() {
     return this.postsService.getProjects();
   }
 
-  // Reddit-style search: matches the term in project names, post titles/bodies,
-  // and comment/reply content; returns sectioned results.
   @Get('search')
   @UseGuards(JwtAuthGuard)
   search(@Query('q') q: string, @Req() req: AuthedRequest) {
@@ -73,14 +70,12 @@ export class PostsController {
     return this.postsService.getPost(postId, req.user.sub);
   }
 
-  // Per-project "best posters" leaderboard for the context rail (anonymised).
   @Get('project/:projectId/posters')
   @UseGuards(JwtAuthGuard)
   getPosters(@Param('projectId') id: string, @Req() req: AuthedRequest) {
     return this.postsService.getPosters(id, req.user.sub);
   }
 
-  // Project meta (real name) for the forum header + context rail.
   @Get('project/:projectId')
   @UseGuards(JwtAuthGuard)
   getProject(@Param('projectId') id: string) {

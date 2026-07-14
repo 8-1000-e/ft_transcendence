@@ -1,40 +1,6 @@
 <script setup lang="ts">
-/**
- * Modal — the one shared overlay/dialog for ft_hub.
- *
- * Rendered through <Teleport to="body"> so it escapes ancestor stacking
- * contexts (the sticky navbar, transformed cards, `overflow` clips) and
- * always paints above the app.
- *
- * Everything a dialog is supposed to do is handled here so callers don't
- * re-implement it each time:
- *   - role="dialog" + aria-modal="true" + aria-labelledby (wired to `title`)
- *   - moves focus into the dialog on open, traps Tab / Shift+Tab inside it,
- *     and restores focus to the previously-focused element on close
- *   - closes on Escape and (when allowed) on backdrop click
- *   - locks body scroll while open, ref-counted so stacked modals don't
- *     unlock the page while another is still open
- *
- * Props
- *   open           — parent owns visibility; this component never self-closes.
- *   title?         — rendered as the labelled <h2> heading.
- *   backdropClose? — click the dim backdrop to close (default: true).
- * Emits
- *   close          — Escape, backdrop click, or the × button. Handle it by
- *                    setting your `open` ref to false.
- * Slots
- *   default        — dialog body.
- *   actions        — optional footer row for buttons.
- *
- * Usage
- *   <Modal :open="show" title="Delete account?" @close="show = false">
- *     <p>This can be undone during the grace period.</p>
- *     <template #actions>
- *       <button @click="show = false">Cancel</button>
- *       <button @click="confirm">Confirm</button>
- *     </template>
- *   </Modal>
- */
+// Shared dialog teleported to <body> (escapes ancestor stacking contexts). Focus-trapped with restore,
+// Escape/backdrop close, ref-counted body-scroll lock; parent owns `open` and it never self-closes.
 import { ref, watch, nextTick, onBeforeUnmount, useId } from 'vue'
 
 const props = withDefaults(
@@ -53,7 +19,7 @@ const dialogRef = ref<HTMLElement | null>(null)
 let previouslyFocused: HTMLElement | null = null
 let locked = false
 
-/* --- Body-scroll lock, ref-counted across every Modal instance --- */
+/* Body-scroll lock, ref-counted across every Modal instance. */
 let scrollLockCount = 0
 let savedOverflow = ''
 function lockScroll(): void {
@@ -69,7 +35,6 @@ function unlockScroll(): void {
   if (scrollLockCount === 0) document.body.style.overflow = savedOverflow
 }
 
-/* --- Focus management --- */
 const FOCUSABLE =
   'a[href], area[href], button:not([disabled]), input:not([disabled]), ' +
   'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -86,8 +51,7 @@ async function activate(): Promise<void> {
   lockScroll()
   locked = true
   await nextTick()
-  // Focus the dialog itself so screen readers announce the title; Tab then
-  // steps into the content, and the trap below keeps it inside.
+  // Focus the dialog so screen readers announce the title; Tab then steps into the content.
   dialogRef.value?.focus()
 }
 

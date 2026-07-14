@@ -46,8 +46,8 @@ export class AuthController {
     res.redirect(this.authService.getFtAuthUrl(state));
   }
 
-  // Link 42 to the CURRENT account. The token comes as a query param because a
-  // browser redirect can't carry an Authorization header; it's short-lived.
+  // Links 42 to the current account. The token rides in a query param because a
+  // browser redirect can't carry an Authorization header.
   @Get('auth/42/link')
   ftLink(@Query('token') token: string, @Res() res: Response) {
     const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
@@ -73,8 +73,7 @@ export class AuthController {
     const cookieState = req.cookies['oauth_state'];
     if (!cookieState || cookieState !== state)
       return res.redirect(`${frontendUrl}/login?error=invalid_state`);
-    // A `link.<userId>.<rand>` state means: attach 42 to that existing account
-    // instead of the normal login-or-create flow.
+    // A `link.<userId>.<rand>` state means: attach 42 to that existing account.
     const isLink = state.startsWith('link.');
     try {
       const { access_token, refresh_token } = isLink
@@ -84,8 +83,8 @@ export class AuthController {
         `${frontendUrl}/auth/callback#access_token=${access_token}&refresh_token=${refresh_token}${isLink ? '&linked=1' : ''}`,
       );
     } catch {
-      // A failed LINK (e.g. that 42 is already its own account) must not dump the
-      // user on the login screen — send them back to Settings with a reason.
+      // A failed link (e.g. that 42 already owns an account) goes back to
+      // Settings, not the login screen.
       return res.redirect(
         isLink
           ? `${frontendUrl}/settings?link_error=1`
