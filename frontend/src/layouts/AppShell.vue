@@ -40,33 +40,25 @@ async function cancelDeletion() {
 
 <template>
   <div class="page">
-    <div class="bg-dots"></div>
-    <div class="bg-glow"></div>
-
     <header class="hd">
       <RouterLink :to="{ name: 'feed' }" class="brand">
-        <span class="brand-mark">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M3 16.5 L9 10.5 L13 14.5 L21 6.5" stroke="#8C97F7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
-            <path d="M15.5 6.5 H21 V12" stroke="#8C97F7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </span>
-        <span class="brand-word">ft<span class="brand-accent">_predict</span></span>
+        <span class="brand-mark">H</span>
+        <span class="brand-word">Hub<span class="brand-accent">42</span></span>
       </RouterLink>
 
       <div class="search">
         <span class="search-ic">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" /><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
         </span>
-        <input class="search-in" placeholder="Rechercher un projet, un étudiant…" />
+        <input class="search-in" placeholder="Search projects, students…" />
       </div>
 
       <div class="hd-right">
         <RouterLink :to="{ name: 'me' }" class="pill">
           <span class="pill-av">{{ initials(auth.user?.name) }}</span>
-          <span class="pill-name">{{ auth.user?.name ?? 'Profil' }}</span>
+          <span class="pill-name">{{ auth.user?.name ?? 'Profile' }}</span>
         </RouterLink>
-        <button class="icon-btn logout" aria-label="Déconnexion" @click="logout">
+        <button class="icon-btn logout" aria-label="Log out" @click="logout">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /><path d="M10 8l-4 4 4 4M6 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
         </button>
       </div>
@@ -75,12 +67,12 @@ async function cancelDeletion() {
     <div class="grid">
       <aside class="rail rail-left scroll">
         <div class="rail-head">
-          <span class="rail-title">YOUR GROUPCHAT</span>
+          <span class="section-title">Group chats</span>
           <span class="rail-count">{{ groups.groups.length }}</span>
         </div>
-        <p v-if="groups.loading" class="muted">Chargement…</p>
-        <p v-else-if="groups.error" class="muted">{{ groups.error }}</p>
-        <p v-else-if="!groups.groups.length" class="muted">Aucun groupe.</p>
+        <p v-if="groups.loading" class="muted rail-msg">Loading…</p>
+        <p v-else-if="groups.error" class="muted rail-msg">{{ groups.error }}</p>
+        <p v-else-if="!groups.groups.length" class="muted rail-msg">No groups yet.</p>
         <RouterLink
           v-for="g in groups.groups"
           :key="g.id"
@@ -100,7 +92,7 @@ async function cancelDeletion() {
       </main>
 
       <aside class="rail rail-right scroll">
-        <div class="rail-head"><span class="rail-title">PROJETS</span></div>
+        <div class="rail-head"><span class="section-title">Projects</span></div>
         <RouterLink
           v-for="p in groups.projects()"
           :key="p.projectId"
@@ -114,18 +106,15 @@ async function cancelDeletion() {
     </div>
 
     <div v-if="auth.pendingDeletion" class="overlay">
-      <div class="modal">
-        <div class="modal-ic">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3z" stroke="#ef6d72" stroke-width="1.7" stroke-linejoin="round" /><path d="M12 10v4M12 17h0" stroke="#ef6d72" stroke-width="1.9" stroke-linecap="round" /></svg>
-        </div>
-        <h2 class="modal-title">Compte en cours de suppression</h2>
+      <div class="modal card">
+        <h2 class="modal-title">Account scheduled for deletion</h2>
         <p class="modal-text">
-          Ton compte est programmé pour suppression. Annule la demande pour
-          continuer à l'utiliser, ou déconnecte-toi.
+          Your account is scheduled to be deleted. Cancel the request to keep
+          using Hub42, or log out.
         </p>
         <div class="modal-actions">
-          <button class="btn-ghost" @click="logout">Se déconnecter</button>
-          <button class="btn-primary" @click="cancelDeletion">Annuler la suppression</button>
+          <button class="btn-ghost" @click="logout">Log out</button>
+          <button class="btn" @click="cancelDeletion">Cancel deletion</button>
         </div>
       </div>
     </div>
@@ -134,71 +123,52 @@ async function cancelDeletion() {
 
 <style scoped>
 .page {
-  position: relative;
   min-height: 100vh;
-  background: #08080a;
-  overflow: hidden;
-}
-.bg-dots {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.6;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1.4px);
-  background-size: 30px 30px;
-}
-.bg-glow {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: radial-gradient(70% 55% at 50% 0%, rgba(94, 108, 232, 0.1) 0%, transparent 60%);
+  background: var(--color-bg);
 }
 
 .hd {
   position: sticky;
   top: 0;
   z-index: 40;
-  height: 60px;
+  height: 58px;
   display: flex;
   align-items: center;
   gap: 18px;
   padding: 0 20px;
-  border-bottom: 1px solid #1c1c22;
-  background: rgba(10, 10, 12, 0.82);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
 }
 .brand {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   text-decoration: none;
 }
 .brand-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border-radius: 8px;
-  background: rgba(110, 123, 242, 0.14);
-  border: 1px solid rgba(110, 123, 242, 0.32);
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
 }
 .brand-word {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #f4f4f2;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
 }
 .brand-accent {
-  color: #8c97f7;
+  color: var(--color-accent);
 }
 .search {
   flex: 1;
-  max-width: 460px;
+  max-width: 440px;
   margin: 0 auto;
   position: relative;
   display: flex;
@@ -206,25 +176,27 @@ async function cancelDeletion() {
 }
 .search-ic {
   position: absolute;
-  left: 13px;
-  color: #5c5c66;
+  left: 12px;
+  color: var(--color-muted);
   display: inline-flex;
 }
 .search-in {
   width: 100%;
   height: 38px;
-  padding: 0 14px 0 38px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  color: #f3f3f4;
+  padding: 0 14px 0 36px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: 13.5px;
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s;
+}
+.search-in::placeholder {
+  color: var(--color-muted);
 }
 .search-in:focus {
-  border-color: #6e7bf2;
-  box-shadow: 0 0 0 3px rgba(110, 123, 242, 0.16);
+  border-color: var(--color-accent);
 }
 .hd-right {
   margin-left: auto;
@@ -236,56 +208,43 @@ async function cancelDeletion() {
   display: flex;
   align-items: center;
   gap: 9px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
   padding: 4px 12px 4px 4px;
   text-decoration: none;
+  transition: border-color 0.14s;
 }
 .pill:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--color-border-strong);
 }
 .pill-av {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5e6cf0, #8c97f7);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-text-dim);
 }
 .pill-name {
   font-size: 13px;
   font-weight: 600;
-  color: #ededee;
-}
-.icon-btn {
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #9a9aa2;
-  cursor: pointer;
+  color: var(--color-text);
 }
 .logout:hover {
-  border-color: rgba(239, 109, 114, 0.4);
-  color: #ef6d72;
+  border-color: rgba(239, 109, 114, 0.5);
+  color: var(--color-danger);
 }
 
 .grid {
-  position: relative;
-  z-index: 5;
   display: grid;
-  grid-template-columns: 268px 1fr 288px;
-  max-width: 1560px;
+  grid-template-columns: 264px 1fr 284px;
+  max-width: 1520px;
   margin: 0 auto;
   align-items: start;
 }
@@ -294,15 +253,15 @@ async function cancelDeletion() {
 }
 .rail {
   position: sticky;
-  top: 60px;
-  height: calc(100vh - 60px);
+  top: 58px;
+  height: calc(100vh - 58px);
   padding: 20px 14px;
 }
 .rail-left {
-  border-right: 1px solid #1c1c22;
+  border-right: 1px solid var(--color-border);
 }
 .rail-right {
-  border-left: 1px solid #1c1c22;
+  border-left: 1px solid var(--color-border);
   padding: 20px 16px;
 }
 .rail-head {
@@ -311,46 +270,47 @@ async function cancelDeletion() {
   justify-content: space-between;
   padding: 0 6px 12px;
 }
-.rail-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  color: #74747e;
-}
 .rail-count {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
-  color: #5c5c66;
+  color: var(--color-muted);
+}
+.rail-msg {
+  padding: 0 6px;
+  font-size: 13px;
 }
 .grp {
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 10px;
-  border-radius: 11px;
+  padding: 9px 10px;
+  border-radius: var(--radius);
   border: 1px solid transparent;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   text-decoration: none;
-  transition: background 0.14s, border-color 0.14s;
+  transition: background 0.14s;
 }
 .grp:hover {
-  background: rgba(255, 255, 255, 0.045);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--color-surface);
+}
+.grp.router-link-active {
+  background: var(--color-surface);
+  border-color: var(--color-border);
 }
 .grp-av {
   flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #2a2a40, #3d3d5c);
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-weight: 700;
-  color: #dfe2ff;
+  color: var(--color-text-dim);
 }
 .grp-main {
   flex: 1;
@@ -360,22 +320,22 @@ async function cancelDeletion() {
   display: block;
   font-size: 13.5px;
   font-weight: 600;
-  color: #ededee;
+  color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .grp-proj {
   display: block;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10.5px;
-  color: #74747e;
+  color: var(--color-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .main {
-  min-height: calc(100vh - 60px);
+  min-height: calc(100vh - 58px);
   padding: 26px 30px 60px;
   min-width: 0;
 }
@@ -383,43 +343,40 @@ async function cancelDeletion() {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 10px;
-  border-radius: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
   border: 1px solid transparent;
   text-decoration: none;
+  transition: background 0.14s;
 }
 .proj:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--color-surface);
+}
+.proj.router-link-active {
+  background: var(--color-surface);
+  border-color: var(--color-border);
 }
 .proj-code {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
-  color: #8c97f7;
-  width: 34px;
+  color: var(--color-accent);
+  width: 32px;
 }
 .proj-name {
   flex: 1;
   font-size: 13px;
-  color: #cfcfd4;
+  color: var(--color-text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.muted {
-  color: #74747e;
-  font-size: 13px;
-  padding: 0 6px;
 }
 
 .overlay {
   position: fixed;
   inset: 0;
   z-index: 90;
-  background: rgba(4, 4, 6, 0.7);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(4, 4, 6, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -427,33 +384,17 @@ async function cancelDeletion() {
 }
 .modal {
   width: min(420px, 100%);
-  border-radius: 18px;
-  border: 1px solid rgba(239, 109, 114, 0.3);
-  background: rgba(17, 17, 21, 0.92);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.9);
   padding: 26px;
 }
-.modal-ic {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(239, 109, 114, 0.12);
-  border: 1px solid rgba(239, 109, 114, 0.3);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-}
 .modal-title {
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 700;
-  color: #f6f6f7;
+  color: var(--color-text);
   margin: 0 0 8px;
 }
 .modal-text {
   font-size: 13.5px;
-  color: #9a9aa2;
+  color: var(--color-text-dim);
   line-height: 1.6;
   margin: 0 0 22px;
 }
@@ -461,27 +402,8 @@ async function cancelDeletion() {
   display: flex;
   gap: 10px;
 }
-.btn-ghost {
+.modal-actions > * {
   flex: 1;
-  height: 44px;
-  border-radius: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.03);
-  color: #d6d6da;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.btn-primary {
-  flex: 1;
-  height: 44px;
-  border-radius: 11px;
-  border: none;
-  background: linear-gradient(180deg, #5e6cf0, #4a5fe8);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
 }
 
 @media (max-width: 1180px) {
@@ -489,7 +411,7 @@ async function cancelDeletion() {
     display: none;
   }
   .grid {
-    grid-template-columns: 268px 1fr;
+    grid-template-columns: 264px 1fr;
   }
 }
 @media (max-width: 900px) {
