@@ -53,9 +53,17 @@ const router = createRouter({
           component: () => import('@/views/app/BrowseView.vue'),
         },
         {
+          path: 'search',
+          name: 'search',
+          component: () => import('@/views/app/SearchView.vue'),
+        },
+        {
           path: 'p/:projectId',
           name: 'project',
-          component: () => import('@/views/app/ProjectFeedView.vue'),
+          components: {
+            default: () => import('@/views/app/ProjectFeedView.vue'),
+            rail: () => import('@/components/ProjectContextRail.vue'),
+          },
         },
         {
           path: 'post/:postId',
@@ -65,7 +73,10 @@ const router = createRouter({
         {
           path: 'g/:groupId',
           name: 'group',
-          component: () => import('@/views/app/GroupChatView.vue'),
+          components: {
+            default: () => import('@/views/app/GroupChatView.vue'),
+            rail: () => import('@/components/ProjectContextRail.vue'),
+          },
         },
         {
           path: 'suggest/:projectId',
@@ -78,9 +89,19 @@ const router = createRouter({
           component: () => import('@/views/app/PublicProfileView.vue'),
         },
         {
+          path: 'friends',
+          name: 'friends',
+          component: () => import('@/views/app/FriendsView.vue'),
+        },
+        {
           path: 'me',
           name: 'me',
           component: () => import('@/views/app/ProfileView.vue'),
+        },
+        {
+          path: 'settings',
+          name: 'settings',
+          component: () => import('@/views/app/SettingsView.vue'),
         },
       ],
     },

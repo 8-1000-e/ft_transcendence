@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter, RouterLink, RouterView } from 'vue-router'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter, RouterLink, RouterView } from 'vue-router'
+import { api } from '@/api/client'
+import { ROUTES } from '@/api/routes'
 import { useAuthStore } from '@/stores/auth'
 import { useGroupsStore } from '@/stores/groups'
 import Modal from '@/components/Modal.vue'
@@ -8,14 +10,52 @@ import Avatar from '@/components/Avatar.vue'
 
 const auth = useAuthStore()
 const groups = useGroupsStore()
+const route = useRoute()
 const router = useRouter()
 
+const showMenu = ref(false)
+const search = ref('')
 const cancelError = ref('')
+// Mobile: the left rail (nav + group chats) is a slide-in drawer below 900px.
+const drawerOpen = ref(false)
+watch(() => route.fullPath, () => (drawerOpen.value = false))
+
+// Only the leaf route declares a named `rail` view; when absent we collapse the
+// grid to two columns (Home / Explore / Profile / Settings have no context rail).
+const hasRail = computed(() =>
+  route.matched.some((r) => r.components && 'rail' in r.components),
+)
+
+const requestCount = ref(0)
+let heartbeat: ReturnType<typeof setInterval> | null = null
+
+async function refreshRequests() {
+  if (!auth.user?.has42) return
+  try {
+    const reqs = await api.get<unknown[]>(ROUTES.friends.requests)
+    requestCount.value = reqs.length
+  } catch {
+    /* ignore */
+  }
+}
 
 onMounted(() => {
-  // Only 42-linked accounts have group chats; non-42 accounts are read-only
-  // and GET /groups returns [] for them, so skip the pointless request.
+  // Only 42-linked accounts have group chats; GET /groups returns [] for non-42
+  // accounts, so skip the request entirely for them.
   if (auth.user?.has42 && !groups.loaded) groups.fetchGroups()
+  // 42 accounts: run the online heartbeat (2-min window → 60s beat) and poll
+  // incoming friend requests to drive the nav badge.
+  if (auth.user?.has42) {
+    void auth.ping()
+    void refreshRequests()
+    heartbeat = setInterval(() => {
+      void auth.ping()
+      void refreshRequests()
+    }, 60_000)
+  }
+})
+onUnmounted(() => {
+  if (heartbeat) clearInterval(heartbeat)
 })
 
 function initials(name?: string | null): string {
@@ -23,14 +63,17 @@ function initials(name?: string | null): string {
   const parts = name.trim().split(/\s+/)
   const a = parts[0]?.[0] ?? ''
   const b = parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] ?? '')
-  return (a + b).toUpperCase()
+  return (a + b).toUpperCase() || '??'
 }
 
-function code(name?: string | null): string {
-  return (name ?? '??').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase()
+function submitSearch() {
+  const q = search.value.trim()
+  if (!q) return
+  router.push({ name: 'search', query: { q } })
 }
 
 async function logout() {
+  showMenu.value = false
   await auth.logout()
   await router.push('/login')
 }
@@ -46,11 +89,15 @@ async function cancelDeletion() {
 </script>
 
 <template>
-  <div class="page">
-    <div class="bg-dots"></div>
-    <div class="bg-glow"></div>
+  <div class="hub">
+    <div class="hub-bg-dots"></div>
+    <div class="hub-bg-glow"></div>
 
-    <header class="hd">
+    <!-- ============ TOP BAR ============ -->
+    <header class="topbar">
+      <button class="hamburger" aria-label="Open menu" @click="drawerOpen = true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" /></svg>
+      </button>
       <RouterLink :to="{ name: 'feed' }" class="brand">
         <span class="brand-mark">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -61,538 +108,181 @@ async function cancelDeletion() {
         <span class="brand-word">ft<span class="brand-accent">_hub</span></span>
       </RouterLink>
 
-      <nav class="hd-nav">
-        <RouterLink :to="{ name: 'browse' }" class="nav-link" aria-label="Browse projects">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8" />
-            <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8" />
-            <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8" />
-            <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8" />
-          </svg>
-          <span class="nav-label">Browse projects</span>
-        </RouterLink>
-      </nav>
+      <form class="search" @submit.prevent="submitSearch">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" /><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+        <input v-model="search" :placeholder="$t('shell.search.placeholder')" :aria-label="$t('shell.search.placeholder')" />
+        <kbd>/</kbd>
+      </form>
 
-      <div class="hd-right">
-        <RouterLink :to="{ name: 'me' }" class="pill">
-          <Avatar
-            class="pill-av"
-            :user-id="auth.user?.id ?? ''"
-            :name="auth.user?.name ?? ''"
-            :size="28"
-          />
-          <span class="pill-name">{{ auth.user?.name ?? 'Profile' }}</span>
-        </RouterLink>
-        <button class="icon-btn logout" aria-label="Log out" @click="logout">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /><path d="M10 8l-4 4 4 4M6 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        </button>
+      <div class="topbar-right">
+        <div class="pill-wrap">
+          <button class="pill" aria-haspopup="menu" :aria-expanded="showMenu" @click="showMenu = !showMenu">
+            <Avatar
+              class="av av-a"
+              :user-id="auth.user?.id ?? ''"
+              :name="auth.user?.name ?? ''"
+              :size="28"
+              style="font-size: 11px"
+            />
+            <span class="pill-name">{{ auth.user?.name ?? 'Account' }}</span>
+            <svg class="pill-caret" width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </button>
+
+          <template v-if="showMenu">
+            <button
+              class="menu-backdrop"
+              aria-label="Close menu"
+              @click="showMenu = false"
+            ></button>
+            <div class="menu" role="menu">
+              <RouterLink :to="{ name: 'me' }" role="menuitem" @click="showMenu = false">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.7" /><path d="M5 20a7 7 0 0 1 14 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+                {{ $t('shell.menu.profile') }}
+              </RouterLink>
+              <RouterLink :to="{ name: 'settings' }" role="menuitem" @click="showMenu = false">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+                {{ $t('shell.menu.settings') }}
+              </RouterLink>
+              <div class="sep"></div>
+              <button class="danger" role="menuitem" @click="logout">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /><path d="M10 8l-4 4 4 4M6 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                {{ $t('shell.menu.logout') }}
+              </button>
+            </div>
+          </template>
+        </div>
       </div>
     </header>
 
-    <div class="grid">
-      <aside class="rail rail-left scroll">
-        <!-- 42-linked accounts get their group chats; non-42 accounts are
-             read-only and see a CTA to link their 42 in place of the rail. -->
-        <template v-if="auth.user?.has42">
-          <div class="rail-head">
-            <span class="rail-title">YOUR GROUPCHAT</span>
-            <span class="rail-count">{{ groups.groups.length }}</span>
-          </div>
-          <p v-if="groups.loading" class="muted">Loading…</p>
-          <p v-else-if="groups.error" class="muted">{{ groups.error }}</p>
-          <p v-else-if="!groups.groups.length" class="muted">No groups yet.</p>
-          <RouterLink
-            v-for="g in groups.groups"
-            :key="g.id"
-            :to="{ name: 'group', params: { groupId: g.id } }"
-            class="grp"
-          >
-            <span class="grp-av">{{ initials(g.groupName) }}</span>
-            <span class="grp-main">
-              <span class="grp-name">{{ g.groupName }}</span>
-              <span class="grp-proj">{{ g.projectName }}</span>
+    <div class="app">
+      <button v-if="drawerOpen" class="drawer-backdrop" aria-label="Close menu" @click="drawerOpen = false"></button>
+      <div class="grid" :class="{ 'no-rail': !hasRail }">
+        <!-- ============ LEFT RAIL ============ -->
+        <aside class="rail rail-left" :class="{ 'drawer-open': drawerOpen }">
+          <nav class="lnav">
+            <RouterLink :to="{ name: 'feed' }">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 11.5 12 4l8 7.5M6 10v9h12v-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              {{ $t('shell.nav.home') }}
+            </RouterLink>
+            <RouterLink :to="{ name: 'browse' }">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7.5" stroke="currentColor" stroke-width="1.8" /><path d="m14 8-1.6 4.4L8 14l1.6-4.4L14 8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>
+              {{ $t('shell.nav.explore') }}
+            </RouterLink>
+            <RouterLink v-if="auth.user?.has42" :to="{ name: 'friends' }">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM22 19v-1a4 4 0 0 0-3-3.9M16 3.1a3.5 3.5 0 0 1 0 6.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              {{ $t('shell.nav.friends') }}
+              <span v-if="requestCount" class="nav-badge">{{ requestCount }}</span>
+            </RouterLink>
+          </nav>
+
+          <!-- 42 accounts: their project group chats -->
+          <template v-if="auth.user?.has42">
+            <div class="rail-head">
+              <span class="rail-title">{{ $t('shell.groupchats') }}</span>
+              <span class="rail-count">{{ groups.groups.length }}</span>
+            </div>
+            <p v-if="groups.loading" class="muted" style="padding: 0 8px">{{ $t('shell.groupchats.loading') }}</p>
+            <p v-else-if="groups.error" class="muted" style="padding: 0 8px">{{ groups.error }}</p>
+            <p v-else-if="!groups.groups.length" class="muted" style="padding: 0 8px">{{ $t('shell.groupchats.empty') }}</p>
+            <RouterLink
+              v-for="g in groups.groups"
+              :key="g.id"
+              :to="{ name: 'group', params: { groupId: g.id } }"
+              class="grp"
+            >
+              <span class="av av-b sq">{{ initials(g.groupName) }}</span>
+              <span class="grp-main">
+                <span class="grp-name">{{ g.groupName }}</span>
+                <span class="grp-proj">{{ g.projectName }}</span>
+              </span>
+            </RouterLink>
+          </template>
+
+          <!-- non-42 accounts: Link-42 CTA in place of the group-chat list -->
+          <div v-else class="link42">
+            <span class="link42-mark">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
             </span>
-          </RouterLink>
-        </template>
+            <p class="link42-t">{{ $t('shell.link42.title') }}</p>
+            <p class="link42-x">{{ $t('shell.link42.desc') }}</p>
+            <button class="link42-btn" @click="auth.link42()"><span class="badge42-sq">42</span>{{ $t('common.linkYour42') }}</button>
+          </div>
+        </aside>
 
-        <div v-else class="cta42">
-          <span class="cta42-mark">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-              <path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </span>
-          <p class="cta42-title">Project chats</p>
-          <p class="cta42-text">Link your 42 to join project chats.</p>
-          <RouterLink :to="{ name: 'me' }" class="cta42-btn">Link your 42</RouterLink>
-        </div>
-      </aside>
+        <!-- ============ CENTER ============ -->
+        <main class="main" :class="{ 'chat-main': route.name === 'group' }">
+          <RouterView />
+        </main>
 
-      <main class="main scroll">
-        <RouterView />
-      </main>
-
-      <aside class="rail rail-right scroll">
-        <div class="rail-head"><span class="rail-title">PROJECTS</span></div>
-        <RouterLink
-          v-for="p in groups.projects()"
-          :key="p.projectId"
-          :to="{ name: 'project', params: { projectId: p.projectId } }"
-          class="proj"
-        >
-          <span class="proj-code">{{ code(p.projectName) }}</span>
-          <span class="proj-name">{{ p.projectName }}</span>
-        </RouterLink>
-      </aside>
+        <!-- ============ RIGHT RAIL (contextual, per-route) ============ -->
+        <aside v-if="hasRail" class="rail ctx-rail">
+          <RouterView name="rail" />
+        </aside>
+      </div>
     </div>
 
-    <footer class="legal">
-      <span class="legal-brand">ft<span class="legal-accent">_hub</span></span>
-      <span class="legal-dot">·</span>
-      <RouterLink :to="{ name: 'privacy' }" class="legal-link">Privacy</RouterLink>
-      <RouterLink :to="{ name: 'terms' }" class="legal-link">Terms</RouterLink>
+    <footer class="hub-foot">
+      <div class="foot-main">
+        <div class="foot-brand">
+          <span class="brand-mark">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M3 16.5 L9 10.5 L13 14.5 L21 6.5" stroke="#8C97F7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /><path d="M15.5 6.5 H21 V12" stroke="#8C97F7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </span>
+          <div>
+            <div class="fbrand">ft<span>_hub</span></div>
+            <div class="foot-tag">{{ $t('shell.foot.tag') }}</div>
+          </div>
+        </div>
+        <nav class="foot-links">
+          <RouterLink :to="{ name: 'feed' }">{{ $t('shell.nav.home') }}</RouterLink>
+          <RouterLink :to="{ name: 'browse' }">{{ $t('shell.nav.explore') }}</RouterLink>
+          <RouterLink :to="{ name: 'privacy' }">{{ $t('shell.nav.privacy') }}</RouterLink>
+          <RouterLink :to="{ name: 'terms' }">{{ $t('shell.nav.terms') }}</RouterLink>
+        </nav>
+      </div>
+      <div class="foot-bottom">
+        <span>{{ $t('shell.foot.copy') }}</span>
+        <span>{{ $t('shell.foot.disclaimer') }}</span>
+      </div>
     </footer>
 
-    <!-- Blocking barrier: backdrop-close disabled so it can't be dismissed
-         without either cancelling the request or logging out. -->
+    <!-- Blocking barrier for accounts pending deletion. -->
     <Modal
       :open="auth.pendingDeletion"
-      title="Account scheduled for deletion"
+      :title="$t('shell.pending.title')"
       :backdrop-close="false"
     >
-      <p class="modal-text">
-        Your account is scheduled for deletion. Cancel the request to keep
-        using it, or log out.
-      </p>
-      <p v-if="cancelError" class="modal-err" role="alert">{{ cancelError }}</p>
+      <p>{{ $t('shell.pending.body') }}</p>
+      <p v-if="cancelError" class="err" role="alert">{{ cancelError }}</p>
       <template #actions>
-        <button class="btn-ghost" @click="logout">Log out</button>
-        <button class="btn-primary" @click="cancelDeletion">Cancel deletion</button>
+        <button class="btn-ghost" style="flex: 1" @click="logout">{{ $t('shell.menu.logout') }}</button>
+        <button class="btn-primary" style="flex: 1" @click="cancelDeletion">{{ $t('shell.pending.cancel') }}</button>
       </template>
     </Modal>
   </div>
 </template>
 
 <style scoped>
-.page {
-  position: relative;
-  min-height: 100vh;
-  background: #08080a;
-  overflow: hidden;
-}
-.bg-dots {
+.menu-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.6;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1.4px);
-  background-size: 30px 30px;
+  z-index: 65;
+  background: none;
+  border: none;
+  cursor: default;
 }
-.bg-glow {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: radial-gradient(70% 55% at 50% 0%, rgba(94, 108, 232, 0.1) 0%, transparent 60%);
-}
-
-.hd {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 0 20px;
-  border-bottom: 1px solid #1c1c22;
-  background: rgba(10, 10, 12, 0.82);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  text-decoration: none;
-}
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: rgba(110, 123, 242, 0.14);
-  border: 1px solid rgba(110, 123, 242, 0.32);
-}
-.brand-word {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #f4f4f2;
-}
-.brand-accent {
-  color: #8c97f7;
-}
-.hd-nav {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.nav-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 9px;
-  border: 1px solid transparent;
-  color: #9a9aa2;
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: background 0.14s, border-color 0.14s, color 0.14s;
-}
-.nav-link:hover {
-  color: #ededee;
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.08);
-}
-.nav-link.router-link-active {
-  color: #c7ccff;
-  background: rgba(110, 123, 242, 0.12);
-  border-color: rgba(110, 123, 242, 0.28);
-}
-.hd-right {
+.nav-badge {
   margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.pill {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  padding: 4px 12px 4px 4px;
-  text-decoration: none;
-}
-.pill:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-}
-.pill-av {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #5e6cf0, #8c97f7);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  font-weight: 700;
-  color: #fff;
-}
-.pill-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: #ededee;
-}
-.icon-btn {
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #9a9aa2;
-  cursor: pointer;
-}
-.logout:hover {
-  border-color: rgba(239, 109, 114, 0.4);
-  color: #ef6d72;
-}
-
-.grid {
-  position: relative;
-  z-index: 5;
-  display: grid;
-  grid-template-columns: 268px 1fr 288px;
-  max-width: 1560px;
-  margin: 0 auto;
-  align-items: start;
-}
-.scroll {
-  overflow-y: auto;
-}
-.rail {
-  position: sticky;
-  top: 60px;
-  height: calc(100vh - 60px);
-  padding: 20px 14px;
-}
-.rail-left {
-  border-right: 1px solid #1c1c22;
-}
-.rail-right {
-  border-left: 1px solid #1c1c22;
-  padding: 20px 16px;
-}
-.rail-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 6px 12px;
-}
-.rail-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  color: #74747e;
-}
-.rail-count {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: #5c5c66;
-}
-.grp {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 10px;
-  border-radius: 11px;
-  border: 1px solid transparent;
-  margin-bottom: 6px;
-  text-decoration: none;
-  transition: background 0.14s, border-color 0.14s;
-}
-.grp:hover {
-  background: rgba(255, 255, 255, 0.045);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-.grp-av {
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #2a2a40, #3d3d5c);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  font-weight: 700;
-  color: #dfe2ff;
-}
-.grp-main {
-  flex: 1;
-  min-width: 0;
-}
-.grp-name {
-  display: block;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #ededee;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.grp-proj {
-  display: block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10.5px;
-  color: #74747e;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.main {
-  min-height: calc(100vh - 60px);
-  padding: 26px 30px 60px;
-  min-width: 0;
-}
-.proj {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 10px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  text-decoration: none;
-}
-.proj:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.08);
-}
-.proj-code {
-  font-family: 'JetBrains Mono', monospace;
+  background: var(--accent-2);
+  color: #0d0d12;
+  font-family: var(--mono);
   font-size: 11px;
   font-weight: 700;
-  color: #8c97f7;
-  width: 34px;
-}
-.proj-name {
-  flex: 1;
-  font-size: 13px;
-  color: #cfcfd4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.muted {
-  color: #74747e;
-  font-size: 13px;
-  padding: 0 6px;
-}
-
-.cta42 {
-  margin: 4px 6px;
-  padding: 20px 16px;
-  border-radius: 14px;
-  border: 1px solid rgba(110, 123, 242, 0.22);
-  background: linear-gradient(180deg, rgba(110, 123, 242, 0.08), rgba(110, 123, 242, 0.02));
-  text-align: center;
-}
-.cta42-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
-  background: rgba(110, 123, 242, 0.14);
-  border: 1px solid rgba(110, 123, 242, 0.3);
-  color: #8c97f7;
-  margin-bottom: 12px;
-}
-.cta42-title {
-  margin: 0 0 6px;
-  font-size: 13.5px;
-  font-weight: 700;
-  color: #ededee;
-}
-.cta42-text {
-  margin: 0 0 14px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: #9a9aa2;
-}
-.cta42-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 38px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #5e6cf0, #4a5fe8);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: filter 0.14s;
-}
-.cta42-btn:hover {
-  filter: brightness(1.08);
-}
-
-.legal {
-  position: relative;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 18px 20px;
-  border-top: 1px solid #1c1c22;
-  background: rgba(10, 10, 12, 0.4);
-}
-.legal-brand {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #5c5c66;
-}
-.legal-accent {
-  color: #6b6f9e;
-}
-.legal-dot {
-  color: #3a3a44;
-}
-.legal-link {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11.5px;
-  color: #74747e;
-  text-decoration: none;
-  transition: color 0.14s;
-}
-.legal-link:hover {
-  color: #8c97f7;
-}
-
-.modal-text {
-  margin: 0;
-}
-.modal-err {
-  margin: 12px 0 0;
-  color: #ef6d72;
-  font-size: 13px;
-  line-height: 1.5;
-}
-.btn-ghost {
-  flex: 1;
-  height: 44px;
-  border-radius: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.03);
-  color: #d6d6da;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.btn-primary {
-  flex: 1;
-  height: 44px;
-  border-radius: 11px;
-  border: none;
-  background: linear-gradient(180deg, #5e6cf0, #4a5fe8);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-@media (max-width: 1180px) {
-  .rail-right {
-    display: none;
-  }
-  .grid {
-    grid-template-columns: 268px 1fr;
-  }
-}
-@media (max-width: 620px) {
-  .nav-label {
-    display: none;
-  }
-  .nav-link {
-    padding: 0 9px;
-  }
-}
-@media (max-width: 900px) {
-  .rail-left {
-    display: none;
-  }
-  .grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

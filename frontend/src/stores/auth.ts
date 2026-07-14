@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { api } from '@/api/client'
-import { ROUTES } from '@/api/routes'
+import { ROUTES, API_BASE_URL } from '@/api/routes'
 import { disconnectRealtime } from '@/api/realtime'
 import type { Tokens, User } from '@/types/auth'
 
@@ -41,6 +41,20 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchMe() {
     user.value = await api.get<User>(ROUTES.users.me)
+    // Keep the pending-deletion barrier in sync with the loaded profile so a
+    // user who logs back in sees the "scheduled for deletion" modal (and can
+    // cancel) instead of a broken session.
+    pendingDeletion.value = !!user.value?.pendingDeletion
+  }
+
+  // Heartbeat: touch lastSeenAt so friends see us as online (2-min window).
+  // Best-effort — a failed ping must never disrupt the UI.
+  async function ping(): Promise<void> {
+    try {
+      await api.post(ROUTES.users.ping)
+    } catch {
+      /* ignore */
+    }
   }
 
   async function login(email: string, password: string) {
@@ -86,6 +100,24 @@ export const useAuthStore = defineStore('auth', () => {
     pendingDeletion.value = false
   }
 
+  // Start the 42 OAuth "link to current account" flow. Refreshes the access
+  // token first so the short-lived token in the redirect URL is always valid.
+  async function link42(): Promise<void> {
+    try {
+      if (refreshToken.value) {
+        const tokens = await api.post<Tokens>(
+          ROUTES.auth.refresh,
+          { refresh_token: refreshToken.value },
+          { auth: false },
+        )
+        setTokens(tokens)
+      }
+    } catch {
+      /* fall through with the current token */
+    }
+    window.location.href = `${API_BASE_URL}/auth/42/link?token=${encodeURIComponent(accessToken.value ?? '')}`
+  }
+
   async function tryRestoreSession(): Promise<boolean> {
     if (!refreshToken.value) return false
     try {
@@ -112,11 +144,13 @@ export const useAuthStore = defineStore('auth', () => {
     setTokens,
     clear,
     fetchMe,
+    ping,
     login,
     signup,
     verify,
     logout,
     cancelDeletion,
+    link42,
     tryRestoreSession,
   }
 })

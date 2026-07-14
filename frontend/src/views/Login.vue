@@ -5,10 +5,12 @@ import { useAuthStore } from '@/stores/auth'
 import { API_BASE_URL, ROUTES } from '@/api/routes'
 import type { ApiError } from '@/types/auth'
 import AuthShell from '@/components/auth/AuthShell.vue'
+import { useI18n } from '@/i18n'
 
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
 
 const email = ref('')
 const password = ref('')
@@ -17,8 +19,8 @@ const loading = ref(false)
 
 onMounted(() => {
   const err = route.query.error
-  if (err === 'invalid_state') error.value = 'Invalid OAuth session, please try again.'
-  else if (err === 'ft_auth_failed') error.value = '42 login failed.'
+  if (err === 'invalid_state') error.value = t('auth.login.err.invalidState')
+  else if (err === 'ft_auth_failed') error.value = t('auth.login.err.ftFailed')
 })
 
 async function submit() {
@@ -28,7 +30,7 @@ async function submit() {
     await auth.login(email.value, password.value)
     await router.push('/')
   } catch (e) {
-    error.value = (e as ApiError).message ?? 'Invalid credentials'
+    error.value = (e as ApiError).message ?? t('auth.login.err.invalidCreds')
   } finally {
     loading.value = false
   }
@@ -40,10 +42,10 @@ function loginWith42() {
 </script>
 
 <template>
-  <AuthShell title="Log in" subtitle="// glad to see you again, student.">
+  <AuthShell :title="$t('auth.login.title')" :subtitle="$t('auth.login.subtitle')">
     <form class="ftp-form" @submit.prevent="submit">
       <div class="ftp-field">
-        <label class="ftp-label" for="email">E-MAIL</label>
+        <label class="ftp-label" for="email">{{ $t('auth.field.email') }}</label>
         <input
           id="email"
           v-model="email"
@@ -51,13 +53,13 @@ function loginWith42() {
           required
           autocomplete="email"
           class="ftp-input"
-          placeholder="prenom@student.42.fr"
+          :placeholder="$t('auth.field.email.ph')"
         />
       </div>
 
       <div class="ftp-field">
         <div class="ftp-field-row">
-          <label class="ftp-label" for="password">PASSWORD</label>
+          <label class="ftp-label" for="password">{{ $t('auth.field.password') }}</label>
         </div>
         <input
           id="password"
@@ -73,7 +75,7 @@ function loginWith42() {
       <p v-if="error" class="ftp-error">! {{ error }}</p>
 
       <button type="submit" :disabled="loading" class="ftp-btn">
-        {{ loading ? 'Logging in…' : 'Log in' }}
+        {{ loading ? $t('auth.login.loading') : $t('auth.login.title') }}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path
             d="M5 12h13M13 6l6 6-6 6"
@@ -88,18 +90,18 @@ function loginWith42() {
 
     <div class="ftp-divider">
       <span class="ftp-divider-line"></span>
-      <span class="ftp-divider-text">or</span>
+      <span class="ftp-divider-text">{{ $t('auth.or') }}</span>
       <span class="ftp-divider-line"></span>
     </div>
 
     <button type="button" class="ftp-btn-42" @click="loginWith42">
       <span class="ftp-42-badge">42</span>
-      Log in with 42
+      {{ $t('auth.login.with42') }}
     </button>
 
     <template #footer>
-      No account?
-      <RouterLink to="/signup" class="ftp-link-strong">Create an account</RouterLink>
+      {{ $t('auth.login.noAccount') }}
+      <RouterLink to="/signup" class="ftp-link-strong">{{ $t('auth.login.createAccount') }}</RouterLink>
     </template>
   </AuthShell>
 </template>
