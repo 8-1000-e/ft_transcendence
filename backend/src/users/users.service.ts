@@ -397,7 +397,7 @@ export class UsersService {
   async getAvatar(
     id: string,
     viewerId: string,
-  ): Promise<{ buffer: Buffer; contentType: string }> {
+  ): Promise<{ buffer: Buffer; contentType: string } | null> {
     const [viewer, user] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: viewerId },
@@ -408,10 +408,10 @@ export class UsersService {
         select: { ftPfpUrl: true },
       }),
     ]);
-    // Default-deny: a non-42 viewer must NOT see another user's real 42 photo —
-    // it would de-anonymise an account whose name is already rdm*. (Own avatar ok.)
-    if (!viewer?.ftId && id !== viewerId) throw new NotFoundException();
-    if (!user?.ftPfpUrl) throw new NotFoundException();
+    // Default-deny: a non-42 viewer must NOT see another user's real 42 photo
+    // (de-anonymises an rdm* account). null → 204; own avatar always allowed.
+    if (!viewer?.ftId && id !== viewerId) return null;
+    if (!user?.ftPfpUrl) return null;
 
     return this.fetchImage(user.ftPfpUrl);
   }

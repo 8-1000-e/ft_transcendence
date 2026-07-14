@@ -189,10 +189,11 @@ export class PostsService {
 
   // Per-project post-count leaderboard, never a global cross-user one; every identity goes through authorView.
   async getPosters(projectId: string, userId: string) {
+    // A group's 42 project may be outside the forum catalogue → empty list, not 404.
     const project = await this.prisma.projects.findUnique({
       where: { id: projectId },
     });
-    if (!project) throw new NotFoundException();
+    if (!project) return [];
 
     const viewer = await this.prisma.user.findUnique({ where: { id: userId } });
 
