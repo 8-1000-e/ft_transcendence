@@ -12,6 +12,10 @@ type FtApiRequestCounter = {
   projectsUsers: number;
 };
 
+// The mentor rail shows only a short list; resolving live 42 locations for more
+// than this just multiplies rate-limited API calls (and hit the nginx 504).
+const MAX_SUGGESTIONS = 12;
+
 @Injectable()
 export class SuggestService {
   constructor(
@@ -107,8 +111,13 @@ export class SuggestService {
           };
         },
       );
+      // Only resolve live locations for the handful the rail actually shows.
+      // `test` is already ordered best-mark-first; capping here keeps every
+      // remaining user id inside a single `locations` query (one live call)
+      // instead of the O(users) peel-off loop that was timing out (nginx 504).
+      const topTeams = test.slice(0, MAX_SUGGESTIONS);
       const suggestions = await this.checkLocations(
-        test,
+        topTeams,
         campusId,
         requestCounter,
       );
@@ -140,17 +149,15 @@ export class SuggestService {
     });
 
     if (campusId) query.set('filter[campus]', campusId);
-    let page = 1;
 
     const usersProject: FtProjectUser[] = [];
     while (true) {
-      query.set('page[number]', String(page));
       const users = await this.ftApiService.Get<FtProjectUser[]>(
         `v2/projects/${projectId}/projects_users?${query.toString()}`,
       );
       requestCounter.projectsUsers++;
 
-      if (users.length == 0 && page == 1 && monthsBack < 10) {
+      if (users.length == 0 && monthsBack < 10) {
         xMonthsAgo.setMonth(xMonthsAgo.getMonth() - 1);
         monthsBack++;
         query.set(
@@ -159,9 +166,11 @@ export class SuggestService {
         );
         continue;
       }
+      // The API already sorts by -final_mark, so page 1 holds the top 100
+      // validated students — far more than the rail shows. Stop there instead
+      // of walking every page (each extra page is a rate-limited live 42 call).
       usersProject.push(...users);
-      if (users.length < 100) break;
-      page++;
+      break;
     }
     return usersProject;
   }
