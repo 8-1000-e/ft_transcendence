@@ -9,10 +9,8 @@ export class InitService implements OnModuleInit {
     private readonly prisma: PrismaService,
   ) {}
 
-  // Populate the 42 project catalogue once (fresh DB). Skipping it when already
-  // synced avoids re-crawling the live 42 API — a chatty, rate-limited walk — on
-  // every container restart, which otherwise starves the 2 req/s budget and
-  // makes login/suggest sluggish for the first minute after each boot.
+  // Populate the 42 project catalogue once (fresh DB); skip on later boots so a
+  // restart doesn't re-crawl the rate-limited 42 API.
   async onModuleInit() {
     const already = await this.prisma.projects.count({
       where: { category: { not: null } },
