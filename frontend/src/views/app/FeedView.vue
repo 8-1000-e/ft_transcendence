@@ -5,7 +5,6 @@ import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
 import { useAuthStore } from '@/stores/auth'
 import { useGroupsStore } from '@/stores/groups'
-import { useInfiniteScroll } from '@/composables/pagination'
 import ImageCarousel from '@/components/ImageCarousel.vue'
 import { publicUrl } from '@/api/upload'
 import type { Page, Post, VoteValue } from '@/types/api'
@@ -39,7 +38,6 @@ const sort = ref<SortKey>('hot')
 // Client-side pagination over the sorted aggregate: 7 at a time + infinite scroll.
 const PAGE = 7
 const shown = ref(PAGE)
-const sentinel = ref<HTMLElement | null>(null)
 
 const has42 = computed(() => !!auth.user?.has42)
 
@@ -56,8 +54,7 @@ function hotRank(p: FeedPost): number {
   return score(p) / Math.pow(ageHours(p.postedAt) + 2, 1.3)
 }
 
-// The feed is an aggregation of a bounded window of posts, so sorting stays
-// client-side (no cursor to break). Tabs re-rank the same fetched set.
+// Feed is a bounded window of posts, so sorting stays client-side (no cursor to break); tabs re-rank the same set.
 const items = computed<FeedPost[]>(() => {
   const list = rawPosts.value.slice()
   const recent = (a: FeedPost, b: FeedPost) => +new Date(b.postedAt) - +new Date(a.postedAt)
@@ -70,9 +67,6 @@ const items = computed<FeedPost[]>(() => {
 })
 const visible = computed(() => items.value.slice(0, shown.value))
 
-useInfiniteScroll(sentinel, () => {
-  if (shown.value < items.value.length) shown.value += PAGE
-})
 // Reset to the first page when the sort changes so it starts from the top.
 watch(sort, () => {
   shown.value = PAGE
@@ -129,9 +123,7 @@ async function load() {
   discover.value = false
   try {
     let result = await fetchFrom(await memberProjects())
-    // Never a dead "you're not a member of anything" cul-de-sac: if the member
-    // feed is empty (non-42, or a 42 member whose projects have no posts), fall
-    // back to what's active across the school.
+    // No dead-end for non-members: if the member feed is empty, fall back to what's active across the school.
     if (!result.length) {
       discover.value = true
       result = await fetchFrom(await popularProjects())
@@ -164,7 +156,6 @@ onMounted(load)
       // {{ discover ? $t('home.sub.discover') : $t('home.sub.mine') }} · {{ $t('home.sub.sortedBy', { sort: $t('home.sort.' + sort) }) }}
     </p>
 
-    <!-- Non-42: read-only browse -->
     <div v-if="!has42" class="readonly">
       <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg></span>
       <div class="readonly-main">
@@ -231,8 +222,8 @@ onMounted(load)
         </div>
       </article>
 
-      <div ref="sentinel" style="height: 1px"></div>
-      <p v-if="shown >= items.length" class="muted center" style="padding: 12px; font-size: 12px">{{ $t('home.endOfFeed') }}</p>
+      <button v-if="shown < items.length" class="btn-ghost" style="margin: 16px auto 0; display: flex" @click="shown += PAGE">{{ $t('common.loadMore') }}</button>
+      <p v-else class="muted center" style="padding: 12px; font-size: 12px">{{ $t('home.endOfFeed') }}</p>
     </div>
   </section>
 </template>

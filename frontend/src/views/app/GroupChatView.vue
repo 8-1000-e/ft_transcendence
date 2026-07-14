@@ -3,7 +3,7 @@ import { ref, watch, nextTick, onBeforeUnmount, computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
-import { uploadImage } from '@/api/upload'
+import { uploadImage, validateImage } from '@/api/upload'
 import { subscribeGroup, pusherEnabled } from '@/api/realtime'
 import { useAuthStore } from '@/stores/auth'
 import { useI18n } from '@/i18n'
@@ -20,6 +20,7 @@ const group = ref<Group | null>(null)
 const messages = ref<Message[]>([])
 const draft = ref('')
 const pendingFile = ref<string[]>([])
+const uploadPct = ref<number | null>(null)
 const replyingTo = ref<Message | null>(null)
 const loading = ref(false)
 const error = ref('')
@@ -59,8 +60,7 @@ function mine(m: Message): boolean {
   return m.sender === auth.user?.id
 }
 
-// Chronological order does not depend on the raw API order: oldest at top,
-// newest at the bottom.
+// Oldest at top, newest at bottom — don't trust the raw API order.
 function byTime(a: Message, b: Message): number {
   return new Date(a.sendTime).getTime() - new Date(b.sendTime).getTime()
 }
@@ -87,8 +87,7 @@ function upsertMessage(msg: Message): void {
 
 async function fetchMessages(force = false): Promise<void> {
   const gid = groupId()
-  // Decide whether to stick to the bottom BEFORE new content arrives so an
-  // incoming message doesn't yank a user who scrolled up to read history.
+  // Decide stick-to-bottom BEFORE new content arrives, so an incoming message doesn't yank a user reading history.
   const stick = force || isNearBottom()
   try {
     const list = await api.get<Message[]>(ROUTES.groups.messages(gid))
@@ -125,20 +124,31 @@ async function load() {
 }
 
 async function onFile(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
   if (!file) return
+  const invalid = validateImage(file)
+  if (invalid) {
+    error.value = invalid
+    input.value = ''
+    return
+  }
+  error.value = ''
+  uploadPct.value = 0
   try {
-    pendingFile.value = [await uploadImage(file, true)]
-  } catch {
-    error.value = t('chat.uploadFailed')
+    pendingFile.value = [await uploadImage(file, true, (p) => (uploadPct.value = p))]
+  } catch (err) {
+    error.value = (err as { message?: string }).message ?? t('chat.uploadFailed')
+  } finally {
+    uploadPct.value = null
+    input.value = ''
   }
 }
 
 async function send() {
   if (!draft.value.trim() && !pendingFile.value.length) return
   error.value = ''
-  // Snapshot but do NOT clear the composer yet: if the POST fails the user's
-  // text, image and reply context must survive.
+  // Snapshot but don't clear the composer yet — if the POST fails, the text, image and reply context must survive.
   const content = draft.value.trim()
   const filesUrl = pendingFile.value.slice()
   const replyId = replyingTo.value?.id
@@ -151,7 +161,6 @@ async function send() {
       content,
       filesUrl: filesUrl.length ? filesUrl : undefined,
     })
-    // Success — now it's safe to reset the composer.
     draft.value = ''
     pendingFile.value = []
     replyingTo.value = null
@@ -200,8 +209,7 @@ async function confirmDelete() {
 }
 
 function toggleGroupEdit() {
-  // Re-seed the form from the live group so stale unsaved edits never leak
-  // across opens.
+  // Re-seed from the live group so stale unsaved edits don't leak across opens.
   if (!showGroupEdit.value && group.value) {
     groupName.value = group.value.groupName
     githubLink.value = group.value.githubLink ?? ''
@@ -214,8 +222,7 @@ async function saveGroup() {
   try {
     await api.patch(ROUTES.groups.edit(groupId()), {
       groupName: groupName.value.trim() || undefined,
-      // null clears the link (and skips @IsUrl); a non-empty value is validated.
-      // Sending '' would trip @IsUrl even when only the name was edited.
+      // null clears the link and skips @IsUrl; sending '' would trip @IsUrl when only the name was edited.
       githubLink: githubLink.value.trim() || null,
     })
     group.value = await api.get<Group>(ROUTES.groups.byId(groupId()))
@@ -237,8 +244,7 @@ watch(
   () => {
     teardown()
     load()
-    // fetchMessages swallows its own errors, so the poll/realtime callbacks
-    // can never leak an unhandled rejection.
+    // fetchMessages swallows its own errors, so poll/realtime callbacks can't leak an unhandled rejection.
     if (live.value) {
       unsub = subscribeGroup(groupId(), () => fetchMessages())
     } else {
@@ -253,7 +259,6 @@ onBeforeUnmount(teardown)
 
 <template>
   <div class="chat">
-    <!-- ── Header ── -->
     <header class="chat-head">
       <span class="stack">
         <Avatar
@@ -290,7 +295,6 @@ onBeforeUnmount(teardown)
 
     <p v-if="error" class="err">{{ error }}</p>
 
-    <!-- ── Messages ── -->
     <div ref="listEl" class="messages">
       <p v-if="loading" class="muted center">{{ $t('common.loading') }}</p>
       <p v-else-if="!messages.length" class="muted center">{{ $t('chat.noMessages') }}</p>
@@ -337,7 +341,6 @@ onBeforeUnmount(teardown)
       </div>
     </div>
 
-    <!-- ── Reply banner ── -->
     <div v-if="replyingTo" class="reply-banner">
       <span class="reply-bar"></span>
       <div class="reply-main">
@@ -349,13 +352,13 @@ onBeforeUnmount(teardown)
       </button>
     </div>
 
-    <!-- ── Composer ── -->
     <div class="composer" :class="{ 'no-round': replyingTo }">
       <label class="attach" :aria-label="$t('chat.attachImage')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.5 12.5 21a5 5 0 0 1-7-7l8-8a3.3 3.3 0 0 1 4.7 4.7l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.3-7.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
         <input type="file" accept="image/*" hidden @change="onFile" />
       </label>
-      <span v-if="pendingFile.length" class="chip-file">{{ $t('chat.imageReady') }}</span>
+      <span v-if="uploadPct !== null" class="chip-file">{{ uploadPct }}%</span>
+      <span v-else-if="pendingFile.length" class="chip-file">{{ $t('chat.imageReady') }}</span>
       <textarea
         v-model="draft"
         class="msg-input"

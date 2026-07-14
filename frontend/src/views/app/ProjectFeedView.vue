@@ -3,10 +3,10 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
-import { uploadImage, publicUrl } from '@/api/upload'
+import { uploadImage, publicUrl, validateImage, deleteUpload } from '@/api/upload'
 import { useAuthStore } from '@/stores/auth'
 import { useGroupsStore } from '@/stores/groups'
-import { usePaginated, useInfiniteScroll } from '@/composables/pagination'
+import { usePaginated } from '@/composables/pagination'
 import { useI18n } from '@/i18n'
 import Avatar from '@/components/Avatar.vue'
 import ImageCarousel from '@/components/ImageCarousel.vue'
@@ -18,7 +18,6 @@ const groups = useGroupsStore()
 const { t } = useI18n()
 const projName = ref('')
 const error = ref('')
-const sentinel = ref<HTMLElement | null>(null)
 
 const has42 = computed(() => !!auth.user?.has42)
 
@@ -30,6 +29,7 @@ const composerOpen = ref(false)
 const newTitle = ref('')
 const newContent = ref('')
 const newFiles = ref<string[]>([])
+const uploadPct = ref<number | null>(null)
 const creating = ref(false)
 
 function projectId(): string {
@@ -57,10 +57,8 @@ const {
     `${ROUTES.posts.listByProject(projectId())}?limit=7${cursor ? `&cursor=${cursor}` : ''}`,
   ),
 )
-useInfiniteScroll(sentinel, loadMore)
 
-// Swap a single post in place after a vote/edit — never reload the whole feed
-// (that would reset pagination + scroll position).
+// Swap a single post in place after vote/edit — reloading the whole feed would reset pagination + scroll.
 async function replacePost(id: string) {
   try {
     const fresh = await api.get<Post>(ROUTES.posts.single(id))
@@ -92,13 +90,31 @@ async function vote(post: Post, value: VoteValue) {
 }
 
 async function onFile(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
   if (!file) return
-  try {
-    newFiles.value = [await uploadImage(file, false)]
-  } catch {
-    error.value = t('forum.uploadFailed')
+  const invalid = validateImage(file)
+  if (invalid) {
+    error.value = invalid
+    input.value = ''
+    return
   }
+  error.value = ''
+  uploadPct.value = 0
+  try {
+    newFiles.value = [await uploadImage(file, false, (p) => (uploadPct.value = p))]
+  } catch (err) {
+    error.value = (err as { message?: string }).message ?? t('forum.uploadFailed')
+  } finally {
+    uploadPct.value = null
+    input.value = ''
+  }
+}
+
+async function removeImage() {
+  const url = newFiles.value[0]
+  newFiles.value = []
+  if (url) await deleteUpload(url)
 }
 
 async function createPost() {
@@ -112,9 +128,7 @@ async function createPost() {
     })
     resetComposer()
     composerOpen.value = false
-    // Prepend the fresh post in place. reload() would blank the whole list
-    // (items=[]) and refetch page 1 — that wipe + scroll-to-top is what read as
-    // a jarring "page refresh" when publishing.
+    // Prepend the fresh post in place; reload() would blank the list and refetch page 1 — a jarring scroll-to-top on publish.
     const fresh = await api.get<Post>(ROUTES.posts.single(created.id))
     posts.value.unshift(fresh)
   } catch (e) {
@@ -186,11 +200,17 @@ watch(
       <input v-model="newTitle" class="field" style="margin-bottom: 10px" :placeholder="$t('forum.postTitle')" :aria-label="$t('forum.postTitle')" />
       <textarea v-model="newContent" rows="4" class="field" :placeholder="$t('forum.composerPlaceholder')" :aria-label="$t('forum.postContent')"></textarea>
       <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px">
-        <label class="btn-ghost" style="height: 38px; cursor: pointer">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="margin-right: 6px"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7" /><circle cx="9" cy="10" r="1.8" stroke="currentColor" stroke-width="1.7" /><path d="m4 18 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
-          {{ newFiles.length ? $t('forum.imageReady') : $t('forum.image') }}
-          <input type="file" accept="image/*" hidden :aria-label="$t('forum.attachImage')" @change="onFile" />
-        </label>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <label class="btn-ghost" style="height: 38px; cursor: pointer">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="margin-right: 6px"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7" /><circle cx="9" cy="10" r="1.8" stroke="currentColor" stroke-width="1.7" /><path d="m4 18 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
+            {{ uploadPct !== null ? uploadPct + '%' : newFiles.length ? $t('forum.imageReady') : $t('forum.image') }}
+            <input type="file" accept="image/*" hidden :aria-label="$t('forum.attachImage')" @change="onFile" />
+          </label>
+          <span v-if="newFiles.length" style="display: inline-flex; align-items: center; gap: 6px">
+            <img :src="publicUrl(newFiles[0])" alt="" style="width: 34px; height: 34px; object-fit: cover; border-radius: 6px" />
+            <button type="button" class="txt-btn" :aria-label="$t('common.remove')" @click="removeImage">✕</button>
+          </span>
+        </div>
         <div style="display: flex; align-items: center; gap: 12px">
           <button class="txt-btn" @click="closeComposer">{{ $t('common.cancel') }}</button>
           <button class="btn-primary" :disabled="creating || !newContent.trim()" @click="createPost">
@@ -240,11 +260,10 @@ watch(
       </template>
     </article>
 
-    <!-- pagination footer -->
-    <div ref="sentinel" style="height: 1px"></div>
-    <p v-if="loading" class="muted center" style="padding: 16px">{{ $t('common.loading') }}</p>
+    <p v-if="loading && !posts.length" class="muted center" style="padding: 16px">{{ $t('common.loading') }}</p>
     <p v-else-if="!posts.length" class="muted">{{ $t('forum.noPosts') }}</p>
-    <p v-else-if="done" class="muted center" style="padding: 12px; font-size: 12px">— {{ $t('forum.endOfFeed') }} —</p>
+    <button v-else-if="!done" class="btn-ghost" style="margin: 14px auto 0; display: flex" :disabled="loading" @click="loadMore">{{ loading ? $t('common.loading') : $t('common.loadMore') }}</button>
+    <p v-else class="muted center" style="padding: 12px; font-size: 12px">— {{ $t('forum.endOfFeed') }} —</p>
 
     <button v-if="has42 && !composerOpen" class="fab" :aria-label="$t('forum.newPost')" @click="composerOpen = true">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>

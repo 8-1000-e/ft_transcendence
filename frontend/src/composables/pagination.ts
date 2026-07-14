@@ -1,12 +1,7 @@
 import { onBeforeUnmount, ref, watch, type Ref } from 'vue'
 import type { Page } from '@/types/api'
 
-/**
- * Cursor pagination state for a list. `fetchPage(cursor)` returns one page;
- * `loadMore()` appends the next and tracks when the list is exhausted.
- * Concurrent/duplicate calls are guarded, and a stale response for a list that
- * was reset (e.g. route change) is dropped.
- */
+// Cursor pagination; guards concurrent calls and drops a stale response for a list reset mid-flight (epoch).
 export function usePaginated<T>(fetchPage: (cursor: string | null) => Promise<Page<T>>) {
   const items = ref<T[]>([]) as Ref<T[]>
   const cursor = ref<string | null>(null)
@@ -50,10 +45,7 @@ export function usePaginated<T>(fetchPage: (cursor: string | null) => Promise<Pa
   return { items, cursor, loading, done, error, loadMore, reset, reload }
 }
 
-/**
- * Fire `onReach` when the sentinel element scrolls into view — infinite scroll.
- * Pass the same element ref you place at the bottom of the list.
- */
+// Fire onReach when the bottom sentinel scrolls into view.
 export function useInfiniteScroll(
   sentinel: Ref<HTMLElement | null>,
   onReach: () => void,

@@ -55,6 +55,7 @@ export default {
     'forum.replyPlaceholder': 'Reply…',
     'forum.writeReply': 'Write a reply',
     'forum.replyBtn': 'Reply',
+    'forum.continueThread': 'Continue this thread',
     // Vote controls (aria)
     'forum.upvote': 'Upvote',
     'forum.downvote': 'Downvote',
@@ -128,6 +129,7 @@ export default {
     'forum.replyPlaceholder': 'Répondre…',
     'forum.writeReply': 'Écris une réponse',
     'forum.replyBtn': 'Répondre',
+    'forum.continueThread': 'Continuer le fil',
     // Vote controls (aria)
     'forum.upvote': 'Voter pour',
     'forum.downvote': 'Voter contre',
@@ -201,6 +203,7 @@ export default {
     'forum.replyPlaceholder': 'Responder…',
     'forum.writeReply': 'Escribe una respuesta',
     'forum.replyBtn': 'Responder',
+    'forum.continueThread': 'Continuar el hilo',
     // Vote controls (aria)
     'forum.upvote': 'Votar a favor',
     'forum.downvote': 'Votar en contra',

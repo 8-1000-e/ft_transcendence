@@ -9,8 +9,7 @@ import { useI18n } from '@/i18n'
 import Avatar from '@/components/Avatar.vue'
 import type { Comment, Reply, VoteValue } from '@/types/api'
 
-// A comment and a reply are the same ProjectsChat row; treat every node the
-// same and let it recurse into its own children.
+// A comment and a reply are the same ProjectsChat row — one recursive node type.
 type ChatNode = (Comment | Reply) & { _count?: { replies: number } }
 
 const props = withDefaults(
@@ -22,25 +21,28 @@ const emit = defineEmits<{ (e: 'error', msg: string): void }>()
 const auth = useAuthStore()
 const { t } = useI18n()
 
-// Visual indentation stops growing past this depth so deep threads stay
-// readable and never run off-screen on mobile. Nesting itself is unbounded —
-// like Reddit you can always go deeper; only the left inset caps out.
-const MAX_INDENT_DEPTH = 5
+// Indent stops growing past this depth (then replies stay flush) so deep threads
+// never run off-screen; nesting itself is unbounded.
+const MAX_INDENT_DEPTH = 4
+// Past this depth a linear chain stops nesting inline: it collapses behind a
+// "continue thread" link that reopens the rest as a fresh, un-indented thread.
+const MAX_THREAD_DEPTH = 6
 
-// Local reactive copy so votes/edits mutate in place — there is no single-node
-// GET endpoint to refetch from, and reloading a whole subtree per vote is wasteful.
+// Local reactive copy — no single-node GET to refetch, so votes/edits mutate in place.
 const n = reactive<ChatNode>({ ...props.node })
 
 const children = ref<ChatNode[]>([])
 const loaded = ref(false)
 const open = ref(false)
 const collapsed = ref(false)
+const continued = ref(false)
 const replyOpen = ref(false)
 const replyDraft = ref('')
 const editing = ref(false)
 const editDraft = ref('')
 
 const replyCount = computed(() => n._count?.replies ?? 0)
+const atThreadCap = computed(() => props.depth >= MAX_THREAD_DEPTH)
 const isMine = computed(() => n.writer === auth.user?.id)
 const score = computed(() => n.upvotes - n.downvotes)
 
@@ -73,8 +75,13 @@ async function toggleReplies() {
   if (open.value && !loaded.value) await fetchChildren()
 }
 
-// Mirror the backend voteChat toggle semantics locally (same vote twice removes
-// it; the opposite vote switches) so a vote never refetches the subtree.
+async function continueThread() {
+  if (!loaded.value) await fetchChildren()
+  open.value = true
+  continued.value = true
+}
+
+// Mirror the backend vote-toggle semantics locally so a vote never refetches the subtree.
 async function vote(value: VoteValue) {
   if (!props.has42) return
   const prev = { up: n.upvotes, down: n.downvotes, mine: n.myVote }
@@ -106,8 +113,7 @@ async function submitReply() {
     await api.post(ROUTES.replies.create(n.id), { content: body })
     replyDraft.value = ''
     replyOpen.value = false
-    // Re-fetch this node's children (oldest-first, so the new reply lands at the
-    // bottom) and reveal the subtree.
+    // Re-fetch children (oldest-first, so the new reply lands at the bottom) and reveal the subtree.
     await fetchChildren()
     open.value = true
     collapsed.value = false
@@ -124,8 +130,7 @@ async function saveEdit() {
   const content = editDraft.value.trim()
   if (!content) return
   try {
-    // Comments and replies edit through the same underlying chat update; keep
-    // the intent-matching route (comment at the root, reply below it).
+    // Same underlying chat update; pick the intent-matching route (comment at root, reply below).
     const route = props.depth === 0 ? ROUTES.comments.edit(n.id) : ROUTES.replies.edit(n.id)
     await api.patch(route, { content })
     n.content = content
@@ -165,9 +170,10 @@ async function saveEdit() {
           <img v-for="f in n.filesUrl" :key="f" :src="publicUrl(f)" class="cmt-img" alt="" />
           <div class="tactions">
             <button v-if="has42" class="txt-btn" @click="replyOpen = !replyOpen">{{ $t('common.reply') }}</button>
-            <button v-if="replyCount" class="txt-btn accent" @click="toggleReplies">
+            <button v-if="replyCount && !atThreadCap" class="txt-btn accent" @click="toggleReplies">
               {{ open ? $t('forum.hide') : $t('forum.show') }} {{ replyCount }} {{ replyCount === 1 ? $t('forum.reply') : $t('forum.replies') }}
             </button>
+            <button v-if="replyCount && atThreadCap && !continued" class="txt-btn accent" @click="continueThread">{{ $t('forum.continueThread') }} →</button>
             <button v-if="isMine" class="txt-btn" @click="startEdit">{{ $t('common.edit') }}</button>
           </div>
         </template>
@@ -177,14 +183,13 @@ async function saveEdit() {
           <button class="btn-primary" style="height: 38px" @click="submitReply">{{ $t('forum.replyBtn') }}</button>
         </div>
 
-        <!-- Recurse. Once loaded the subtree stays mounted (v-show) so each
-             node keeps its local vote/edit state when collapsed & reopened. -->
+        <!-- Recurse; v-show keeps the subtree mounted so each node retains its vote/edit state when reopened. -->
         <div v-if="loaded" v-show="open" class="treplies" :class="{ flush: depth >= MAX_INDENT_DEPTH }">
           <CommentNode
             v-for="child in children"
             :key="child.id"
             :node="child"
-            :depth="depth + 1"
+            :depth="atThreadCap ? 1 : depth + 1"
             :has42="has42"
             @error="emit('error', $event)"
           />
@@ -195,7 +200,7 @@ async function saveEdit() {
 </template>
 
 <style scoped>
-.tnode { display: flex; gap: 12px; padding: 14px 0; border-top: 1px solid var(--border); }
+.tnode { display: flex; gap: 12px; padding: 14px 0; border-top: 1px solid var(--border); min-width: 0; }
 .tnode.reply { padding: 12px 0 4px; border-top: none; }
 .tvote {
   flex-shrink: 0;
@@ -229,7 +234,7 @@ async function saveEdit() {
 .tscore.up { color: var(--up); }
 .tscore.down { color: var(--down); }
 .tmain { flex: 1; min-width: 0; }
-.tmeta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.tmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
 .tcollapse {
   border: none;
   background: none;
@@ -253,16 +258,17 @@ async function saveEdit() {
   line-height: 1.6;
   margin: 0;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
-.cmt-img { max-width: 260px; border-radius: 8px; margin: 8px 0 0; display: block; }
-.tactions { display: flex; gap: 14px; margin-top: 7px; }
+.cmt-img { max-width: min(260px, 100%); border-radius: 8px; margin: 8px 0 0; display: block; }
+.tactions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 7px; }
 .txt-btn.accent { color: var(--accent-2); }
-.treply-composer { display: flex; gap: 8px; margin-top: 10px; max-width: 520px; }
+.treply-composer { display: flex; gap: 8px; margin-top: 10px; max-width: 100%; }
 /* nested replies indented under a thread line; .flush caps the inset on deep threads */
 .treplies {
-  margin: 6px 0 0 4px;
-  padding-left: 16px;
+  margin: 6px 0 0;
+  padding-left: 12px;
   border-left: 2px solid var(--border);
 }
-.treplies.flush { margin-left: 0; padding-left: 0; border-left: none; }
+.treplies.flush { padding-left: 0; border-left: none; }
 </style>
