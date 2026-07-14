@@ -1,3 +1,5 @@
+import type { Locale } from '@/i18n'
+
 export interface Tokens {
   access_token: string
   refresh_token: string
@@ -15,6 +17,7 @@ export interface User {
   pendingDeletion: boolean
   createdAt: string
   karma: number
+  locale: Locale
 }
 
 export interface ApiError {

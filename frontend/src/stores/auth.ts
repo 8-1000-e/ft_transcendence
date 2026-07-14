@@ -3,12 +3,14 @@ import { computed, ref } from 'vue'
 import { api } from '@/api/client'
 import { ROUTES, API_BASE_URL } from '@/api/routes'
 import { disconnectRealtime } from '@/api/realtime'
+import { setLocale, LOCALES } from '@/i18n'
 import type { Tokens, User } from '@/types/auth'
 
 const REFRESH_KEY = 'ft_refresh'
+const ACCESS_KEY = 'ft_access'
 
 export const useAuthStore = defineStore('auth', () => {
-  const accessToken = ref<string | null>(null)
+  const accessToken = ref<string | null>(localStorage.getItem(ACCESS_KEY))
   const refreshToken = ref<string | null>(localStorage.getItem(REFRESH_KEY))
   const user = ref<User | null>(null)
   const pendingDeletion = ref(false)
@@ -18,6 +20,7 @@ export const useAuthStore = defineStore('auth', () => {
   function setTokens(tokens: Tokens) {
     accessToken.value = tokens.access_token
     refreshToken.value = tokens.refresh_token
+    localStorage.setItem(ACCESS_KEY, tokens.access_token)
     localStorage.setItem(REFRESH_KEY, tokens.refresh_token)
   }
 
@@ -26,6 +29,7 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken.value = null
     user.value = null
     pendingDeletion.value = false
+    localStorage.removeItem(ACCESS_KEY)
     localStorage.removeItem(REFRESH_KEY)
     // Tear down the socket so the next user never reuses this authed connection.
     disconnectRealtime()
@@ -39,6 +43,9 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = await api.get<User>(ROUTES.users.me)
     // Sync the pending-deletion barrier so a returning user still sees the cancel modal.
     pendingDeletion.value = !!user.value?.pendingDeletion
+    // Apply this user's saved language (per-account); guard against an unknown value.
+    const srv = user.value?.locale
+    if (srv && LOCALES.some((l) => l.code === srv)) setLocale(srv)
   }
 
   // Heartbeat: touch lastSeenAt (2-min online window); best-effort, ignore failures.
@@ -112,6 +119,17 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function tryRestoreSession(): Promise<boolean> {
     if (!refreshToken.value) return false
+    // Reuse a still-valid access token first: this avoids a /refresh (and its
+    // token rotation) on every page reload, which races on spam-reload and logs
+    // the user out. fetchMe() auto-refreshes via the client only if it 401s.
+    if (accessToken.value) {
+      try {
+        await fetchMe()
+        return true
+      } catch {
+        /* access token dead → fall through to an explicit refresh */
+      }
+    }
     try {
       const tokens = await api.post<Tokens>(
         ROUTES.auth.refresh,
