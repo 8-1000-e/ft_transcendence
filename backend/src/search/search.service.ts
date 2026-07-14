@@ -7,23 +7,16 @@ export class SearchService {
 
   async search(query: string) {
     const q = query.trim();
-    if (q.length < 1) return { projects: [], users: [] };
+    if (q.length < 1) return { projects: [] };
 
-    const [projects, users] = await Promise.all([
-      this.prisma.projects.findMany({
-        where: { name: { contains: q, mode: 'insensitive' } },
-        select: { id: true, name: true },
-        distinct: ['name'],
-        orderBy: { name: 'asc' },
-        take: 8,
-      }),
-      this.prisma.user.findMany({
-        where: { name: { contains: q, mode: 'insensitive' }, deleteAt: null },
-        select: { id: true, name: true, ftPfpUrl: true, campus: true },
-        take: 8,
-      }),
-    ]);
+    const projects = await this.prisma.projects.findMany({
+      where: { name: { contains: q, mode: 'insensitive' } },
+      select: { id: true, name: true },
+      distinct: ['name'],
+      orderBy: { name: 'asc' },
+      take: 8,
+    });
 
-    return { projects, users };
+    return { projects };
   }
 }

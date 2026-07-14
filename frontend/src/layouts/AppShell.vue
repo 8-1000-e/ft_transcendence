@@ -9,24 +9,16 @@ import { useGroupsStore } from '@/stores/groups'
 
 interface SearchResults {
   projects: { id: string; name: string }[]
-  users: { id: string; name: string; ftPfpUrl: string | null; campus: string | null }[]
 }
 
 const auth = useAuthStore()
 const groups = useGroupsStore()
 const router = useRouter()
 
-interface Poster {
-  id: string
-  name: string
-  ftPfpUrl: string | null
-  posts: number
-}
-const posters = ref<Poster[]>([])
 const latest = ref<Post[]>([])
 
 const query = ref('')
-const results = ref<SearchResults>({ projects: [], users: [] })
+const results = ref<SearchResults>({ projects: [] })
 const showResults = ref(false)
 let timer: ReturnType<typeof setTimeout> | null = null
 
@@ -35,21 +27,21 @@ function onSearchInput() {
   if (timer) clearTimeout(timer)
   const q = query.value.trim()
   if (!q) {
-    results.value = { projects: [], users: [] }
+    results.value = { projects: [] }
     return
   }
   timer = setTimeout(async () => {
     try {
       results.value = await api.get<SearchResults>(ROUTES.search(q))
     } catch {
-      results.value = { projects: [], users: [] }
+      results.value = { projects: [] }
     }
   }, 250)
 }
 
 function pick() {
   query.value = ''
-  results.value = { projects: [], users: [] }
+  results.value = { projects: [] }
   showResults.value = false
 }
 
@@ -65,11 +57,6 @@ onMounted(async () => {
   if (!groups.loaded) groups.fetchGroups()
   groups.fetchUnread()
   unreadTimer = setInterval(() => groups.fetchUnread(), 15000)
-  try {
-    posters.value = await api.get<Poster[]>(ROUTES.leaderboard.posters)
-  } catch {
-    /* ignore */
-  }
   try {
     latest.value = (await api.get<Post[]>(ROUTES.posts.feed)).slice(0, 5)
   } catch {
@@ -136,7 +123,7 @@ async function cancelDeletion() {
           @blur="onBlur"
         />
         <div
-          v-if="showResults && query.trim() && (results.projects.length || results.users.length)"
+          v-if="showResults && query.trim() && results.projects.length"
           class="results"
         >
           <template v-if="results.projects.length">
@@ -150,20 +137,6 @@ async function cancelDeletion() {
             >
               <span class="res-code">{{ code(p.name) }}</span>
               <span class="res-label">{{ p.name }}</span>
-            </RouterLink>
-          </template>
-          <template v-if="results.users.length">
-            <p class="res-cat">ÉTUDIANTS</p>
-            <RouterLink
-              v-for="u in results.users"
-              :key="u.id"
-              :to="{ name: 'user', params: { id: u.id } }"
-              class="res-item"
-              @click="pick"
-            >
-              <span class="res-av">{{ initials(u.name) }}</span>
-              <span class="res-label">{{ u.name }}</span>
-              <span v-if="u.campus" class="res-campus">{{ u.campus }}</span>
             </RouterLink>
           </template>
         </div>
@@ -224,17 +197,6 @@ async function cancelDeletion() {
           <span class="proj-code">{{ code(p.projectName) }}</span>
           <span class="proj-name">{{ p.projectName }}</span>
         </RouterLink>
-
-        <div v-if="posters.length" class="panel">
-          <p class="panel-title">BEST POSTER</p>
-          <div v-for="(u, i) in posters" :key="u.id" class="rank">
-            <span class="rank-n" :class="{ top: i === 0 }">{{ i + 1 }}</span>
-            <img v-if="u.ftPfpUrl" :src="u.ftPfpUrl" class="rank-pp" alt="" />
-            <span v-else class="rank-av">{{ initials(u.name) }}</span>
-            <RouterLink :to="{ name: 'user', params: { id: u.id } }" class="rank-name">{{ u.name }}</RouterLink>
-            <span class="rank-score">{{ u.posts }}</span>
-          </div>
-        </div>
 
         <div v-if="latest.length" class="panel">
           <p class="panel-title">DERNIERS POSTS</p>
@@ -406,30 +368,12 @@ async function cancelDeletion() {
   color: #8c97f7;
   width: 34px;
 }
-.res-av {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #3a3a52, #54547a);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  font-weight: 700;
-  color: #dfe2ff;
-}
 .res-label {
   flex: 1;
   font-size: 13.5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.res-campus {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10.5px;
-  color: #74747e;
 }
 .hd-right {
   margin-left: auto;
@@ -659,57 +603,6 @@ async function cancelDeletion() {
   letter-spacing: 0.14em;
   color: #74747e;
   margin: 0 0 12px;
-}
-.rank {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 0;
-}
-.rank-n {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  font-weight: 700;
-  color: #74747e;
-  width: 16px;
-}
-.rank-n.top {
-  color: #8c97f7;
-}
-.rank-pp,
-.rank-av {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  object-fit: cover;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.rank-av {
-  background: linear-gradient(135deg, #3a3a52, #54547a);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: 700;
-  color: #dfe2ff;
-}
-.rank-name {
-  flex: 1;
-  font-size: 13px;
-  color: #cfcfd4;
-  text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.rank-name:hover {
-  color: #8c97f7;
-}
-.rank-score {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  font-weight: 700;
-  color: #8c97f7;
 }
 .last {
   display: block;

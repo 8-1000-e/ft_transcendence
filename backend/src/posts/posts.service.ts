@@ -164,34 +164,6 @@ export class PostsService {
     });
   }
 
-  async bestPosters() {
-    const grouped = await this.prisma.projectsPost.groupBy({
-      by: ['writer'],
-      _count: { _all: true },
-      orderBy: { _count: { writer: 'desc' } },
-      take: 6,
-    });
-
-    const users = await this.prisma.user.findMany({
-      where: { id: { in: grouped.map((g) => g.writer) } },
-      select: { id: true, name: true, ftPfpUrl: true },
-    });
-    const byId = new Map(users.map((u) => [u.id, u]));
-
-    return grouped
-      .map((g) => {
-        const u = byId.get(g.writer);
-        if (!u) return null;
-        return {
-          id: u.id,
-          name: u.name,
-          ftPfpUrl: u.ftPfpUrl,
-          posts: g._count._all,
-        };
-      })
-      .filter((x): x is NonNullable<typeof x> => x !== null);
-  }
-
   ////COMMENT
 
   async sendComment(id: string, body: CreateCommentDto, userId: string) {
