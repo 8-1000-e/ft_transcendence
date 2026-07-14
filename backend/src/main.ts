@@ -5,10 +5,10 @@ import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors({
-    origin: true,
-    credentials: true,
-  });
+  // All backend routes live under /api so a single reverse proxy can serve the
+  // SPA at / and forward /api to the backend without route collisions (e.g. /me
+  // exists both as an SPA page and an API endpoint).
+  app.setGlobalPrefix('api');
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   app.enableCors({

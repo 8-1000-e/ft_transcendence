@@ -30,7 +30,10 @@ import { PusherModule } from './pusher/pusher.module';
     UploadModule,
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'),
-      serveRoot: '/uploads',
+      // Served under /api so the reverse proxy forwards it to the backend with
+      // the same single /api rule as every other route (setGlobalPrefix does
+      // not apply to ServeStaticModule, so set it explicitly here).
+      serveRoot: '/api/uploads',
     }),
     SuggestModule,
     ScheduleModule.forRoot(),
