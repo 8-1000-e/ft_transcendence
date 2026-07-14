@@ -15,6 +15,7 @@ model User {
   id            String         @id @default(uuid())
   //42 data
   ftId          String?        @unique
+  login         String? // real 42 login (immutable handle); `name` is the editable pseudo
   ftPfpUrl      String?
   campus        String?
   campusId      String?
@@ -29,13 +30,59 @@ model User {
   email         String         @unique
   passwordHash  String?
   createdAt     DateTime       @default(now())
+  lastSeenAt    DateTime       @default(now()) // touched on activity → online status
+  tokenVersion  Int            @default(0) // bumped on password change → invalidates old access tokens
   refreshTokens RefreshToken[]
   groupChats    GroupChat[]
   projectPosts  ProjectsPost[]
   projectChat   ProjectsChat[]
   postVote      PostVote[]
   chatVote      ChatVote[]
+  friendsSent     Friendship[]   @relation("FriendRequester")
+  friendsReceived Friendship[]   @relation("FriendAddressee")
+  notifications   Notification[] @relation("NotifRecipient")
   deleteAt      DateTime? // Null = active else deletion programmed
+}
+
+enum FriendStatus {
+  PENDING
+  ACCEPTED
+}
+
+model Friendship {
+  id          String       @id @default(uuid())
+  requesterId String
+  requester   User         @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId String
+  addressee   User         @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  status      FriendStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId])
+}
+
+enum NotifType {
+  COMMENT
+  REPLY
+  MESSAGE
+  FRIEND_REQUEST
+  FRIEND_ACCEPT
+}
+
+model Notification {
+  id          String    @id @default(uuid())
+  recipientId String
+  recipient   User      @relation("NotifRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  type        NotifType
+  actorId     String? // who triggered it (for avatar)
+  actorName   String? // display-name snapshot (recipient is always a 42 member)
+  entityLabel String? // e.g. post title / group name
+  link        String? // frontend route to open
+  read        Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([recipientId, read])
 }
 
 model PendingRegistration {
@@ -84,9 +131,11 @@ model GroupChat {
 }
 
 model Projects {
-  id    String         @id
-  name  String
-  posts ProjectsPost[]
+  id       String         @id
+  name     String
+  // 'core' | 'specialization' for synced projects; null = legacy junk rows, filtered out of GET /projects.
+  category String?
+  posts    ProjectsPost[]
 }
 
 model ProjectsPost {
@@ -115,7 +164,7 @@ model ProjectsChat {
   user          User           @relation(fields: [writer], references: [id], onDelete: Cascade)
   content       String
   filesUrl      String[]
-  editedAt      DateTime?      @default(now())
+  editedAt      DateTime?
   postedAt      DateTime       @default(now())
   votes         ChatVote[]
 }

@@ -17,10 +17,18 @@ export const useGroupsStore = defineStore('groups', () => {
       groups.value = await api.get<Group[]>(ROUTES.groups.list)
       loaded.value = true
     } catch {
-      error.value = 'Impossible de charger les groupes'
+      error.value = 'Failed to load groups'
     } finally {
       loading.value = false
     }
+  }
+
+  // Reset cached state on logout so a new login doesn't inherit the previous groups.
+  function reset() {
+    groups.value = []
+    loaded.value = false
+    loading.value = false
+    error.value = ''
   }
 
   function projects(): ProjectRef[] {
@@ -33,5 +41,5 @@ export const useGroupsStore = defineStore('groups', () => {
     return [...seen].map(([projectId, projectName]) => ({ projectId, projectName }))
   }
 
-  return { groups, loaded, loading, error, fetchGroups, projects }
+  return { groups, loaded, loading, error, fetchGroups, projects, reset }
 })

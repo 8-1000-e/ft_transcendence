@@ -37,9 +37,13 @@ export class JwtAuthGuard implements CanActivate {
     }
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, deleteAt: true },
+      select: { id: true, deleteAt: true, tokenVersion: true },
     });
     if (!user) throw new UnauthorizedException();
+    // A password change bumps tokenVersion → all previously-issued access
+    // tokens (which carry the old tv) are rejected here, forcing re-login.
+    if ((payload.tv ?? 0) !== user.tokenVersion)
+      throw new UnauthorizedException();
 
     const allowPending = this.reflector.getAllAndOverride<boolean>(
       ALLOW_PENDING,

@@ -14,14 +14,25 @@ let pusher: Pusher | null = null
 
 function client(): Pusher {
   if (!pusher) {
-    const store = useAuthStore()
     pusher = new Pusher(KEY as string, {
       cluster: CLUSTER,
-      authEndpoint: `${API_BASE_URL}/pusher/auth`,
-      auth: { headers: { Authorization: `Bearer ${store.accessToken ?? ''}` } },
+      // Read the token dynamically per auth POST so realtime survives a token refresh.
+      channelAuthorization: {
+        transport: 'ajax',
+        endpoint: `${API_BASE_URL}/pusher/auth`,
+        headersProvider: () => ({
+          Authorization: `Bearer ${useAuthStore().accessToken ?? ''}`,
+        }),
+      },
     })
   }
   return pusher
+}
+
+// Reset the socket on logout so the next user can't reuse the previous authed connection.
+export function disconnectRealtime(): void {
+  pusher?.disconnect()
+  pusher = null
 }
 
 const EVENTS = ['message-created', 'message-updated', 'message-deleted']

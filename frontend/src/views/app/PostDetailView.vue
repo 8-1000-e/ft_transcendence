@@ -1,107 +1,119 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
 import { publicUrl } from '@/api/upload'
 import { useAuthStore } from '@/stores/auth'
-import type { Post, Comment, Reply, VoteValue } from '@/types/api'
+import { usePaginated } from '@/composables/pagination'
+import { useI18n } from '@/i18n'
+import Avatar from '@/components/Avatar.vue'
+import ImageCarousel from '@/components/ImageCarousel.vue'
+import CommentNode from '@/components/CommentNode.vue'
+import type { Page, Post, Comment, VoteValue } from '@/types/api'
 
 const route = useRoute()
 const auth = useAuthStore()
+const { t } = useI18n()
 const postId = route.params.postId as string
 const projectId = route.query.projectId as string | undefined
 
 const post = ref<Post | null>(null)
-const comments = ref<Comment[]>([])
-const repliesByComment = ref<Record<string, Reply[]>>({})
+const {
+  items: comments,
+  loading: commentsLoading,
+  done: commentsDone,
+  loadMore: loadMoreComments,
+  reload: reloadComments,
+} = usePaginated<Comment>((cursor) =>
+  api.get<Page<Comment>>(
+    `${ROUTES.comments.listByPost(postId)}?limit=10${cursor ? `&cursor=${cursor}` : ''}`,
+  ),
+)
 const newComment = ref('')
-const replyDrafts = ref<Record<string, string>>({})
-const editId = ref('')
-const editContent = ref('')
 const loading = ref(false)
 const error = ref('')
 
-function initials(name?: string | null): string {
-  if (!name) return '??'
-  return name.trim().slice(0, 2).toUpperCase()
+const has42 = computed(() => !!auth.user?.has42)
+
+function message(e: unknown, fallback: string): string {
+  return (e as { message?: string }).message ?? fallback
+}
+function score(v: { upvotes: number; downvotes: number }): number {
+  return v.upvotes - v.downvotes
+}
+function timeAgo(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const mins = Math.round((Date.now() - d.getTime()) / 60000)
+  if (mins < 1) return t('forum.now')
+  if (mins < 60) return `${mins}m`
+  const h = Math.round(mins / 60)
+  if (h < 24) return `${h}h`
+  return `${Math.round(h / 24)}d`
 }
 
 async function loadPost() {
-  if (!projectId) return
   try {
-    const posts = await api.get<Post[]>(ROUTES.posts.listByProject(projectId))
-    post.value = posts.find((p) => p.id === postId) ?? null
-  } catch {
-    /* post header optional */
+    post.value = await api.get<Post>(ROUTES.posts.single(postId))
+  } catch (e) {
+    post.value = null
+    error.value = message(e, t('forum.loadPostFailed'))
   }
 }
-
-async function loadComments() {
-  comments.value = await api.get<Comment[]>(ROUTES.comments.listByPost(postId))
-}
-
 async function load() {
   loading.value = true
   error.value = ''
   try {
-    await Promise.all([loadPost(), loadComments()])
+    await Promise.all([loadPost(), reloadComments()])
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Erreur de chargement'
+    error.value = message(e, t('forum.loadFailed'))
   } finally {
     loading.value = false
   }
 }
 
+async function votePost(value: VoteValue) {
+  if (!post.value || !has42.value) return
+  try {
+    await api.post(ROUTES.posts.vote(post.value.id), { vote: value })
+    await loadPost()
+  } catch (e) {
+    error.value = message(e, t('forum.voteFailed'))
+  }
+}
+
 async function addComment() {
   if (!newComment.value.trim()) return
-  await api.post(ROUTES.comments.create(postId), { content: newComment.value })
-  newComment.value = ''
-  await loadComments()
-}
-
-async function voteComment(c: Comment, value: VoteValue) {
-  await api.post(ROUTES.comments.vote(c.id), { vote: value })
-  await loadComments()
-}
-
-async function toggleReplies(c: Comment) {
-  if (repliesByComment.value[c.id]) {
-    delete repliesByComment.value[c.id]
-    return
+  error.value = ''
+  const body = newComment.value.trim()
+  try {
+    const created = await api.post<{ id: string; content?: string; filesUrl?: string[]; postedAt?: string }>(
+      ROUTES.comments.create(postId),
+      { content: body },
+    )
+    newComment.value = ''
+    // Append locally (thread is oldest-first, new comment goes at the bottom); reloadComments() would reset to page 1 and hide later-page comments.
+    comments.value.push({
+      id: created.id,
+      content: created.content ?? body,
+      filesUrl: created.filesUrl ?? [],
+      postedAt: created.postedAt ?? new Date().toISOString(),
+      editedAt: null,
+      writer: auth.user?.id ?? '',
+      user: {
+        name: auth.user?.name ?? t('forum.me'),
+        ftPfpUrl: auth.user?.ftPfpUrl ?? null,
+        campus: auth.user?.campus ?? null,
+      },
+      upvotes: 0,
+      downvotes: 0,
+      myVote: null,
+      _count: { replies: 0 },
+    })
+  } catch (e) {
+    error.value = message(e, t('forum.commentFailed'))
   }
-  repliesByComment.value[c.id] = await api.get<Reply[]>(
-    ROUTES.replies.listByComment(c.id),
-  )
-}
-
-async function addReply(c: Comment) {
-  const draft = replyDrafts.value[c.id]
-  if (!draft?.trim()) return
-  await api.post(ROUTES.replies.create(c.id), { content: draft })
-  replyDrafts.value[c.id] = ''
-  repliesByComment.value[c.id] = await api.get<Reply[]>(
-    ROUTES.replies.listByComment(c.id),
-  )
-}
-
-function startEdit(id: string, content: string) {
-  editId.value = id
-  editContent.value = content
-}
-
-async function saveCommentEdit(c: Comment) {
-  await api.patch(ROUTES.comments.edit(c.id), { content: editContent.value })
-  editId.value = ''
-  await loadComments()
-}
-
-async function saveReplyEdit(c: Comment, r: Reply) {
-  await api.patch(ROUTES.replies.edit(r.id), { content: editContent.value })
-  editId.value = ''
-  repliesByComment.value[c.id] = await api.get<Reply[]>(
-    ROUTES.replies.listByComment(c.id),
-  )
 }
 
 onMounted(load)
@@ -112,338 +124,106 @@ onMounted(load)
     <RouterLink
       v-if="projectId"
       :to="{ name: 'project', params: { projectId } }"
-      class="back"
+      class="back-link"
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
-      retour au fil
+      {{ $t('forum.backToProject') }}
     </RouterLink>
 
-    <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="loading" class="muted">Chargement…</p>
+    <p v-if="error" class="err" role="alert">{{ error }}</p>
+    <p v-if="loading" class="muted">{{ $t('common.loading') }}</p>
 
-    <article v-if="post" class="post">
-      <div class="body">
-        <div class="meta">
-          <span class="av big">{{ initials(post.user?.name) }}</span>
-          <span class="author">{{ post.user?.name ?? 'anonyme' }}</span>
+    <div v-else-if="!post" class="lock">
+      <h2>{{ $t('forum.postNotFound') }}</h2>
+      <p>{{ $t('forum.postNotFoundDesc') }}</p>
+      <RouterLink :to="{ name: 'feed' }" class="pbtn">{{ $t('forum.backToHome') }}</RouterLink>
+    </div>
+
+    <template v-else>
+      <article class="card">
+        <div class="c-head">
+          <RouterLink
+            v-if="post.writer"
+            :to="{ name: 'user', params: { id: post.writer } }"
+            style="display: inline-flex; align-items: center; gap: 9px; text-decoration: none"
+          >
+            <Avatar class="av av-e" :user-id="post.writer" :name="post.user?.name ?? '??'" :size="26" />
+            <span class="pcard-author">{{ post.user?.name ?? $t('forum.anonymous') }}</span>
+          </RouterLink>
+          <span class="time">· {{ timeAgo(post.postedAt) }}</span>
         </div>
-        <h1 v-if="post.title" class="p-title">{{ post.title }}</h1>
-        <p class="p-content">{{ post.content }}</p>
-        <img v-for="f in post.filesUrl" :key="f" :src="publicUrl(f)" class="p-img" alt="" />
+        <h1 v-if="post.title" class="pcard-title" style="font-size: 22px">{{ post.title }}</h1>
+        <p class="pcard-body" style="font-size: 14.5px; line-height: 1.7">{{ post.content }}</p>
+        <ImageCarousel v-if="post.filesUrl.length" :images="post.filesUrl.map(publicUrl)" :alt="post.title || $t('forum.postImage')" />
+        <div class="c-foot" style="margin-top: 16px">
+          <span class="votepill" :style="!has42 ? 'opacity:.45' : ''">
+            <button class="vbtn up" :class="{ on: post.myVote === 'UP' }" :aria-label="$t('forum.upvote')" @click="votePost('UP')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5l7 8H5l7-8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg></button>
+            <span class="score" :class="{ up: post.myVote === 'UP', down: post.myVote === 'DOWN' }">{{ score(post) }}</span>
+            <button class="vbtn down" :class="{ on: post.myVote === 'DOWN' }" :aria-label="$t('forum.downvote')" @click="votePost('DOWN')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19l-7-8h14l-7 8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg></button>
+          </span>
+          <span class="chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg><span class="n">{{ comments.length }}</span> {{ $t('common.comments') }}</span>
+        </div>
+      </article>
+
+      <div v-if="has42" class="composer" style="margin: 18px 0">
+        <input v-model="newComment" class="msg-input" :placeholder="$t('forum.addComment')" :aria-label="$t('forum.addComment')" @keyup.enter="addComment" />
+        <button class="send-sq" :aria-label="$t('forum.sendComment')" @click="addComment"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
       </div>
-    </article>
-
-    <div class="divider">
-      <span class="divider-lab">COMMENTAIRES</span>
-      <span class="divider-line"></span>
-      <span class="divider-n">{{ comments.length }}</span>
-    </div>
-
-    <div class="cmt-composer">
-      <input
-        v-model="newComment"
-        class="input"
-        placeholder="Ajoute un commentaire…"
-        @keyup.enter="addComment"
-      />
-      <button class="send-sq" @click="addComment">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-      </button>
-    </div>
-
-    <div class="comments">
-      <div v-for="c in comments" :key="c.id" class="comment">
-        <div class="meta">
-          <span class="av sm">{{ initials(c.user?.name) }}</span>
-          <span class="author sm">{{ c.user?.name ?? 'anonyme' }}</span>
-          <div class="cvotes">
-            <button class="cvote" :class="{ up: c.myVote === 'UP' }" @click="voteComment(c, 'UP')">▲</button>
-            <span class="cscore">{{ c.upvotes - c.downvotes }}</span>
-            <button class="cvote" :class="{ down: c.myVote === 'DOWN' }" @click="voteComment(c, 'DOWN')">▼</button>
-          </div>
-        </div>
-
-        <template v-if="editId === c.id">
-          <input v-model="editContent" class="input" />
-          <div class="c-actions">
-            <button class="txt-btn accent" @click="saveCommentEdit(c)">OK</button>
-            <button class="txt-btn" @click="editId = ''">annuler</button>
-          </div>
-        </template>
-        <template v-else>
-          <p class="c-content">{{ c.content }}</p>
-          <img v-for="f in c.filesUrl" :key="f" :src="publicUrl(f)" class="c-img" alt="" />
-          <div class="c-actions">
-            <button class="txt-btn" @click="toggleReplies(c)">
-              {{ c._count?.replies ?? 0 }} réponse(s)
-            </button>
-            <button v-if="c.writer === auth.user?.id" class="txt-btn" @click="startEdit(c.id, c.content)">éditer</button>
-          </div>
-        </template>
-
-        <div v-if="repliesByComment[c.id]" class="replies">
-          <div v-for="r in repliesByComment[c.id]" :key="r.id" class="reply">
-            <div class="meta">
-              <span class="av xs">{{ initials(r.user?.name) }}</span>
-              <span class="author sm">{{ r.user?.name ?? 'anonyme' }}</span>
-            </div>
-            <template v-if="editId === r.id">
-              <input v-model="editContent" class="input" />
-              <div class="c-actions">
-                <button class="txt-btn accent" @click="saveReplyEdit(c, r)">OK</button>
-                <button class="txt-btn" @click="editId = ''">annuler</button>
-              </div>
-            </template>
-            <template v-else>
-              <p class="c-content">{{ r.content }}</p>
-              <button v-if="r.writer === auth.user?.id" class="txt-btn" @click="startEdit(r.id, r.content)">éditer</button>
-            </template>
-          </div>
-          <div class="reply-composer">
-            <input v-model="replyDrafts[c.id]" class="input" placeholder="Répondre…" @keyup.enter="addReply(c)" />
-            <button class="txt-btn accent" @click="addReply(c)">Répondre</button>
-          </div>
-        </div>
+      <div v-else class="readonly" style="margin: 18px 0">
+        <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg></span>
+        <div class="readonly-main"><div class="readonly-t">{{ $t('common.readonly') }}</div><div class="readonly-x">{{ $t('forum.readonlyJoin') }}</div></div>
+        <button class="readonly-btn" @click="auth.link42()"><span class="badge42-sq" style="width:18px;height:18px">42</span>{{ $t('common.linkYour42') }}</button>
       </div>
-    </div>
+
+      <div class="thread-head">
+        <span class="thread-lab">{{ comments.length }}{{ commentsDone ? '' : '+' }} {{ comments.length === 1 ? $t('common.comment') : $t('common.comments') }}</span>
+      </div>
+      <p v-if="!comments.length && commentsDone" class="muted">{{ $t('forum.noComments') }}</p>
+
+      <!-- Oldest first; replies recurse via CommentNode -->
+      <div class="thread">
+        <CommentNode
+          v-for="c in comments"
+          :key="c.id"
+          :node="c"
+          :depth="0"
+          :has42="has42"
+          @error="error = $event"
+        />
+      </div>
+
+      <p v-if="commentsLoading" class="muted center" style="padding: 14px">{{ $t('forum.loadingComments') }}</p>
+      <button
+        v-else-if="!commentsDone && comments.length"
+        class="btn-ghost"
+        style="margin: 14px auto 0; display: flex"
+        @click="loadMoreComments"
+      >{{ $t('forum.loadMoreComments') }}</button>
+    </template>
   </section>
 </template>
 
 <style scoped>
-.back {
+.back-link {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  color: #74747e;
-  font-family: 'JetBrains Mono', monospace;
+  gap: 6px;
+  font-family: var(--mono);
   font-size: 12px;
+  color: var(--muted);
   text-decoration: none;
   margin-bottom: 16px;
 }
-.back:hover {
-  color: #8c97f7;
-}
-.post {
-  display: flex;
-  gap: 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(17, 17, 21, 0.72);
-  padding: 22px;
-}
-.body {
-  flex: 1;
-  min-width: 0;
-}
-.meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.av {
-  border-radius: 50%;
-  background: linear-gradient(135deg, #5e6cf0, #8c97f7);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  color: #fff;
-}
-.av.big {
-  width: 26px;
-  height: 26px;
-  font-size: 10px;
-}
-.av.sm {
-  width: 22px;
-  height: 22px;
-  font-size: 9px;
-  background: linear-gradient(135deg, #3a3a52, #54547a);
-  color: #dfe2ff;
-}
-.av.xs {
-  width: 20px;
-  height: 20px;
-  font-size: 9px;
-}
-.author {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #cfcfd4;
-}
-.author.sm {
-  font-size: 12.5px;
-}
-.p-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #f6f6f7;
-  margin: 0 0 12px;
-  letter-spacing: -0.01em;
-}
-.p-content {
-  font-size: 14.5px;
-  color: #c2c2c8;
-  line-height: 1.7;
-  margin: 0;
-  white-space: pre-wrap;
-}
-.p-img {
-  margin-top: 12px;
-  max-width: 100%;
-  max-height: 340px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  display: block;
-}
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 26px 0 14px;
-}
-.divider-lab {
-  font-family: 'JetBrains Mono', monospace;
+.back-link:hover { color: var(--accent-2); }
+
+.thread-head { margin: 24px 0 8px; }
+.thread-lab {
+  font-family: var(--mono);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.14em;
-  color: #74747e;
+  text-transform: uppercase;
+  color: var(--muted);
 }
-.divider-line {
-  flex: 1;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.07);
-}
-.divider-n {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: #5c5c66;
-}
-.cmt-composer {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-.input {
-  flex: 1;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: rgba(255, 255, 255, 0.035);
-  color: #f3f3f4;
-  font: inherit;
-  font-size: 14px;
-  outline: none;
-}
-.input:focus {
-  border-color: #6e7bf2;
-  box-shadow: 0 0 0 3px rgba(110, 123, 242, 0.2);
-}
-.send-sq {
-  width: 44px;
-  border-radius: 11px;
-  border: none;
-  background: linear-gradient(180deg, #5e6cf0, #4a5fe8);
-  color: #fff;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.comments {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.comment {
-  border-radius: 13px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(255, 255, 255, 0.02);
-  padding: 14px 16px;
-}
-.cvotes {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.cvote {
-  background: none;
-  border: none;
-  color: #5c5c66;
-  cursor: pointer;
-  font-size: 12px;
-}
-.cvote.up {
-  color: #8c97f7;
-}
-.cvote.down {
-  color: #ef6d72;
-}
-.cscore {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: #b6b6be;
-}
-.c-content {
-  font-size: 13.5px;
-  color: #b6b6be;
-  line-height: 1.6;
-  margin: 0 0 8px;
-  white-space: pre-wrap;
-}
-.c-img {
-  max-width: 240px;
-  border-radius: 8px;
-  margin: 0 0 8px;
-  display: block;
-}
-.c-actions {
-  display: flex;
-  gap: 14px;
-}
-.txt-btn {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: #74747e;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-.txt-btn:hover {
-  color: #8c97f7;
-}
-.txt-btn.accent {
-  color: #8c97f7;
-}
-.replies {
-  margin: 12px 0 0 20px;
-  padding-left: 14px;
-  border-left: 2px solid #23232b;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.reply {
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.02);
-  padding: 12px 14px;
-}
-.reply-composer {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.muted {
-  color: #74747e;
-}
-.error {
-  color: #ef6d72;
-}
+.thread { display: flex; flex-direction: column; }
 </style>

@@ -1,7 +1,11 @@
+// Backend lives under /api; the localhost default keeps `npm run dev` working.
 export const API_BASE_URL: string =
-  import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+  import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
 export const ROUTES = {
+  projects: '/projects',
+  search: (q: string) => `/search?q=${encodeURIComponent(q)}`,
+
   auth: {
     signup: '/signup',
     verify: '/verify',
@@ -9,23 +13,30 @@ export const ROUTES = {
     refresh: '/refresh',
     logout: '/logout',
     ft: '/auth/42',
-    ftCallback: '/auth/42/callback',
   },
 
   users: {
     me: '/me',
+    activity: '/me/activity',
+    export: '/me/export',
+    ping: '/me/ping',
     updateMe: '/me',
+    password: '/me/password',
     deleteMe: '/me',
     cancelDelete: '/me/cancel',
     byId: (id: string) => `/users/${id}`,
+    activityById: (id: string) => `/users/${id}/activity`,
   },
 
   posts: {
     listByProject: (projectId: string) => `/project/${projectId}/posts`,
+    single: (postId: string) => `/post/${postId}`,
     create: (projectId: string) => `/project/${projectId}/posts`,
     edit: (projectId: string, postId: string) =>
       `/project/${projectId}/${postId}`,
     vote: (postId: string) => `/posts/${postId}/vote`,
+    posters: (projectId: string) => `/project/${projectId}/posters`,
+    project: (projectId: string) => `/project/${projectId}`,
   },
 
   comments: {
@@ -58,13 +69,20 @@ export const ROUTES = {
   suggest: {
     byProject: (projectId: string, campusId: string) =>
       `/suggest/${projectId}/${campusId}`,
+    forProject: (projectId: string) => `/suggest/${projectId}`,
+  },
+
+  notifications: {
+    list: '/notifications',
+    read: '/notifications/read',
+  },
+
+  friends: {
+    list: '/friends',
+    requests: '/friends/requests',
+    status: (id: string) => `/friends/status/${id}`,
+    request: (id: string) => `/friends/${id}`,
+    accept: (id: string) => `/friends/${id}/accept`,
+    remove: (id: string) => `/friends/${id}`,
   },
 } as const;
-
-export function apiUrl(path: string): string {
-  return `${API_BASE_URL}${path}`;
-}
-
-export function fileUrl(filename: string): string {
-  return `${API_BASE_URL}/files/${filename}`;
-}

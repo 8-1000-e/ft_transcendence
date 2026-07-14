@@ -10,7 +10,8 @@ export class GroupService {
   async getMyGroups(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException();
-    if (!user.ftId) throw new ForbiddenException();
+    // A non-42 account has no teams — return an empty list, not an error.
+    if (!user.ftId) return [];
 
     return this.prisma.projectGroup.findMany({
       where: { usersId: { has: user.ftId } },

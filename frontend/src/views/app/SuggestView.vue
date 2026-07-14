@@ -1,97 +1,134 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
+import { useAuthStore } from '@/stores/auth'
+import Avatar from '@/components/Avatar.vue'
 
 interface SuggestUser {
   id: string
   login: string
-  name: string
+  name: string | null
   ppurl: string | null
   location: string | null
+  last_connexion: string | null
 }
 interface SuggestTeam {
-  teamId: string
+  id: string
+  isGroupe: boolean
   final_mark?: number
+  marked_at?: string
   users: SuggestUser[]
 }
 
 const route = useRoute()
-const campusId = ref('')
+const auth = useAuthStore()
+
+const projName = ref('')
 const teams = ref<SuggestTeam[]>([])
 const loading = ref(false)
+const forbidden = ref(false)
 const error = ref('')
-const done = ref(false)
 
-function projectId(): string {
-  return route.params.projectId as string
+const projectId = computed(() => route.params.projectId as string)
+const campus = computed(() => auth.user?.campus ?? '')
+
+function teamOnline(t: SuggestTeam): number {
+  return t.users.some((u) => u.location) ? 1 : 0
 }
+// Online mentors first — they can help right now.
+const sortedTeams = computed(() =>
+  [...teams.value].sort((a, b) => teamOnline(b) - teamOnline(a)),
+)
+const onlineCount = computed(
+  () => teams.value.flatMap((t) => t.users).filter((u) => u.location).length,
+)
 
-function initials(n?: string | null): string {
-  if (!n) return '??'
-  return n.trim().slice(0, 2).toUpperCase()
-}
-
-async function search() {
-  if (!campusId.value) return
+async function load() {
   loading.value = true
   error.value = ''
-  done.value = false
+  forbidden.value = false
+  teams.value = []
+  api
+    .get<{ name: string }>(ROUTES.posts.project(projectId.value))
+    .then((m) => (projName.value = m.name))
+    .catch(() => {})
   try {
     teams.value = await api.get<SuggestTeam[]>(
-      ROUTES.suggest.byProject(projectId(), campusId.value),
+      ROUTES.suggest.forProject(projectId.value),
     )
-    done.value = true
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Suggestion impossible'
+    const err = e as { statusCode?: number; message?: string }
+    if (err.statusCode === 403) forbidden.value = true
+    else error.value = err.message ?? 'Could not load mentors'
   } finally {
     loading.value = false
   }
 }
+
+watch(projectId, load, { immediate: true })
 </script>
 
 <template>
-  <section class="wrap">
-    <h1 class="title">Suggérer une équipe</h1>
-    <p class="sub">// entre un campus pour découvrir les équipes actives.</p>
+  <section class="set-wrap">
+    <RouterLink :to="{ name: 'project', params: { projectId } }" class="back-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      {{ projName || projectId }}
+    </RouterLink>
 
-    <div class="row">
-      <input
-        v-model="campusId"
-        class="input"
-        placeholder="campusId (ex. 31 = Angoulême)"
-        @keyup.enter="search"
-      />
-      <button class="btn" :disabled="loading" @click="search">
-        {{ loading ? 'Recherche…' : 'Chercher' }}
-      </button>
+    <h1 class="h1">{{ $t('browse.suggest.title', { name: projName || $t('browse.projectWord') }) }}</h1>
+    <p class="eyebrow">
+      // {{ $t('browse.suggest.sub') }}{{ campus ? ' · ' + campus : '' }}
+      <span v-if="onlineCount" class="online-now">· {{ onlineCount }} {{ $t('browse.onlineNow') }}</span>
+    </p>
+
+    <div v-if="forbidden" class="lock">
+      <span class="lock-mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg></span>
+      <h2>{{ $t('browse.suggest.lockTitle') }}</h2>
+      <p>{{ $t('browse.suggest.lockBody') }}</p>
+      <RouterLink :to="{ name: 'settings' }" class="pbtn primary"><span class="badge42-sq" style="width: 18px; height: 18px">42</span>{{ $t('common.linkYour42') }}</RouterLink>
     </div>
 
-    <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="done && !teams.length" class="muted">Aucune équipe trouvée.</p>
+    <p v-else-if="error" class="err">{{ error }}</p>
+    <p v-else-if="loading" class="muted">{{ $t('browse.suggest.loading') }}</p>
+    <p v-else-if="!teams.length" class="muted">
+      {{ $t('browse.suggest.empty') }}
+    </p>
 
-    <div class="teams">
-      <div v-for="t in teams" :key="t.teamId" class="team">
-        <div class="team-head">
-          <span class="team-name">Équipe · note {{ t.final_mark ?? '?' }}</span>
-          <span class="team-n">{{ t.users.length }} membres</span>
+    <div v-else class="feed">
+      <div v-for="t in sortedTeams" :key="t.id" class="card">
+        <div class="c-head">
+          <span class="tag-mark" v-if="t.final_mark != null">{{ t.final_mark }}%</span>
+          <span class="mono-dim">{{ t.isGroupe ? t.users.length + ' ' + $t('browse.students') : $t('browse.solo') }}</span>
+          <span v-if="teamOnline(t)" class="online-badge">● {{ $t('browse.onlineNow') }}</span>
         </div>
-        <div class="members">
-          <span
-            v-for="u in t.users"
-            :key="u.id"
-            class="member"
-            :title="`${u.name} (${u.login})${u.location ? ' · ' + u.location : ''}`"
-          >
-            <img v-if="u.ppurl" :src="u.ppurl" class="m-pp" alt="" />
-            <span v-else class="m-av">{{ initials(u.name || u.login) }}</span>
-          </span>
-        </div>
-        <div class="logins">
-          <span v-for="u in t.users" :key="u.id" class="login">
-            {{ u.login }}<span v-if="u.location" class="loc"> · {{ u.location }}</span>
-          </span>
+        <div class="mentors">
+          <div v-for="u in t.users" :key="u.id" class="mentor" :class="{ 'is-online': u.location }">
+            <span class="av-wrap">
+              <Avatar
+                class="av av-c"
+                style="width: 38px; height: 38px; border-radius: 11px"
+                :pfp-url="u.ppurl ?? undefined"
+                :name="u.name || u.login"
+                :size="38"
+              />
+              <span v-if="u.location" class="online-dot" :title="$t('common.online') + ' · ' + u.location"></span>
+            </span>
+            <a
+              class="mentor-main"
+              :href="`https://profile.intra.42.fr/users/${u.login}`"
+              target="_blank"
+              rel="noopener noreferrer"
+              style="text-decoration: none"
+            >
+              <div class="mentor-name">{{ u.name || u.login }} <span style="color: var(--dim); font-size: 11px">↗</span></div>
+              <div class="mentor-meta">
+                <span class="mono">{{ u.login }}</span>
+                <span v-if="u.location" class="online">{{ $t('common.online') }} · {{ u.location }}</span>
+              </div>
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -99,130 +136,89 @@ async function search() {
 </template>
 
 <style scoped>
-.wrap {
-  max-width: 620px;
-}
-.title {
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0 0 4px;
-  color: #f6f6f7;
-}
-.sub {
-  margin: 0 0 22px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12.5px;
-  color: #74747e;
-}
-.row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 22px;
-}
-.input {
-  flex: 1;
-  height: 46px;
-  padding: 0 14px;
-  border-radius: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: rgba(255, 255, 255, 0.035);
-  color: #f3f3f4;
-  font: inherit;
-  font-size: 14.5px;
-  outline: none;
-}
-.input:focus {
-  border-color: #6e7bf2;
-  box-shadow: 0 0 0 3px rgba(110, 123, 242, 0.2);
-}
-.btn {
-  height: 46px;
-  padding: 0 20px;
-  border-radius: 11px;
-  border: none;
-  background: linear-gradient(180deg, #5e6cf0, #4a5fe8);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.btn:hover {
-  filter: brightness(1.08);
-}
-.btn:disabled {
-  opacity: 0.6;
-}
-.teams {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.team {
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(17, 17, 21, 0.6);
-  padding: 16px 18px;
-}
-.team-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-.team-name {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 15px;
-  font-weight: 700;
-  color: #dfe2ff;
-}
-.team-n {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: #74747e;
-}
-.members {
-  display: flex;
-  margin-bottom: 10px;
-}
-.member {
-  margin-right: -8px;
-}
-.m-pp,
-.m-av {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 2px solid #101014;
+.back-link {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  object-fit: cover;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  margin-bottom: 14px;
 }
-.m-av {
-  background: linear-gradient(135deg, #3a3a52, #54547a);
-  font-family: 'JetBrains Mono', monospace;
+.back-link:hover {
+  color: var(--accent-2);
+}
+.tag-mark {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--up);
+  border: 1px solid rgba(94, 224, 138, 0.35);
+  background: rgba(94, 224, 138, 0.08);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.mono-dim {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.mentors {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+}
+.mentor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 2px;
+}
+.mentor-main {
+  flex: 1;
+  min-width: 0;
+}
+.mentor-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.mentor-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+.mono {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.online {
+  font-size: 11px;
+  color: var(--up);
+  font-weight: 600;
+}
+.online-now {
+  color: var(--up);
+}
+.online-badge {
+  margin-left: auto;
+  font-family: var(--mono);
   font-size: 10px;
   font-weight: 700;
-  color: #dfe2ff;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--up);
+  border: 1px solid rgba(94, 224, 138, 0.35);
+  background: rgba(94, 224, 138, 0.08);
+  padding: 2px 8px;
+  border-radius: 999px;
 }
-.logins {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-}
-.login {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: #9a9aa2;
-}
-.loc {
-  color: #5c5c66;
-}
-.muted {
-  color: #74747e;
-}
-.error {
-  color: #ef6d72;
+.mentor.is-online {
+  background: rgba(94, 224, 138, 0.04);
+  border-radius: 10px;
 }
 </style>

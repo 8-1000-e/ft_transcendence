@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./styles/hub.css";
 
 @theme {
   --color-bg: #08080a;
@@ -8,6 +9,23 @@
   --color-accent: #6e7bf2;
   --color-accent-hover: #8c97f7;
   --color-muted: #74747e;
+}
+
+/* Self-hosted fonts (no runtime request to Google — RGPD-safe).
+   Both families are variable woff2 files covering weights 400–700. */
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/dm-sans-latin.woff2") format("woff2");
 }
 
 html,
@@ -55,10 +73,11 @@ body {
   }
 }
 
-/* ---- ft_predict auth design system ---- */
+/* ---- ft_hub auth design system ---- */
 .ftp-page {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   overflow: hidden;
   background: #08080a;
@@ -87,6 +106,7 @@ body {
   position: relative;
   z-index: 5;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -351,12 +371,13 @@ body {
   width: 24px;
   height: 24px;
   border-radius: 6px;
-  background: #f4f4f2;
-  color: #111;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 12px;
-  font-weight: 700;
+  /* Real 42 logo (the official "42" mark); the inline "42" text stays for
+     a11y/fallback but is hidden via font-size:0. */
+  background: #f4f4f2 url('/favicon-42.png') center / 60% no-repeat;
+  color: transparent;
+  font-size: 0;
   line-height: 1;
+  overflow: hidden;
 }
 
 .ftp-link {
@@ -380,4 +401,13 @@ body {
 }
 .ftp-link-strong:hover {
   color: #aab2ff;
+}
+
+/* Respect users who prefer reduced motion: stop the infinite
+   pulse/sheen loops (a11y / vestibular + battery concern). */
+@media (prefers-reduced-motion: reduce) {
+  .ftp-badge-dot,
+  .ftp-sheen-move {
+    animation: none;
+  }
 }

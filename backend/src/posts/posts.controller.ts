@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -18,6 +19,18 @@ import { VoteDto } from './dto/vote.dto';
 @Controller()
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
+
+  @Get('projects')
+  @UseGuards(JwtAuthGuard)
+  getProjects() {
+    return this.postsService.getProjects();
+  }
+
+  @Get('search')
+  @UseGuards(JwtAuthGuard)
+  search(@Query('q') q: string, @Req() req: AuthedRequest) {
+    return this.postsService.search(q ?? '', req.user.sub);
+  }
 
   @Post('project/:projectId/posts')
   @UseGuards(JwtAuthGuard)
@@ -42,8 +55,31 @@ export class PostsController {
 
   @Get('project/:projectId/posts')
   @UseGuards(JwtAuthGuard)
-  getPosts(@Param('projectId') id: string, @Req() req: AuthedRequest) {
-    return this.postsService.getPosts(id, req.user.sub);
+  getPosts(
+    @Param('projectId') id: string,
+    @Query('cursor') cursor: string,
+    @Query('limit') limit: string,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.postsService.getPosts(id, req.user.sub, cursor, limit);
+  }
+
+  @Get('post/:postId')
+  @UseGuards(JwtAuthGuard)
+  getPost(@Param('postId') postId: string, @Req() req: AuthedRequest) {
+    return this.postsService.getPost(postId, req.user.sub);
+  }
+
+  @Get('project/:projectId/posters')
+  @UseGuards(JwtAuthGuard)
+  getPosters(@Param('projectId') id: string, @Req() req: AuthedRequest) {
+    return this.postsService.getPosters(id, req.user.sub);
+  }
+
+  @Get('project/:projectId')
+  @UseGuards(JwtAuthGuard)
+  getProject(@Param('projectId') id: string) {
+    return this.postsService.getProject(id);
   }
 
   //COMMENT
@@ -69,8 +105,13 @@ export class PostsController {
 
   @Get('posts/:postId/comments')
   @UseGuards(JwtAuthGuard)
-  getComments(@Param('postId') id: string, @Req() req: AuthedRequest) {
-    return this.postsService.getComments(id, req.user.sub);
+  getComments(
+    @Param('postId') id: string,
+    @Query('cursor') cursor: string,
+    @Query('limit') limit: string,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.postsService.getComments(id, req.user.sub, cursor, limit);
   }
 
   //REPLIES

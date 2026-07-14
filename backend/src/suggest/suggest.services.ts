@@ -19,6 +19,19 @@ export class SuggestService {
     private readonly prisma: PrismaService,
   ) {}
 
+  // Mentor-matching using the logged-in user's own campus; empty list if none resolved.
+  async getSuggestForMe(
+    projectId: string,
+    userId: string,
+  ): Promise<SuggestedUser[]> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.ftId) {
+      throw new ForbiddenException('42 account required to access suggestions');
+    }
+    if (!user.campusId) return [];
+    return this.getSuggestByProject(projectId, user.campusId, userId);
+  }
+
   async getSuggestByProject(
     projectId: string,
     campusId: string,
@@ -41,8 +54,16 @@ export class SuggestService {
         campusId,
         requestCounter,
       );
+      // Never suggest the logged-in user to themselves. `user.ftId` is the
+      // stringified 42 id (auth.service) and matches `projectUser.user.id`;
+      // `login` is a second, equally reliable key.
       const validatedProjectsUsers = projectUsers
         .filter((projectUser) => projectUser['validated?'] === true)
+        .filter(
+          (projectUser) =>
+            String(projectUser.user.id) !== user.ftId &&
+            projectUser.user.login !== user.login,
+        )
         .sort((a, b) => {
           const markDiff = (b.final_mark ?? -1) - (a.final_mark ?? -1);
           if (markDiff !== 0) return markDiff;

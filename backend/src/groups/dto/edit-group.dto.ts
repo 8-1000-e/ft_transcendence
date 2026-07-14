@@ -1,4 +1,10 @@
-import { IsOptional, IsString, IsUrl, MinLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUrl,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 
 export class EditGroupDto {
   @IsOptional()
@@ -6,7 +12,9 @@ export class EditGroupDto {
   @MinLength(1)
   groupName?: string;
 
+  // '' or null clears the link; ValidateIf lets '' bypass @IsUrl (@IsOptional only skips null/undefined) when editing just the name.
   @IsOptional()
+  @ValidateIf((o: EditGroupDto) => o.githubLink !== null && o.githubLink !== '')
   @IsUrl()
-  githubLink?: string;
+  githubLink?: string | null;
 }

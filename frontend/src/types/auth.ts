@@ -7,11 +7,14 @@ export interface User {
   id: string
   email: string
   name: string
-  ftId?: string | null
-  ftPfpUrl?: string | null
-  campus?: string | null
-  campusId?: string | null
+  login: string | null
+  campus: string | null
+  ftPfpUrl: string | null
+  has42: boolean
+  hasPassword: boolean
+  pendingDeletion: boolean
   createdAt: string
+  karma: number
 }
 
 export interface ApiError {

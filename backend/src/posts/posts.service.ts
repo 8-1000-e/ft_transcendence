@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -7,19 +8,55 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { VoteDto } from './dto/vote.dto';
-import { VoteValue } from 'generated/prisma/client';
+import { VoteValue, NotifType } from 'generated/prisma/client';
 import { assertFilesExist } from 'src/utils/files';
+import { authorView } from 'src/utils/anonymize';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class PostsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
+
+  // Forum list of synced 42 projects with category + post count; untagged junk rows (piscine/exams/admin/dupes) are excluded.
+  async getProjects() {
+    const projects = await this.prisma.projects.findMany({
+      where: { category: { not: null } },
+      orderBy: { name: 'asc' },
+      include: { _count: { select: { posts: true } } },
+    });
+
+    return projects.map((project) => ({
+      id: project.id,
+      name: project.name,
+      postCount: project._count.posts,
+      category: project.category,
+    }));
+  }
+
+  // Project meta so a non-member viewer (whose `groups` list omits it) still sees the real name.
+  async getProject(id: string) {
+    const project = await this.prisma.projects.findUnique({
+      where: { id },
+      include: { _count: { select: { posts: true } } },
+    });
+    if (!project) throw new NotFoundException();
+    return {
+      id: project.id,
+      name: project.name,
+      category: project.category,
+      postCount: project._count.posts,
+    };
+  }
 
   async sendPost(id: string, body: CreatePostDto, userId: string) {
     const project = await this.prisma.projects.findUnique({ where: { id } });
     if (!project) throw new NotFoundException();
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (user && !user.ftId) throw new UnauthorizedException();
+    if (!user?.ftId) throw new ForbiddenException();
 
     assertFilesExist(body.filesUrl);
 
@@ -66,51 +103,133 @@ export class PostsService {
     return editedPost;
   }
 
-  async getPosts(id: string, userId: string) {
+  private readonly AUTHOR_SELECT = {
+    name: true,
+    ftId: true,
+    ftPfpUrl: true,
+    campus: true,
+    rdmCampus: true,
+    rdmName: true,
+    rdmPfp: true,
+  } as const;
+
+  // Clamp a client-supplied page size to a sane range.
+  private pageLimit(limit?: string): number {
+    const n = Number(limit);
+    if (!Number.isFinite(n)) return 15;
+    return Math.min(Math.max(Math.trunc(n), 1), 50);
+  }
+
+  private mapVoted<
+    T extends {
+      votes: { vote: VoteValue; userId: string }[];
+      user: {
+        name: string;
+        ftId: string | null;
+        ftPfpUrl: string | null;
+        campus: string | null;
+        rdmCampus: string | null;
+        rdmName: string | null;
+        rdmPfp: string | null;
+      };
+    },
+  >(row: T, viewer: { ftId: string | null } | null, userId: string) {
+    const { votes, user: author, ...rest } = row;
+    return {
+      ...rest,
+      upvotes: votes.filter((v) => v.vote === VoteValue.UP).length,
+      downvotes: votes.filter((v) => v.vote === VoteValue.DOWN).length,
+      myVote: votes.find((v) => v.userId === userId)?.vote ?? null,
+      user: authorView(viewer, author),
+    };
+  }
+
+  async getPosts(id: string, userId: string, cursor?: string, limit?: string) {
     const project = await this.prisma.projects.findUnique({ where: { id } });
     if (!project) throw new NotFoundException();
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const take = this.pageLimit(limit);
 
-    const posts = await this.prisma.projectsPost.findMany({
+    const rows = await this.prisma.projectsPost.findMany({
       where: { projectId: id },
-      orderBy: { postedAt: 'desc' },
+      orderBy: [{ postedAt: 'desc' }, { id: 'desc' }],
+      take: take + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: {
         _count: { select: { chats: true } },
         votes: true,
-        user: {
-          select: {
-            name: true,
-            ftId: true,
-            ftPfpUrl: true,
-            campus: true,
-            rdmCampus: true,
-            rdmName: true,
-            rdmPfp: true,
-          },
-        },
+        user: { select: this.AUTHOR_SELECT },
       },
     });
 
-    return posts.map(({ votes, ...post }) => {
-      const upvotes = votes.filter((v) => v.vote === VoteValue.UP).length;
-      const downvotes = votes.filter((v) => v.vote === VoteValue.DOWN).length;
-      const myVote = votes.find((v) => v.userId === userId)?.vote ?? null;
+    const hasMore = rows.length > take;
+    const page = hasMore ? rows.slice(0, take) : rows;
+    const items = page.map((r) => this.mapVoted(r, user, userId));
+    return {
+      items,
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+    };
+  }
 
-      if (user && !user.ftId) {
-        return {
-          ...post,
-          upvotes,
-          downvotes,
-          myVote,
-          user: {
-            name: post.user.rdmName,
-            ftPfpUrl: post.user.rdmPfp,
-            campus: post.user.rdmCampus,
-          },
-        };
-      }
-      return { ...post, upvotes, downvotes, myVote };
+  // A single post (the thread page) — avoids refetching a whole project feed.
+  async getPost(postId: string, userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const row = await this.prisma.projectsPost.findUnique({
+      where: { id: postId },
+      include: {
+        _count: { select: { chats: true } },
+        votes: true,
+        user: { select: this.AUTHOR_SELECT },
+      },
+    });
+    if (!row) throw new NotFoundException();
+    return this.mapVoted(row, user, userId);
+  }
+
+  // Per-project post-count leaderboard, never a global cross-user one; every identity goes through authorView.
+  async getPosters(projectId: string, userId: string) {
+    const project = await this.prisma.projects.findUnique({
+      where: { id: projectId },
+    });
+    if (!project) throw new NotFoundException();
+
+    const viewer = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    const grouped = await this.prisma.projectsPost.groupBy({
+      by: ['writer'],
+      where: { projectId },
+      _count: { writer: true },
+      orderBy: { _count: { writer: 'desc' } },
+      take: 6,
+    });
+    if (!grouped.length) return [];
+
+    const authors = await this.prisma.user.findMany({
+      where: { id: { in: grouped.map((g) => g.writer) } },
+      select: {
+        id: true,
+        name: true,
+        ftId: true,
+        ftPfpUrl: true,
+        campus: true,
+        rdmCampus: true,
+        rdmName: true,
+        rdmPfp: true,
+      },
+    });
+    const byId = new Map(authors.map((a) => [a.id, a]));
+
+    return grouped.flatMap((g) => {
+      const author = byId.get(g.writer);
+      if (!author) return [];
+      return [
+        {
+          writer: g.writer,
+          count: g._count.writer,
+          user: authorView(viewer, author),
+        },
+      ];
     });
   }
 
@@ -121,11 +240,11 @@ export class PostsService {
     if (!post) throw new NotFoundException();
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (user && !user.ftId) throw new UnauthorizedException();
+    if (!user?.ftId) throw new ForbiddenException();
 
     assertFilesExist(body.filesUrl);
 
-    return this.prisma.projectsChat.create({
+    const comment = await this.prisma.projectsChat.create({
       data: {
         answeringPost: id,
         writer: userId,
@@ -133,6 +252,16 @@ export class PostsService {
         filesUrl: body.filesUrl,
       },
     });
+    void this.notifications
+      .notify({
+        recipientId: post.writer,
+        actorId: userId,
+        type: NotifType.COMMENT,
+        entityLabel: post.title ?? null,
+        link: `/post/${post.id}?projectId=${post.projectId}`,
+      })
+      .catch(() => {});
+    return comment;
   }
 
   async editComment(commentId: string, body: CreateCommentDto, userId: string) {
@@ -154,52 +283,37 @@ export class PostsService {
     });
   }
 
-  async getComments(id: string, userId: string) {
+  async getComments(
+    id: string,
+    userId: string,
+    cursor?: string,
+    limit?: string,
+  ) {
     const post = await this.prisma.projectsPost.findUnique({ where: { id } });
     if (!post) throw new NotFoundException();
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const take = this.pageLimit(limit);
 
-    const comments = await this.prisma.projectsChat.findMany({
+    const rows = await this.prisma.projectsChat.findMany({
       where: { answeringPost: id },
-      orderBy: { postedAt: 'desc' },
+      // Oldest-first (Reddit thread): read top→bottom; cursor paginates forward to newer comments.
+      orderBy: [{ postedAt: 'asc' }, { id: 'asc' }],
+      take: take + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: {
         _count: { select: { replies: true } },
         votes: true,
-        user: {
-          select: {
-            name: true,
-            ftId: true,
-            ftPfpUrl: true,
-            campus: true,
-            rdmCampus: true,
-            rdmName: true,
-            rdmPfp: true,
-          },
-        },
+        user: { select: this.AUTHOR_SELECT },
       },
     });
 
-    return comments.map(({ votes, ...comment }) => {
-      const upvotes = votes.filter((v) => v.vote === VoteValue.UP).length;
-      const downvotes = votes.filter((v) => v.vote === VoteValue.DOWN).length;
-      const myVote = votes.find((v) => v.userId === userId)?.vote ?? null;
-
-      if (user && !user.ftId) {
-        return {
-          ...comment,
-          upvotes,
-          downvotes,
-          myVote,
-          user: {
-            name: comment.user.rdmName,
-            ftPfpUrl: comment.user.rdmPfp,
-            campus: comment.user.rdmCampus,
-          },
-        };
-      }
-      return { ...comment, upvotes, downvotes, myVote };
-    });
+    const hasMore = rows.length > take;
+    const page = hasMore ? rows.slice(0, take) : rows;
+    return {
+      items: page.map((r) => this.mapVoted(r, user, userId)),
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+    };
   }
 
   ///REPLIES
@@ -210,11 +324,11 @@ export class PostsService {
     if (!comment) throw new NotFoundException();
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (user && !user.ftId) throw new UnauthorizedException();
+    if (!user?.ftId) throw new ForbiddenException();
 
     assertFilesExist(body.filesUrl);
 
-    return this.prisma.projectsChat.create({
+    const reply = await this.prisma.projectsChat.create({
       data: {
         answeringChat: id,
         writer: userId,
@@ -222,6 +336,17 @@ export class PostsService {
         filesUrl: body.filesUrl,
       },
     });
+    const root = await this.resolveRoot(comment);
+    void this.notifications
+      .notify({
+        recipientId: comment.writer,
+        actorId: userId,
+        type: NotifType.REPLY,
+        entityLabel: root?.postTitle ?? null,
+        link: root ? `/post/${root.postId}?projectId=${root.projectId}` : null,
+      })
+      .catch(() => {});
+    return reply;
   }
 
   async editReply(commentId: string, body: CreateCommentDto, userId: string) {
@@ -253,7 +378,7 @@ export class PostsService {
 
     const replies = await this.prisma.projectsChat.findMany({
       where: { answeringChat: id },
-      orderBy: { postedAt: 'desc' },
+      orderBy: { postedAt: 'asc' }, // oldest-first, matching the comment thread
       include: {
         _count: { select: { replies: true } },
         votes: true,
@@ -271,25 +396,18 @@ export class PostsService {
       },
     });
 
-    return replies.map(({ votes, ...reply }) => {
+    return replies.map(({ votes, user: author, ...reply }) => {
       const upvotes = votes.filter((v) => v.vote === VoteValue.UP).length;
       const downvotes = votes.filter((v) => v.vote === VoteValue.DOWN).length;
       const myVote = votes.find((v) => v.userId === userId)?.vote ?? null;
 
-      if (user && !user.ftId) {
-        return {
-          ...reply,
-          upvotes,
-          downvotes,
-          myVote,
-          user: {
-            name: reply.user.rdmName,
-            ftPfpUrl: reply.user.rdmPfp,
-            campus: reply.user.rdmCampus,
-          },
-        };
-      }
-      return { ...reply, upvotes, downvotes, myVote };
+      return {
+        ...reply,
+        upvotes,
+        downvotes,
+        myVote,
+        user: authorView(user, author),
+      };
     });
   }
 
@@ -298,7 +416,7 @@ export class PostsService {
     const post = await this.prisma.projectsPost.findUnique({ where: { id } });
     if (!post) throw new NotFoundException();
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.ftId) throw new UnauthorizedException();
+    if (!user?.ftId) throw new ForbiddenException();
 
     const existing = await this.prisma.postVote.findUnique({
       where: { userId_postId: { userId, postId: id } },
@@ -322,7 +440,7 @@ export class PostsService {
     const post = await this.prisma.projectsChat.findUnique({ where: { id } });
     if (!post) throw new NotFoundException();
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.ftId) throw new UnauthorizedException();
+    if (!user?.ftId) throw new ForbiddenException();
 
     const existing = await this.prisma.chatVote.findUnique({
       where: { userId_chatId: { userId, chatId: id } },
@@ -340,5 +458,93 @@ export class PostsService {
       update: { vote: body.vote },
       create: { userId, chatId: id, vote: body.vote },
     });
+  }
+
+  //SEARCH
+
+  // Search across project names, post titles/bodies and comment/reply content; anon authorView applied, comments resolve to their post.
+  async search(q: string, userId: string) {
+    const term = q.trim();
+    if (term.length < 2) return { projects: [], posts: [], comments: [] };
+    const viewer = await this.prisma.user.findUnique({ where: { id: userId } });
+    const like = { contains: term, mode: 'insensitive' as const };
+
+    const [projects, postRows, commentRows] = await Promise.all([
+      this.prisma.projects.findMany({
+        where: { category: { not: null }, name: like },
+        orderBy: { name: 'asc' },
+        take: 20,
+        include: { _count: { select: { posts: true } } },
+      }),
+      this.prisma.projectsPost.findMany({
+        where: { OR: [{ title: like }, { content: like }] },
+        orderBy: { postedAt: 'desc' },
+        take: 20,
+        include: {
+          _count: { select: { chats: true } },
+          votes: true,
+          user: { select: this.AUTHOR_SELECT },
+        },
+      }),
+      this.prisma.projectsChat.findMany({
+        where: { content: like },
+        orderBy: { postedAt: 'desc' },
+        take: 20,
+        include: { votes: true, user: { select: this.AUTHOR_SELECT } },
+      }),
+    ]);
+
+    const comments = (
+      await Promise.all(
+        commentRows.map(async (c) => {
+          const root = await this.resolveRoot(c);
+          return root ? { ...this.mapVoted(c, viewer, userId), ...root } : null;
+        }),
+      )
+    ).filter((x): x is NonNullable<typeof x> => x !== null);
+
+    return {
+      projects: projects.map((p) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        postCount: p._count.posts,
+      })),
+      posts: postRows.map((r) => this.mapVoted(r, viewer, userId)),
+      comments,
+    };
+  }
+
+  // Resolve a comment/reply to its post (walk up the reply chain) so a search hit can link to the thread.
+  private async resolveRoot(chat: {
+    answeringPost: string | null;
+    answeringChat: string | null;
+  }): Promise<{
+    postId: string;
+    projectId: string;
+    postTitle: string | null;
+  } | null> {
+    let postId = chat.answeringPost;
+    let current = chat.answeringChat;
+    for (let i = 0; i < 12 && !postId && current; i++) {
+      const parent = await this.prisma.projectsChat.findUnique({
+        where: { id: current },
+        select: { answeringPost: true, answeringChat: true },
+      });
+      if (!parent) return null;
+      postId = parent.answeringPost;
+      current = parent.answeringChat;
+    }
+    if (!postId) return null;
+    const post = await this.prisma.projectsPost.findUnique({
+      where: { id: postId },
+      select: { id: true, projectId: true, title: true },
+    });
+    if (!post) return null;
+    return {
+      postId: post.id,
+      projectId: post.projectId,
+      postTitle: post.title,
+    };
   }
 }

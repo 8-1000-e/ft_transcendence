@@ -7,6 +7,16 @@ import type { AuthedRequest } from 'src/auth/authed-request';
 @Controller()
 export class SuggestController {
   constructor(private readonly suggesService: SuggestService) {}
+  // Auto-campus: uses the logged-in 42 user's own campus (no typed campusId).
+  @Get(`suggest/:projectId`)
+  @UseGuards(JwtAuthGuard)
+  getSuggestForMe(
+    @Param('projectId') projectId: string,
+    @Req() req: AuthedRequest,
+  ): Promise<SuggestedUser[]> {
+    return this.suggesService.getSuggestForMe(projectId, req.user.sub);
+  }
+
   @Get(`suggest/:projectId/:campusId`)
   @UseGuards(JwtAuthGuard)
   getSuggest(

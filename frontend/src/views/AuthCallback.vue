@@ -19,21 +19,33 @@ onMounted(async () => {
     return
   }
 
+  const linked = params.get('linked') === '1'
   auth.setTokens({ access_token, refresh_token })
   history.replaceState(null, '', window.location.pathname)
 
   try {
     await auth.fetchMe()
-    await router.replace('/')
+    // A successful 42-link lands back on Settings with a confirmation, not home.
+    await router.replace(linked ? { name: 'settings', query: { linked: '1' } } : '/')
   } catch {
-    auth.clear()
-    await router.replace({ name: 'login', query: { error: 'ft_auth_failed' } })
+    if (linked) {
+      // The link already succeeded and tokens are valid — a transient /me failure must NOT log the user out.
+      try {
+        await auth.fetchMe()
+      } catch {
+        /* keep the session; Settings will retry on its own load */
+      }
+      await router.replace({ name: 'settings', query: { linked: '1' } })
+    } else {
+      auth.clear()
+      await router.replace({ name: 'login', query: { error: 'ft_auth_failed' } })
+    }
   }
 })
 </script>
 
 <template>
   <div class="min-h-screen flex items-center justify-center text-muted">
-    Connexion en cours…
+    Signing in…
   </div>
 </template>

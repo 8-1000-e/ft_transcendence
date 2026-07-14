@@ -13,6 +13,9 @@ onMounted(() => {
   const ctx = c?.getContext('2d')
   if (!c || !ctx) return
 
+  // Reduced-motion: the canvas is purely decorative, so skip the rAF loop and listeners.
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
   let w = 0
   let h = 0
   let dpr = 1
@@ -78,7 +81,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="ftp-page">
-    <canvas ref="canvas" class="ftp-canvas"></canvas>
+    <canvas ref="canvas" class="ftp-canvas" aria-hidden="true"></canvas>
     <div class="ftp-glow"></div>
 
     <div class="ftp-center">
@@ -103,7 +106,7 @@ onBeforeUnmount(() => {
         </span>
         <span class="ftp-wordmark"
           ><span style="color: #f4f4f2">ft</span
-          ><span style="color: #8c97f7">_predict</span></span
+          ><span style="color: #8c97f7">_hub</span></span
         >
       </div>
 
@@ -114,9 +117,6 @@ onBeforeUnmount(() => {
 
           <div class="ftp-card-head">
             <h1 class="ftp-title">{{ title }}</h1>
-            <span class="ftp-badge"
-              ><span class="ftp-badge-dot"></span>RÉSEAU OK</span
-            >
           </div>
           <p v-if="subtitle" class="ftp-subtitle">{{ subtitle }}</p>
 

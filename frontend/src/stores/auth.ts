@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { api } from '@/api/client'
-import { ROUTES } from '@/api/routes'
+import { ROUTES, API_BASE_URL } from '@/api/routes'
+import { disconnectRealtime } from '@/api/realtime'
 import type { Tokens, User } from '@/types/auth'
 
 const REFRESH_KEY = 'ft_refresh'
@@ -24,11 +25,29 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = null
     refreshToken.value = null
     user.value = null
+    pendingDeletion.value = false
     localStorage.removeItem(REFRESH_KEY)
+    // Tear down the socket so the next user never reuses this authed connection.
+    disconnectRealtime()
+    // Reset other stores so a new login doesn't inherit cached data; dynamic import breaks the store<->store cycle.
+    void import('@/stores/groups').then(({ useGroupsStore }) => {
+      useGroupsStore().reset()
+    })
   }
 
   async function fetchMe() {
     user.value = await api.get<User>(ROUTES.users.me)
+    // Sync the pending-deletion barrier so a returning user still sees the cancel modal.
+    pendingDeletion.value = !!user.value?.pendingDeletion
+  }
+
+  // Heartbeat: touch lastSeenAt (2-min online window); best-effort, ignore failures.
+  async function ping(): Promise<void> {
+    try {
+      await api.post(ROUTES.users.ping)
+    } catch {
+      /* ignore */
+    }
   }
 
   async function login(email: string, password: string) {
@@ -74,6 +93,23 @@ export const useAuthStore = defineStore('auth', () => {
     pendingDeletion.value = false
   }
 
+  // Refresh the token first so the short-lived one in the 42-link redirect URL is valid.
+  async function link42(): Promise<void> {
+    try {
+      if (refreshToken.value) {
+        const tokens = await api.post<Tokens>(
+          ROUTES.auth.refresh,
+          { refresh_token: refreshToken.value },
+          { auth: false },
+        )
+        setTokens(tokens)
+      }
+    } catch {
+      /* fall through with the current token */
+    }
+    window.location.href = `${API_BASE_URL}/auth/42/link?token=${encodeURIComponent(accessToken.value ?? '')}`
+  }
+
   async function tryRestoreSession(): Promise<boolean> {
     if (!refreshToken.value) return false
     try {
@@ -100,11 +136,13 @@ export const useAuthStore = defineStore('auth', () => {
     setTokens,
     clear,
     fetchMe,
+    ping,
     login,
     signup,
     verify,
     logout,
     cancelDeletion,
+    link42,
     tryRestoreSession,
   }
 })

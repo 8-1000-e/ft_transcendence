@@ -23,8 +23,8 @@ export class AuthService {
     private readonly ft: FtApiService,
   ) {}
 
-  createAccessToken(userId: string) {
-    const payload = { sub: userId };
+  createAccessToken(userId: string, tokenVersion: number) {
+    const payload = { sub: userId, tv: tokenVersion };
     return this.jwtService.sign(payload);
   }
 
@@ -59,8 +59,15 @@ export class AuthService {
   }
 
   private async issueTokens(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { tokenVersion: true },
+    });
     const refresh_token = await this.createRefreshToken(userId);
-    const access_token = this.createAccessToken(userId);
+    const access_token = this.createAccessToken(
+      userId,
+      user?.tokenVersion ?? 0,
+    );
     return { refresh_token, access_token };
   }
 
@@ -118,6 +125,43 @@ export class AuthService {
     return this.issueTokens(user.id);
   }
 
+  // Verify an access token out-of-band (the 42-link redirect can't send an
+  // Authorization header) and return its user id.
+  verifyToken(token: string): string {
+    const payload = this.jwtService.verify<{ sub: string }>(token);
+    return payload.sub;
+  }
+
+  // Attach a 42 identity to an existing account; refuses if that 42 account is
+  // already linked to another user.
+  async linkFtAccount(userId: string, code: string) {
+    const ftProfile = await this.ft.getProfileFromCode(code);
+    const ftId = String(ftProfile.id);
+
+    const owner = await this.prisma.user.findUnique({ where: { ftId } });
+    if (owner && owner.id !== userId) {
+      throw new BadRequestException(
+        'This 42 account is already linked to another user',
+      );
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ftId,
+        login: ftProfile.login,
+        ftPfpUrl: ftProfile.image?.link ?? null,
+        campus: ftProfile.campus?.[0]?.name ?? null,
+        campusId:
+          ftProfile.campus?.[0]?.id != null
+            ? String(ftProfile.campus[0].id)
+            : null,
+      },
+    });
+    this.ft.syncUserTeam(user.id).catch(() => {});
+    return this.issueTokens(user.id);
+  }
+
   getFtAuthUrl(state: string) {
     const clientId = this.config.getOrThrow<string>('FT_OAUTH_CLIENT_ID');
     const redirectUri = encodeURIComponent(
@@ -131,7 +175,7 @@ export class AuthService {
 
     const ftId = String(ftProfile.id);
     const email = ftProfile.email;
-    const name = ftProfile.login;
+    const login = ftProfile.login;
     const ftPfpUrl = ftProfile.image?.link ?? null;
     const campus = ftProfile.campus?.[0]?.name ?? null;
     const campusId =
@@ -141,19 +185,22 @@ export class AuthService {
 
     let user: User;
     if (existing) {
+      // `login` is the immutable real handle; `name` is the editable pseudo and
+      // is NOT overwritten on re-login (the user may have changed it).
       user = await this.prisma.user.update({
         where: { ftId },
-        data: { ftPfpUrl, campus, campusId },
+        data: { login, ftPfpUrl, campus, campusId },
       });
     } else {
       const rdmData = await randomIdentity();
       user = await this.prisma.user.upsert({
         where: { email },
-        update: { ftId, ftPfpUrl, campus, campusId },
+        update: { ftId, login, ftPfpUrl, campus, campusId },
         create: {
           ftId,
+          login,
           email,
-          name,
+          name: login, // initial pseudo defaults to the 42 login
           ftPfpUrl,
           campus,
           campusId,
