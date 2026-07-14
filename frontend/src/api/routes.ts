@@ -1,8 +1,12 @@
+// Backend routes are served under /api (see backend setGlobalPrefix). In Docker
+// the reverse proxy forwards /api to the backend, so VITE_API_URL is just '/api'
+// (same origin). This default keeps `npm run dev` working against a local backend.
 export const API_BASE_URL: string =
-  import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+  import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
 export const ROUTES = {
   projects: '/projects',
+  search: (q: string) => `/search?q=${encodeURIComponent(q)}`,
 
   auth: {
     signup: '/signup',
@@ -16,18 +20,24 @@ export const ROUTES = {
   users: {
     me: '/me',
     activity: '/me/activity',
+    ping: '/me/ping',
     updateMe: '/me',
+    password: '/me/password',
     deleteMe: '/me',
     cancelDelete: '/me/cancel',
     byId: (id: string) => `/users/${id}`,
+    activityById: (id: string) => `/users/${id}/activity`,
   },
 
   posts: {
     listByProject: (projectId: string) => `/project/${projectId}/posts`,
+    single: (postId: string) => `/post/${postId}`,
     create: (projectId: string) => `/project/${projectId}/posts`,
     edit: (projectId: string, postId: string) =>
       `/project/${projectId}/${postId}`,
     vote: (postId: string) => `/posts/${postId}/vote`,
+    posters: (projectId: string) => `/project/${projectId}/posters`,
+    project: (projectId: string) => `/project/${projectId}`,
   },
 
   comments: {
@@ -60,5 +70,15 @@ export const ROUTES = {
   suggest: {
     byProject: (projectId: string, campusId: string) =>
       `/suggest/${projectId}/${campusId}`,
+    forProject: (projectId: string) => `/suggest/${projectId}`,
+  },
+
+  friends: {
+    list: '/friends',
+    requests: '/friends/requests',
+    status: (id: string) => `/friends/status/${id}`,
+    request: (id: string) => `/friends/${id}`,
+    accept: (id: string) => `/friends/${id}/accept`,
+    remove: (id: string) => `/friends/${id}`,
   },
 } as const;

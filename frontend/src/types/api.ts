@@ -1,5 +1,11 @@
 export type VoteValue = 'UP' | 'DOWN'
 
+/** A cursor-paginated page. `nextCursor` is null when there is no more. */
+export interface Page<T> {
+  items: T[]
+  nextCursor: string | null
+}
+
 export interface Author {
   name: string | null
   ftPfpUrl: string | null
@@ -19,6 +25,13 @@ export interface Group {
 export interface ProjectRef {
   projectId: string
   projectName: string
+}
+
+/** A top poster in a project — from GET /project/:id/posters. */
+export interface Poster {
+  writer: string
+  user: Author
+  count: number
 }
 
 export interface Post {
@@ -62,6 +75,7 @@ export interface Reply {
   upvotes: number
   downvotes: number
   myVote: VoteValue | null
+  _count?: { replies: number }
 }
 
 export interface Message {
@@ -75,18 +89,60 @@ export interface Message {
   user?: Author
 }
 
+/** A friend or incoming request — from GET /friends and /friends/requests. */
+export interface FriendView {
+  id: string
+  name: string
+  login: string | null
+  ftPfpUrl: string | null
+  campus: string | null
+  online: boolean
+}
+
+export type FriendStatus =
+  | 'self'
+  | 'friends'
+  | 'pending_out'
+  | 'pending_in'
+  | 'none'
+
 export interface PublicUser {
   id: string
   name: string
+  login?: string | null
+  karma?: number
   ftPfpUrl?: string | null
   campus?: string | null
   createdAt?: string
+  online?: boolean
 }
 
-/** A post the signed-in user authored — from GET /me/activity. */
+/** A project hit from GET /search. */
+export interface SearchProject {
+  id: string
+  name: string
+  category: string | null
+  postCount: number
+}
+
+/** A comment/reply hit from GET /search, carrying its host post for linking. */
+export interface SearchComment extends Comment {
+  postId: string
+  projectId: string
+  postTitle: string | null
+}
+
+export interface SearchResults {
+  projects: SearchProject[]
+  posts: Post[]
+  comments: SearchComment[]
+}
+
+/** A post the user authored — from GET /me/activity or /users/:id/activity. */
 export interface ActivityPost {
   id: string
   projectId: string
+  projectName: string | null
   title: string | null
   content: string
   postedAt: string
@@ -94,11 +150,13 @@ export interface ActivityPost {
   downvotes: number
 }
 
-/** A comment the signed-in user authored — from GET /me/activity. */
+/** A comment the user authored — from GET /me/activity or /users/:id/activity. */
 export interface ActivityComment {
   id: string
   postId: string | null
+  postTitle: string | null
   projectId: string | null
+  projectName: string | null
   content: string
   postedAt: string
   upvotes: number
