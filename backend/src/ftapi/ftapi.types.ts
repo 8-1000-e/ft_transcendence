@@ -23,6 +23,8 @@ export interface FtProject {
   id: number;
   name: string;
   slug: string;
+  exam?: boolean;
+  parent?: { id: number; slug: string } | null;
 }
 
 export interface FtCursus {

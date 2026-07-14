@@ -19,6 +19,20 @@ export class SuggestService {
     private readonly prisma: PrismaService,
   ) {}
 
+  // Mentor-matching for the logged-in 42 user, using THEIR campus automatically
+  // (no hand-typed campusId). Empty list if the account has no resolved campus.
+  async getSuggestForMe(
+    projectId: string,
+    userId: string,
+  ): Promise<SuggestedUser[]> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.ftId) {
+      throw new ForbiddenException('42 account required to access suggestions');
+    }
+    if (!user.campusId) return [];
+    return this.getSuggestByProject(projectId, user.campusId, userId);
+  }
+
   async getSuggestByProject(
     projectId: string,
     campusId: string,

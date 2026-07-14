@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -24,6 +25,14 @@ export class PostsController {
   @UseGuards(JwtAuthGuard)
   getProjects() {
     return this.postsService.getProjects();
+  }
+
+  // Reddit-style search: matches the term in project names, post titles/bodies,
+  // and comment/reply content; returns sectioned results.
+  @Get('search')
+  @UseGuards(JwtAuthGuard)
+  search(@Query('q') q: string, @Req() req: AuthedRequest) {
+    return this.postsService.search(q ?? '', req.user.sub);
   }
 
   @Post('project/:projectId/posts')
@@ -49,8 +58,33 @@ export class PostsController {
 
   @Get('project/:projectId/posts')
   @UseGuards(JwtAuthGuard)
-  getPosts(@Param('projectId') id: string, @Req() req: AuthedRequest) {
-    return this.postsService.getPosts(id, req.user.sub);
+  getPosts(
+    @Param('projectId') id: string,
+    @Query('cursor') cursor: string,
+    @Query('limit') limit: string,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.postsService.getPosts(id, req.user.sub, cursor, limit);
+  }
+
+  @Get('post/:postId')
+  @UseGuards(JwtAuthGuard)
+  getPost(@Param('postId') postId: string, @Req() req: AuthedRequest) {
+    return this.postsService.getPost(postId, req.user.sub);
+  }
+
+  // Per-project "best posters" leaderboard for the context rail (anonymised).
+  @Get('project/:projectId/posters')
+  @UseGuards(JwtAuthGuard)
+  getPosters(@Param('projectId') id: string, @Req() req: AuthedRequest) {
+    return this.postsService.getPosters(id, req.user.sub);
+  }
+
+  // Project meta (real name) for the forum header + context rail.
+  @Get('project/:projectId')
+  @UseGuards(JwtAuthGuard)
+  getProject(@Param('projectId') id: string) {
+    return this.postsService.getProject(id);
   }
 
   //COMMENT
@@ -76,8 +110,13 @@ export class PostsController {
 
   @Get('posts/:postId/comments')
   @UseGuards(JwtAuthGuard)
-  getComments(@Param('postId') id: string, @Req() req: AuthedRequest) {
-    return this.postsService.getComments(id, req.user.sub);
+  getComments(
+    @Param('postId') id: string,
+    @Query('cursor') cursor: string,
+    @Query('limit') limit: string,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.postsService.getComments(id, req.user.sub, cursor, limit);
   }
 
   //REPLIES
