@@ -25,6 +25,7 @@ export default {
     'chat.failSend': 'Failed to send',
     'chat.failUpdate': 'Failed to update',
     'chat.failDelete': 'Failed to delete',
+    'chat.invalidGithub': 'Enter a valid GitHub URL (https://github.com/…)',
   },
   fr: {
     'chat.group': 'Groupe',
@@ -52,6 +53,7 @@ export default {
     'chat.failSend': "Échec de l'envoi",
     'chat.failUpdate': 'Échec de la mise à jour',
     'chat.failDelete': 'Échec de la suppression',
+    'chat.invalidGithub': 'Entrez une URL GitHub valide (https://github.com/…)',
   },
   es: {
     'chat.group': 'Grupo',
@@ -79,5 +81,6 @@ export default {
     'chat.failSend': 'Error al enviar',
     'chat.failUpdate': 'Error al actualizar',
     'chat.failDelete': 'Error al eliminar',
+    'chat.invalidGithub': 'Introduce una URL de GitHub válida (https://github.com/…)',
   },
 }
