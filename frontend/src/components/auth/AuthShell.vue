@@ -125,6 +125,19 @@ onBeforeUnmount(() => {
       </div>
 
       <p class="ftp-foot"><slot name="footer" /></p>
+
+      <p
+        style="
+          margin-top: 14px;
+          font-size: 12px;
+          opacity: 0.55;
+          text-align: center;
+        "
+      >
+        <RouterLink to="/privacy" style="color: inherit">Privacy</RouterLink>
+        ·
+        <RouterLink to="/terms" style="color: inherit">Terms</RouterLink>
+      </p>
     </div>
   </div>
 </template>
