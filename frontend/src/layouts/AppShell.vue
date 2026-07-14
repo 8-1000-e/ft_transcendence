@@ -4,6 +4,7 @@ import { useRouter, RouterLink, RouterView } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useGroupsStore } from '@/stores/groups'
 import Modal from '@/components/Modal.vue'
+import Avatar from '@/components/Avatar.vue'
 
 const auth = useAuthStore()
 const groups = useGroupsStore()
@@ -12,7 +13,9 @@ const router = useRouter()
 const cancelError = ref('')
 
 onMounted(() => {
-  if (!groups.loaded) groups.fetchGroups()
+  // Only 42-linked accounts have group chats; non-42 accounts are read-only
+  // and GET /groups returns [] for them, so skip the pointless request.
+  if (auth.user?.has42 && !groups.loaded) groups.fetchGroups()
 })
 
 function initials(name?: string | null): string {
@@ -58,9 +61,26 @@ async function cancelDeletion() {
         <span class="brand-word">ft<span class="brand-accent">_hub</span></span>
       </RouterLink>
 
+      <nav class="hd-nav">
+        <RouterLink :to="{ name: 'browse' }" class="nav-link" aria-label="Browse projects">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8" />
+            <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8" />
+            <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8" />
+            <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8" />
+          </svg>
+          <span class="nav-label">Browse projects</span>
+        </RouterLink>
+      </nav>
+
       <div class="hd-right">
         <RouterLink :to="{ name: 'me' }" class="pill">
-          <span class="pill-av">{{ initials(auth.user?.name) }}</span>
+          <Avatar
+            class="pill-av"
+            :user-id="auth.user?.id ?? ''"
+            :name="auth.user?.name ?? ''"
+            :size="28"
+          />
           <span class="pill-name">{{ auth.user?.name ?? 'Profile' }}</span>
         </RouterLink>
         <button class="icon-btn logout" aria-label="Log out" @click="logout">
@@ -71,25 +91,41 @@ async function cancelDeletion() {
 
     <div class="grid">
       <aside class="rail rail-left scroll">
-        <div class="rail-head">
-          <span class="rail-title">YOUR GROUPCHAT</span>
-          <span class="rail-count">{{ groups.groups.length }}</span>
-        </div>
-        <p v-if="groups.loading" class="muted">Loading…</p>
-        <p v-else-if="groups.error" class="muted">{{ groups.error }}</p>
-        <p v-else-if="!groups.groups.length" class="muted">No groups yet.</p>
-        <RouterLink
-          v-for="g in groups.groups"
-          :key="g.id"
-          :to="{ name: 'group', params: { groupId: g.id } }"
-          class="grp"
-        >
-          <span class="grp-av">{{ initials(g.groupName) }}</span>
-          <span class="grp-main">
-            <span class="grp-name">{{ g.groupName }}</span>
-            <span class="grp-proj">{{ g.projectName }}</span>
+        <!-- 42-linked accounts get their group chats; non-42 accounts are
+             read-only and see a CTA to link their 42 in place of the rail. -->
+        <template v-if="auth.user?.has42">
+          <div class="rail-head">
+            <span class="rail-title">YOUR GROUPCHAT</span>
+            <span class="rail-count">{{ groups.groups.length }}</span>
+          </div>
+          <p v-if="groups.loading" class="muted">Loading…</p>
+          <p v-else-if="groups.error" class="muted">{{ groups.error }}</p>
+          <p v-else-if="!groups.groups.length" class="muted">No groups yet.</p>
+          <RouterLink
+            v-for="g in groups.groups"
+            :key="g.id"
+            :to="{ name: 'group', params: { groupId: g.id } }"
+            class="grp"
+          >
+            <span class="grp-av">{{ initials(g.groupName) }}</span>
+            <span class="grp-main">
+              <span class="grp-name">{{ g.groupName }}</span>
+              <span class="grp-proj">{{ g.projectName }}</span>
+            </span>
+          </RouterLink>
+        </template>
+
+        <div v-else class="cta42">
+          <span class="cta42-mark">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
           </span>
-        </RouterLink>
+          <p class="cta42-title">Project chats</p>
+          <p class="cta42-text">Link your 42 to join project chats.</p>
+          <RouterLink :to="{ name: 'me' }" class="cta42-btn">Link your 42</RouterLink>
+        </div>
       </aside>
 
       <main class="main scroll">
@@ -109,6 +145,13 @@ async function cancelDeletion() {
         </RouterLink>
       </aside>
     </div>
+
+    <footer class="legal">
+      <span class="legal-brand">ft<span class="legal-accent">_hub</span></span>
+      <span class="legal-dot">·</span>
+      <RouterLink :to="{ name: 'privacy' }" class="legal-link">Privacy</RouterLink>
+      <RouterLink :to="{ name: 'terms' }" class="legal-link">Terms</RouterLink>
+    </footer>
 
     <!-- Blocking barrier: backdrop-close disabled so it can't be dismissed
          without either cancelling the request or logging out. -->
@@ -193,6 +236,35 @@ async function cancelDeletion() {
 }
 .brand-accent {
   color: #8c97f7;
+}
+.hd-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  color: #9a9aa2;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+}
+.nav-link:hover {
+  color: #ededee;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.nav-link.router-link-active {
+  color: #c7ccff;
+  background: rgba(110, 123, 242, 0.12);
+  border-color: rgba(110, 123, 242, 0.28);
 }
 .hd-right {
   margin-left: auto;
@@ -381,6 +453,92 @@ async function cancelDeletion() {
   padding: 0 6px;
 }
 
+.cta42 {
+  margin: 4px 6px;
+  padding: 20px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(110, 123, 242, 0.22);
+  background: linear-gradient(180deg, rgba(110, 123, 242, 0.08), rgba(110, 123, 242, 0.02));
+  text-align: center;
+}
+.cta42-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: rgba(110, 123, 242, 0.14);
+  border: 1px solid rgba(110, 123, 242, 0.3);
+  color: #8c97f7;
+  margin-bottom: 12px;
+}
+.cta42-title {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ededee;
+}
+.cta42-text {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #9a9aa2;
+}
+.cta42-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #5e6cf0, #4a5fe8);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: filter 0.14s;
+}
+.cta42-btn:hover {
+  filter: brightness(1.08);
+}
+
+.legal {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 18px 20px;
+  border-top: 1px solid #1c1c22;
+  background: rgba(10, 10, 12, 0.4);
+}
+.legal-brand {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #5c5c66;
+}
+.legal-accent {
+  color: #6b6f9e;
+}
+.legal-dot {
+  color: #3a3a44;
+}
+.legal-link {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: #74747e;
+  text-decoration: none;
+  transition: color 0.14s;
+}
+.legal-link:hover {
+  color: #8c97f7;
+}
+
 .modal-text {
   margin: 0;
 }
@@ -419,6 +577,14 @@ async function cancelDeletion() {
   }
   .grid {
     grid-template-columns: 268px 1fr;
+  }
+}
+@media (max-width: 620px) {
+  .nav-label {
+    display: none;
+  }
+  .nav-link {
+    padding: 0 9px;
   }
 }
 @media (max-width: 900px) {

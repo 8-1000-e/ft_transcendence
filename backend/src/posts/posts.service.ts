@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -9,17 +10,35 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { VoteDto } from './dto/vote.dto';
 import { VoteValue } from 'generated/prisma/client';
 import { assertFilesExist } from 'src/utils/files';
+import { authorView } from 'src/utils/anonymize';
 
 @Injectable()
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  // Browse-all forum list: 42 common-core projects only + their post count,
+  // ordered by name. Non-common-core rows (piscine, exams, outer circle, fakes)
+  // are excluded via the isCommonCore flag set during sync.
+  async getProjects() {
+    const projects = await this.prisma.projects.findMany({
+      where: { isCommonCore: true },
+      orderBy: { name: 'asc' },
+      include: { _count: { select: { posts: true } } },
+    });
+
+    return projects.map((project) => ({
+      id: project.id,
+      name: project.name,
+      postCount: project._count.posts,
+    }));
+  }
 
   async sendPost(id: string, body: CreatePostDto, userId: string) {
     const project = await this.prisma.projects.findUnique({ where: { id } });
     if (!project) throw new NotFoundException();
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (user && !user.ftId) throw new UnauthorizedException();
+    if (!user?.ftId) throw new ForbiddenException();
 
     assertFilesExist(body.filesUrl);
 
@@ -92,25 +111,18 @@ export class PostsService {
       },
     });
 
-    return posts.map(({ votes, ...post }) => {
+    return posts.map(({ votes, user: author, ...post }) => {
       const upvotes = votes.filter((v) => v.vote === VoteValue.UP).length;
       const downvotes = votes.filter((v) => v.vote === VoteValue.DOWN).length;
       const myVote = votes.find((v) => v.userId === userId)?.vote ?? null;
 
-      if (user && !user.ftId) {
-        return {
-          ...post,
-          upvotes,
-          downvotes,
-          myVote,
-          user: {
-            name: post.user.rdmName,
-            ftPfpUrl: post.user.rdmPfp,
-            campus: post.user.rdmCampus,
-          },
-        };
-      }
-      return { ...post, upvotes, downvotes, myVote };
+      return {
+        ...post,
+        upvotes,
+        downvotes,
+        myVote,
+        user: authorView(user, author),
+      };
     });
   }
 
@@ -121,7 +133,7 @@ export class PostsService {
     if (!post) throw new NotFoundException();
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (user && !user.ftId) throw new UnauthorizedException();
+    if (!user?.ftId) throw new ForbiddenException();
 
     assertFilesExist(body.filesUrl);
 
@@ -180,25 +192,18 @@ export class PostsService {
       },
     });
 
-    return comments.map(({ votes, ...comment }) => {
+    return comments.map(({ votes, user: author, ...comment }) => {
       const upvotes = votes.filter((v) => v.vote === VoteValue.UP).length;
       const downvotes = votes.filter((v) => v.vote === VoteValue.DOWN).length;
       const myVote = votes.find((v) => v.userId === userId)?.vote ?? null;
 
-      if (user && !user.ftId) {
-        return {
-          ...comment,
-          upvotes,
-          downvotes,
-          myVote,
-          user: {
-            name: comment.user.rdmName,
-            ftPfpUrl: comment.user.rdmPfp,
-            campus: comment.user.rdmCampus,
-          },
-        };
-      }
-      return { ...comment, upvotes, downvotes, myVote };
+      return {
+        ...comment,
+        upvotes,
+        downvotes,
+        myVote,
+        user: authorView(user, author),
+      };
     });
   }
 
@@ -210,7 +215,7 @@ export class PostsService {
     if (!comment) throw new NotFoundException();
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (user && !user.ftId) throw new UnauthorizedException();
+    if (!user?.ftId) throw new ForbiddenException();
 
     assertFilesExist(body.filesUrl);
 
@@ -271,25 +276,18 @@ export class PostsService {
       },
     });
 
-    return replies.map(({ votes, ...reply }) => {
+    return replies.map(({ votes, user: author, ...reply }) => {
       const upvotes = votes.filter((v) => v.vote === VoteValue.UP).length;
       const downvotes = votes.filter((v) => v.vote === VoteValue.DOWN).length;
       const myVote = votes.find((v) => v.userId === userId)?.vote ?? null;
 
-      if (user && !user.ftId) {
-        return {
-          ...reply,
-          upvotes,
-          downvotes,
-          myVote,
-          user: {
-            name: reply.user.rdmName,
-            ftPfpUrl: reply.user.rdmPfp,
-            campus: reply.user.rdmCampus,
-          },
-        };
-      }
-      return { ...reply, upvotes, downvotes, myVote };
+      return {
+        ...reply,
+        upvotes,
+        downvotes,
+        myVote,
+        user: authorView(user, author),
+      };
     });
   }
 
@@ -298,7 +296,7 @@ export class PostsService {
     const post = await this.prisma.projectsPost.findUnique({ where: { id } });
     if (!post) throw new NotFoundException();
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.ftId) throw new UnauthorizedException();
+    if (!user?.ftId) throw new ForbiddenException();
 
     const existing = await this.prisma.postVote.findUnique({
       where: { userId_postId: { userId, postId: id } },
@@ -322,7 +320,7 @@ export class PostsService {
     const post = await this.prisma.projectsChat.findUnique({ where: { id } });
     if (!post) throw new NotFoundException();
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.ftId) throw new UnauthorizedException();
+    if (!user?.ftId) throw new ForbiddenException();
 
     const existing = await this.prisma.chatVote.findUnique({
       where: { userId_chatId: { userId, chatId: id } },

@@ -82,3 +82,30 @@ export interface PublicUser {
   campus?: string | null
   createdAt?: string
 }
+
+/** A post the signed-in user authored — from GET /me/activity. */
+export interface ActivityPost {
+  id: string
+  projectId: string
+  title: string | null
+  content: string
+  postedAt: string
+  upvotes: number
+  downvotes: number
+}
+
+/** A comment the signed-in user authored — from GET /me/activity. */
+export interface ActivityComment {
+  id: string
+  postId: string | null
+  projectId: string | null
+  content: string
+  postedAt: string
+  upvotes: number
+  downvotes: number
+}
+
+export interface Activity {
+  posts: ActivityPost[]
+  comments: ActivityComment[]
+}

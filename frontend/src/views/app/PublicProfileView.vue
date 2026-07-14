@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
+import Avatar from '@/components/Avatar.vue'
 import type { PublicUser } from '@/types/api'
 
 const route = useRoute()
@@ -10,18 +11,11 @@ const router = useRouter()
 const user = ref<PublicUser | null>(null)
 const loading = ref(false)
 const error = ref('')
-const avatarFailed = ref(false)
-
-function initials(n?: string | null): string {
-  if (!n) return '??'
-  return n.trim().slice(0, 2).toUpperCase()
-}
 
 async function load() {
   loading.value = true
   error.value = ''
   user.value = null
-  avatarFailed.value = false
   try {
     user.value = await api.get<PublicUser>(
       ROUTES.users.byId(route.params.id as string),
@@ -48,14 +42,7 @@ watch(() => route.params.id, load, { immediate: true })
 
     <div v-if="user" class="card">
       <div class="glow"></div>
-      <img
-        v-if="user.ftPfpUrl && !avatarFailed"
-        :src="user.ftPfpUrl"
-        class="pp"
-        :alt="`Profile picture of ${user.name}`"
-        @error="avatarFailed = true"
-      />
-      <span v-else class="av">{{ initials(user.name) }}</span>
+      <Avatar class="pp av" :user-id="user.id" :name="user.name" :size="88" />
       <h1 class="name">{{ user.name }}</h1>
       <p v-if="user.campus" class="campus">{{ user.campus }}</p>
       <p v-if="user.createdAt" class="since">member since {{ user.createdAt.slice(0, 10) }}</p>

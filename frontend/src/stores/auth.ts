@@ -25,10 +25,18 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = null
     refreshToken.value = null
     user.value = null
+    pendingDeletion.value = false
     localStorage.removeItem(REFRESH_KEY)
     // Tear down the realtime socket so the next user gets a fresh client and
     // never reuses the previous session's authenticated Pusher connection.
     disconnectRealtime()
+    // Reset the rest of the app's stores so a newly logged-in account never
+    // inherits the previous session's cached data (groups, projects, messages)
+    // — the "must Cmd+R when switching accounts" bug. Dynamic import breaks the
+    // store<->store cycle, mirroring how the api client reaches this store.
+    void import('@/stores/groups').then(({ useGroupsStore }) => {
+      useGroupsStore().reset()
+    })
   }
 
   async function fetchMe() {

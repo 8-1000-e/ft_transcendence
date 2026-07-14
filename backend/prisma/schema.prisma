@@ -84,9 +84,10 @@ model GroupChat {
 }
 
 model Projects {
-  id    String         @id
-  name  String
-  posts ProjectsPost[]
+  id           String         @id
+  name         String
+  isCommonCore Boolean        @default(false)
+  posts        ProjectsPost[]
 }
 
 model ProjectsPost {

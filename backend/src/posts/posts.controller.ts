@@ -19,6 +19,13 @@ import { VoteDto } from './dto/vote.dto';
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
+  // Browse-all forum list: every project + its post count.
+  @Get('projects')
+  @UseGuards(JwtAuthGuard)
+  getProjects() {
+    return this.postsService.getProjects();
+  }
+
   @Post('project/:projectId/posts')
   @UseGuards(JwtAuthGuard)
   sendPost(

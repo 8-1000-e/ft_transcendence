@@ -2,6 +2,8 @@ export const API_BASE_URL: string =
   import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 export const ROUTES = {
+  projects: '/projects',
+
   auth: {
     signup: '/signup',
     verify: '/verify',
@@ -13,6 +15,7 @@ export const ROUTES = {
 
   users: {
     me: '/me',
+    activity: '/me/activity',
     updateMe: '/me',
     deleteMe: '/me',
     cancelDelete: '/me/cancel',

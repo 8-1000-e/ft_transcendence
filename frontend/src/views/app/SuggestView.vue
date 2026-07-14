@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
+import Avatar from '@/components/Avatar.vue'
 
 interface SuggestUser {
   id: string
@@ -25,15 +26,9 @@ const teams = ref<SuggestTeam[]>([])
 const loading = ref(false)
 const error = ref('')
 const done = ref(false)
-const failedAvatars = ref(new Set<string>())
 
 function projectId(): string {
   return route.params.projectId as string
-}
-
-function initials(n?: string | null): string {
-  if (!n) return '??'
-  return n.trim().slice(0, 2).toUpperCase()
 }
 
 async function search() {
@@ -89,14 +84,12 @@ async function search() {
             class="member"
             :title="`${u.name} (${u.login})${u.location ? ' · ' + u.location : ''}`"
           >
-            <img
-              v-if="u.ppurl && !failedAvatars.has(u.id)"
-              :src="u.ppurl"
-              class="m-pp"
-              :alt="`Profile picture of ${u.name || u.login}`"
-              @error="failedAvatars.add(u.id)"
+            <Avatar
+              class="m-pp m-av"
+              :user-id="u.id"
+              :name="u.name || u.login"
+              :size="28"
             />
-            <span v-else class="m-av">{{ initials(u.name || u.login) }}</span>
           </span>
         </div>
         <div class="logins">

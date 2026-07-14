@@ -28,6 +28,16 @@ const router = createRouter({
       component: () => import('@/views/AuthCallback.vue'),
     },
     {
+      path: '/privacy',
+      name: 'privacy',
+      component: () => import('@/views/legal/PrivacyView.vue'),
+    },
+    {
+      path: '/terms',
+      name: 'terms',
+      component: () => import('@/views/legal/TermsView.vue'),
+    },
+    {
       path: '/',
       component: () => import('@/layouts/AppShell.vue'),
       meta: { requiresAuth: true },
@@ -36,6 +46,11 @@ const router = createRouter({
           path: '',
           name: 'feed',
           component: () => import('@/views/app/FeedView.vue'),
+        },
+        {
+          path: 'browse',
+          name: 'browse',
+          component: () => import('@/views/app/BrowseView.vue'),
         },
         {
           path: 'p/:projectId',

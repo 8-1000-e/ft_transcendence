@@ -8,6 +8,7 @@ import {
   Body,
   Delete,
   Post,
+  StreamableFile,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { UsersService } from './users.service';
@@ -23,6 +24,12 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   getMe(@Req() request: AuthedRequest) {
     return this.usersService.getProfile(request.user.sub);
+  }
+
+  @Get('me/activity')
+  @UseGuards(JwtAuthGuard)
+  getMyActivity(@Req() request: AuthedRequest) {
+    return this.usersService.getActivity(request.user.sub);
   }
 
   @Patch('me')
@@ -46,7 +53,14 @@ export class UsersController {
 
   @Get('users/:id')
   @UseGuards(JwtAuthGuard)
-  getUser(@Param('id') id: string) {
-    return this.usersService.getUserProfile(id);
+  getUser(@Param('id') id: string, @Req() req: AuthedRequest) {
+    return this.usersService.getUserProfile(id, req.user.sub);
+  }
+
+  @Get('avatar/:id')
+  @UseGuards(JwtAuthGuard)
+  async getAvatar(@Param('id') id: string): Promise<StreamableFile> {
+    const { buffer, contentType } = await this.usersService.getAvatar(id);
+    return new StreamableFile(buffer, { type: contentType });
   }
 }

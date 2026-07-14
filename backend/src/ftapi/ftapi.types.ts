@@ -22,6 +22,7 @@ export interface FtTeam {
 export interface FtProject {
   id: number;
   name: string;
+  slug: string;
 }
 
 export interface FtCursus {

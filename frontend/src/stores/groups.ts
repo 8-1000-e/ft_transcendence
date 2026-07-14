@@ -23,6 +23,19 @@ export const useGroupsStore = defineStore('groups', () => {
     }
   }
 
+  /**
+   * Wipe all cached state back to its initial values. Called from the auth
+   * store's clear()/logout flow so a newly logged-in account never inherits the
+   * previous session's groups/projects (the "must Cmd+R when switching
+   * accounts" bug).
+   */
+  function reset() {
+    groups.value = []
+    loaded.value = false
+    loading.value = false
+    error.value = ''
+  }
+
   function projects(): ProjectRef[] {
     const seen = new Map<string, string>()
     for (const g of groups.value) {
@@ -33,5 +46,5 @@ export const useGroupsStore = defineStore('groups', () => {
     return [...seen].map(([projectId, projectName]) => ({ projectId, projectName }))
   }
 
-  return { groups, loaded, loading, error, fetchGroups, projects }
+  return { groups, loaded, loading, error, fetchGroups, projects, reset }
 })
