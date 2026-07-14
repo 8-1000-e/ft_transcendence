@@ -74,9 +74,13 @@ function resetComposer() {
   newContent.value = ''
   newFiles.value = []
 }
-function closeComposer() {
+async function closeComposer() {
+  // Free an image uploaded to disk but never published (Publish uses resetComposer
+  // directly, so a successful post keeps its file).
+  const url = newFiles.value[0]
   composerOpen.value = false
   resetComposer()
+  if (url) await deleteUpload(url)
 }
 
 async function vote(post: Post, value: VoteValue) {
@@ -207,7 +211,7 @@ watch(
             <input type="file" accept="image/*" hidden :aria-label="$t('forum.attachImage')" @change="onFile" />
           </label>
           <span v-if="newFiles.length" style="display: inline-flex; align-items: center; gap: 6px">
-            <img :src="publicUrl(newFiles[0])" alt="" style="width: 34px; height: 34px; object-fit: cover; border-radius: 6px" />
+            <img :src="publicUrl(newFiles[0])" alt="" style="width: 34px; height: 34px; object-fit: cover; border-radius: 6px" @error="($event.target as HTMLImageElement).style.display = 'none'" />
             <button type="button" class="txt-btn" :aria-label="$t('common.remove')" @click="removeImage">✕</button>
           </span>
         </div>

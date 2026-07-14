@@ -7,7 +7,7 @@ import {
 import type { GroupChat } from 'generated/prisma/client';
 import { PusherService } from 'src/pusher/pusher.services';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { assertPrivateFilesExist } from 'src/utils/files';
+import { assertPrivateFilesExist, unlinkStoredFiles } from 'src/utils/files';
 
 @Injectable()
 export class GroupChatService implements OnModuleInit {
@@ -174,6 +174,14 @@ export class GroupChatService implements OnModuleInit {
     const deletedMessage = await this.prisma.groupChat.delete({
       where: { id: messageId },
     });
+
+    // Free each attached private file unless another message still references it.
+    for (const url of deletedMessage.filesUrl) {
+      const stillUsed = await this.prisma.groupChat.findFirst({
+        where: { filesUrl: { has: url } },
+      });
+      if (!stillUsed) await unlinkStoredFiles([url]);
+    }
 
     await this.pusher.trigger(
       this.pusher.groupChannel(groupId),

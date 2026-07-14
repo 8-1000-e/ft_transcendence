@@ -133,6 +133,13 @@ function startEdit() {
   editing.value = true
 }
 
+// Images that already belong to the post (removing these is deferred to saveEdit,
+// which frees them only after a successful save); anything else in editFiles is a
+// this-session upload safe to free immediately on remove/replace/cancel.
+function origFiles(): string[] {
+  return post.value?.filesUrl ?? []
+}
+
 async function onEditFile(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
@@ -146,7 +153,10 @@ async function onEditFile(e: Event) {
   error.value = ''
   editUploadPct.value = 0
   try {
-    editFiles.value = [await uploadImage(file, false, (p) => (editUploadPct.value = p))]
+    const uploaded = await uploadImage(file, false, (p) => (editUploadPct.value = p))
+    const prev = editFiles.value[0]
+    if (prev && !origFiles().includes(prev)) await deleteUpload(prev)
+    editFiles.value = [uploaded]
   } catch (err) {
     error.value = message(err, t('forum.uploadFailed'))
   } finally {
@@ -155,8 +165,16 @@ async function onEditFile(e: Event) {
   }
 }
 
-function removeEditImage() {
+async function removeEditImage() {
+  const url = editFiles.value[0]
   editFiles.value = []
+  if (url && !origFiles().includes(url)) await deleteUpload(url)
+}
+
+async function cancelEdit() {
+  const url = editFiles.value[0]
+  editing.value = false
+  if (url && !origFiles().includes(url)) await deleteUpload(url)
 }
 
 async function saveEdit() {
@@ -234,12 +252,12 @@ onMounted(load)
                 <input type="file" accept="image/*" hidden :aria-label="$t('forum.attachImage')" @change="onEditFile" />
               </label>
               <span v-if="editFiles.length" style="display: inline-flex; align-items: center; gap: 6px">
-                <img :src="publicUrl(editFiles[0])" alt="" style="width: 34px; height: 34px; object-fit: cover; border-radius: 6px" />
+                <img :src="publicUrl(editFiles[0])" alt="" style="width: 34px; height: 34px; object-fit: cover; border-radius: 6px" @error="($event.target as HTMLImageElement).style.display = 'none'" />
                 <button type="button" class="txt-btn" :aria-label="$t('common.remove')" @click="removeEditImage">✕</button>
               </span>
             </div>
             <div style="display: flex; align-items: center; gap: 12px">
-              <button class="txt-btn" @click="editing = false">{{ $t('common.cancel') }}</button>
+              <button class="txt-btn" @click="cancelEdit">{{ $t('common.cancel') }}</button>
               <button class="btn-primary" :disabled="saving || editUploadPct !== null || !editContent.trim()" @click="saveEdit">{{ $t('common.save') }}</button>
             </div>
           </div>
