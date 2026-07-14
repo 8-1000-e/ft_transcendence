@@ -54,8 +54,16 @@ export class SuggestService {
         campusId,
         requestCounter,
       );
+      // Never suggest the logged-in user to themselves. `user.ftId` is the
+      // stringified 42 id (auth.service) and matches `projectUser.user.id`;
+      // `login` is a second, equally reliable key.
       const validatedProjectsUsers = projectUsers
         .filter((projectUser) => projectUser['validated?'] === true)
+        .filter(
+          (projectUser) =>
+            String(projectUser.user.id) !== user.ftId &&
+            projectUser.user.login !== user.login,
+        )
         .sort((a, b) => {
           const markDiff = (b.final_mark ?? -1) - (a.final_mark ?? -1);
           if (markDiff !== 0) return markDiff;
