@@ -21,7 +21,7 @@ async function submit() {
     await auth.signup(email.value, password.value, name.value)
     await router.push({ name: 'verify', query: { email: email.value } })
   } catch (e) {
-    error.value = (e as ApiError).message ?? 'Inscription impossible'
+    error.value = (e as ApiError).message ?? 'Could not sign up'
   } finally {
     loading.value = false
   }
@@ -29,36 +29,36 @@ async function submit() {
 </script>
 
 <template>
-  <AuthShell title="Inscription" subtitle="// crée ton compte étudiant.">
-    <form class="ftp-form" @submit.prevent="submit">
-      <div class="ftp-field">
-        <label class="ftp-label" for="name">NOM</label>
+  <AuthShell title="Sign up" subtitle="// create your account">
+    <form class="form" @submit.prevent="submit">
+      <div class="field">
+        <label class="label" for="name">NAME</label>
         <input
           id="name"
           v-model="name"
           type="text"
           required
           minlength="2"
-          class="ftp-input"
-          placeholder="ton nom"
+          class="input"
+          placeholder="your name"
         />
       </div>
 
-      <div class="ftp-field">
-        <label class="ftp-label" for="email">E-MAIL</label>
+      <div class="field">
+        <label class="label" for="email">EMAIL</label>
         <input
           id="email"
           v-model="email"
           type="email"
           required
           autocomplete="email"
-          class="ftp-input"
-          placeholder="prenom@student.42.fr"
+          class="input"
+          placeholder="you@student.42.fr"
         />
       </div>
 
-      <div class="ftp-field">
-        <label class="ftp-label" for="password">MOT DE PASSE</label>
+      <div class="field">
+        <label class="label" for="password">PASSWORD</label>
         <input
           id="password"
           v-model="password"
@@ -66,31 +66,40 @@ async function submit() {
           required
           minlength="8"
           autocomplete="new-password"
-          class="ftp-input"
+          class="input"
           placeholder="••••••••"
         />
-        <p class="ftp-hint">8 caractères minimum.</p>
+        <p class="hint">8 characters minimum.</p>
       </div>
 
-      <p v-if="error" class="ftp-error">! {{ error }}</p>
+      <p v-if="error" class="error-text">{{ error }}</p>
 
-      <button type="submit" :disabled="loading" class="ftp-btn">
-        {{ loading ? 'Envoi…' : 'Créer mon compte' }}
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M5 12h13M13 6l6 6-6 6"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
+      <button type="submit" :disabled="loading" class="btn">
+        {{ loading ? 'Sending…' : 'Create account' }}
       </button>
     </form>
 
     <template #footer>
-      Déjà inscrit ?
-      <RouterLink to="/login" class="ftp-link-strong">Se connecter</RouterLink>
+      Already have an account?
+      <RouterLink to="/login" class="link">Sign in</RouterLink>
     </template>
   </AuthShell>
 </template>
+
+<style scoped>
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.hint {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-muted);
+}
+.btn {
+  width: 100%;
+  margin-top: 2px;
+}
+</style>

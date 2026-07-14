@@ -46,7 +46,7 @@ async function load() {
   try {
     posts.value = await api.get<Post[]>(ROUTES.posts.listByProject(projectId()))
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Erreur de chargement'
+    error.value = (e as { message?: string }).message ?? 'Failed to load'
   } finally {
     loading.value = false
   }
@@ -67,7 +67,7 @@ async function onFile(e: Event) {
   try {
     newFiles.value = [await uploadImage(file, false)]
   } catch {
-    error.value = "Échec de l'upload"
+    error.value = 'Upload failed'
   }
 }
 
@@ -85,7 +85,7 @@ async function createPost() {
     newFiles.value = []
     await load()
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Publication impossible'
+    error.value = (e as { message?: string }).message ?? 'Could not publish'
   } finally {
     creating.value = false
   }
@@ -106,7 +106,7 @@ async function saveEdit(p: Post) {
     editId.value = ''
     await load()
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Modification impossible'
+    error.value = (e as { message?: string }).message ?? 'Could not save changes'
   }
 }
 
@@ -116,39 +116,47 @@ watch(() => route.params.projectId, load, { immediate: true })
 <template>
   <section>
     <div class="head">
-      <span class="proj-name">{{ projectName() }}</span>
-      <span class="proj-tag">42</span>
+      <div class="head-main">
+        <span class="proj-name">{{ projectName() }}</span>
+        <span class="badge">42</span>
+      </div>
+      <RouterLink
+        :to="{ name: 'suggest', params: { projectId: projectId() } }"
+        class="btn-ghost find"
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /><path d="M17 8v6M14 11h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+        Find teammates
+      </RouterLink>
     </div>
-    <p class="sub">// le fil du projet · {{ posts.length }} posts</p>
+    <p class="sub mono">// project feed · {{ posts.length }} posts</p>
 
-    <div class="composer">
-      <div class="sheen"><div class="sheen-move"></div></div>
-      <input v-model="newTitle" class="c-title" placeholder="Titre du post" />
+    <div class="composer card card-pad">
+      <input v-model="newTitle" class="input" placeholder="Post title" />
       <textarea
         v-model="newContent"
         rows="3"
-        class="c-body"
-        placeholder="Partage une prédiction, une analyse…"
+        class="input body-input"
+        placeholder="Share an update or a question…"
       ></textarea>
       <div class="c-row">
-        <label class="c-img">
+        <label class="btn-ghost c-img">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7" /><circle cx="9" cy="10" r="1.8" stroke="currentColor" stroke-width="1.7" /><path d="m4 18 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
-          {{ newFiles.length ? 'image prête' : 'Image' }}
+          {{ newFiles.length ? 'Image ready' : 'Image' }}
           <input type="file" accept="image/*" hidden @change="onFile" />
         </label>
-        <button class="c-send" :disabled="creating" @click="createPost">
-          {{ creating ? 'Publication…' : 'Publier' }}
+        <button class="btn" :disabled="creating" @click="createPost">
+          {{ creating ? 'Publishing…' : 'Publish' }}
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
         </button>
       </div>
     </div>
 
-    <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="loading" class="muted">Chargement…</p>
-    <p v-else-if="!posts.length" class="muted">Aucun post pour ce projet.</p>
+    <p v-if="error" class="error-text">{{ error }}</p>
+    <p v-if="loading" class="muted">Loading…</p>
+    <p v-else-if="!posts.length" class="muted">No posts yet.</p>
 
     <div class="posts">
-      <article v-for="p in posts" :key="p.id" class="post">
+      <article v-for="p in posts" :key="p.id" class="post card">
         <div class="votes">
           <button
             class="vote"
@@ -170,24 +178,29 @@ watch(() => route.params.projectId, load, { immediate: true })
         </div>
 
         <div class="body">
-          <div class="meta">
-            <span class="av">{{ initials(p.user?.name) }}</span>
-            <span class="author">{{ p.user?.name ?? 'anonyme' }}</span>
+          <div class="meta-row">
+            <span class="avatar av">{{ initials(p.user?.name) }}</span>
+            <RouterLink
+              :to="{ name: 'user', params: { id: p.writer } }"
+              class="author"
+            >
+              {{ p.user?.name ?? 'anonymous' }}
+            </RouterLink>
             <button
               v-if="p.writer === auth.user?.id && editId !== p.id"
               class="edit"
               @click="startEdit(p)"
             >
-              éditer
+              edit
             </button>
           </div>
 
           <template v-if="editId === p.id">
-            <input v-model="editTitle" class="c-title" placeholder="Titre" />
-            <textarea v-model="editContent" rows="3" class="c-body"></textarea>
+            <input v-model="editTitle" class="input" placeholder="Title" />
+            <textarea v-model="editContent" rows="3" class="input body-input"></textarea>
             <div class="edit-row">
-              <button class="c-send small" @click="saveEdit(p)">Enregistrer</button>
-              <button class="txt-btn" @click="editId = ''">annuler</button>
+              <button class="btn small" @click="saveEdit(p)">Save</button>
+              <button class="txt-btn" @click="editId = ''">cancel</button>
             </div>
           </template>
           <template v-else>
@@ -205,7 +218,7 @@ watch(() => route.params.projectId, load, { immediate: true })
                 class="cmt"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
-                {{ p._count?.chats ?? 0 }} commentaires
+                {{ p._count?.chats ?? 0 }} comments
               </RouterLink>
             </div>
           </template>
@@ -222,79 +235,34 @@ watch(() => route.params.projectId, load, { immediate: true })
   gap: 12px;
   margin-bottom: 4px;
 }
+.head-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .proj-name {
-  font-family: 'JetBrains Mono', monospace;
   font-size: 20px;
   font-weight: 700;
-  color: #dfe2ff;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
 }
-.proj-tag {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  color: #74747e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 3px 8px;
-  border-radius: 999px;
+.find {
+  margin-left: auto;
+  height: 36px;
+  font-size: 13px;
 }
 .sub {
   margin: 0 0 22px;
-  font-family: 'JetBrains Mono', monospace;
   font-size: 12.5px;
-  color: #74747e;
+  color: var(--color-muted);
 }
+
 .composer {
-  position: relative;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(17, 17, 21, 0.72);
-  padding: 18px;
   margin-bottom: 22px;
-  overflow: hidden;
 }
-.sheen {
-  position: absolute;
-  top: 0;
-  left: 22px;
-  right: 22px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(140, 151, 247, 0.7), transparent);
-  overflow: hidden;
-}
-.sheen-move {
-  position: absolute;
-  inset: 0;
-  width: 40%;
-  background: linear-gradient(90deg, transparent, #cdd3ff, transparent);
-  animation: ftpSheen 6s ease-in-out infinite;
-}
-.c-title,
-.c-body {
-  width: 100%;
-  border-radius: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: rgba(255, 255, 255, 0.035);
-  color: #f3f3f4;
-  outline: none;
-  font: inherit;
-}
-.c-title {
-  height: 44px;
-  padding: 0 14px;
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-.c-body {
-  padding: 12px 14px;
-  font-size: 14px;
-  resize: none;
-  line-height: 1.55;
-}
-.c-title:focus,
-.c-body:focus {
-  border-color: #6e7bf2;
-  box-shadow: 0 0 0 3px rgba(110, 123, 242, 0.2);
+.body-input {
+  min-height: 84px;
+  margin-top: 10px;
 }
 .c-row {
   display: flex;
@@ -303,44 +271,11 @@ watch(() => route.params.projectId, load, { immediate: true })
   margin-top: 12px;
 }
 .c-img {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 38px;
-  padding: 0 13px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.035);
-  color: #b6b6be;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.c-img:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-}
-.c-send {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
   height: 40px;
-  padding: 0 18px;
-  border-radius: 10px;
-  border: none;
-  background: linear-gradient(180deg, #5e6cf0, #4a5fe8);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
   cursor: pointer;
-  box-shadow: 0 10px 22px -12px rgba(74, 95, 232, 0.8);
 }
-.c-send:hover {
-  filter: brightness(1.08);
-}
-.c-send:disabled {
-  opacity: 0.6;
-}
-.c-send.small {
+.btn.small {
   height: 36px;
   padding: 0 14px;
 }
@@ -353,11 +288,15 @@ watch(() => route.params.projectId, load, { immediate: true })
 .txt-btn {
   background: none;
   border: none;
-  color: #74747e;
+  color: var(--color-muted);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
 }
+.txt-btn:hover {
+  color: var(--color-text-dim);
+}
+
 .posts {
   display: flex;
   flex-direction: column;
@@ -366,9 +305,6 @@ watch(() => route.params.projectId, load, { immediate: true })
 .post {
   display: flex;
   gap: 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(17, 17, 21, 0.6);
   padding: 16px 18px;
 }
 .votes {
@@ -383,38 +319,41 @@ watch(() => route.params.projectId, load, { immediate: true })
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-  color: #74747e;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: border-color 0.14s, color 0.14s, background 0.14s;
+}
+.vote:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-dim);
 }
 .vote.up {
-  border-color: rgba(110, 123, 242, 0.5);
-  background: rgba(110, 123, 242, 0.16);
-  color: #8c97f7;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 .vote.down {
-  border-color: rgba(239, 109, 114, 0.4);
-  background: rgba(239, 109, 114, 0.12);
-  color: #ef6d72;
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 .score {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 700;
-  color: #b6b6be;
+  color: var(--color-text-dim);
 }
 .score.up {
-  color: #8c97f7;
+  color: var(--color-accent);
 }
 .body {
   flex: 1;
   min-width: 0;
 }
-.meta {
+.meta-row {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -423,35 +362,32 @@ watch(() => route.params.projectId, load, { immediate: true })
 .av {
   width: 24px;
   height: 24px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #3a3a52, #54547a);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
-  font-weight: 700;
-  color: #dfe2ff;
 }
 .author {
   font-size: 13px;
   font-weight: 600;
-  color: #cfcfd4;
+  color: var(--color-text-dim);
+  text-decoration: none;
+}
+.author:hover {
+  color: var(--color-text);
 }
 .edit {
   margin-left: auto;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: #74747e;
+  color: var(--color-muted);
   background: none;
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid var(--color-border);
   padding: 4px 9px;
   border-radius: 8px;
   cursor: pointer;
+  transition: color 0.14s, border-color 0.14s;
 }
 .edit:hover {
-  color: #8c97f7;
-  border-color: rgba(110, 123, 242, 0.4);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
 }
 .open {
   display: block;
@@ -460,12 +396,12 @@ watch(() => route.params.projectId, load, { immediate: true })
 .p-title {
   font-size: 16.5px;
   font-weight: 700;
-  color: #f0f0f2;
+  color: var(--color-text);
   margin: 0 0 6px;
 }
 .p-excerpt {
   font-size: 14px;
-  color: #b6b6be;
+  color: var(--color-text-dim);
   line-height: 1.55;
   margin: 0;
   white-space: pre-wrap;
@@ -474,8 +410,8 @@ watch(() => route.params.projectId, load, { immediate: true })
   margin-top: 12px;
   max-width: 100%;
   max-height: 320px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
   display: block;
 }
 .p-foot {
@@ -488,18 +424,13 @@ watch(() => route.params.projectId, load, { immediate: true })
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
-  color: #74747e;
+  color: var(--color-muted);
   text-decoration: none;
+  transition: color 0.14s;
 }
 .cmt:hover {
-  color: #8c97f7;
-}
-.muted {
-  color: #74747e;
-}
-.error {
-  color: #ef6d72;
+  color: var(--color-text-dim);
 }
 </style>

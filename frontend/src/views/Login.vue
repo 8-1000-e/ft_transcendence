@@ -17,8 +17,8 @@ const loading = ref(false)
 
 onMounted(() => {
   const err = route.query.error
-  if (err === 'invalid_state') error.value = 'Session OAuth invalide, réessaie.'
-  else if (err === 'ft_auth_failed') error.value = 'La connexion 42 a échoué.'
+  if (err === 'invalid_state') error.value = 'Invalid OAuth session, please try again.'
+  else if (err === 'ft_auth_failed') error.value = 'Sign in with 42 failed.'
 })
 
 async function submit() {
@@ -28,7 +28,7 @@ async function submit() {
     await auth.login(email.value, password.value)
     await router.push('/')
   } catch (e) {
-    error.value = (e as ApiError).message ?? 'Identifiants invalides'
+    error.value = (e as ApiError).message ?? 'Invalid credentials'
   } finally {
     loading.value = false
   }
@@ -40,25 +40,25 @@ function loginWith42() {
 </script>
 
 <template>
-  <AuthShell title="Connexion" subtitle="// content de te revoir, étudiant.">
-    <form class="ftp-form" @submit.prevent="submit">
-      <div class="ftp-field">
-        <label class="ftp-label" for="email">E-MAIL</label>
+  <AuthShell title="Sign in" subtitle="// welcome back">
+    <form class="form" @submit.prevent="submit">
+      <div class="field">
+        <label class="label" for="email">EMAIL</label>
         <input
           id="email"
           v-model="email"
           type="email"
           required
           autocomplete="email"
-          class="ftp-input"
-          placeholder="prenom@student.42.fr"
+          class="input"
+          placeholder="name@student.42.fr"
         />
       </div>
 
-      <div class="ftp-field">
-        <div class="ftp-field-row">
-          <label class="ftp-label" for="password">MOT DE PASSE</label>
-          <a href="#" class="ftp-link">Oublié ?</a>
+      <div class="field">
+        <div class="field-row">
+          <label class="label" for="password">PASSWORD</label>
+          <a href="#" class="link forgot">Forgot?</a>
         </div>
         <input
           id="password"
@@ -66,41 +66,90 @@ function loginWith42() {
           type="password"
           required
           autocomplete="current-password"
-          class="ftp-input"
+          class="input"
           placeholder="••••••••"
         />
       </div>
 
-      <p v-if="error" class="ftp-error">! {{ error }}</p>
+      <p v-if="error" class="error-text">{{ error }}</p>
 
-      <button type="submit" :disabled="loading" class="ftp-btn">
-        {{ loading ? 'Connexion…' : 'Se connecter' }}
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M5 12h13M13 6l6 6-6 6"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
+      <button type="submit" :disabled="loading" class="btn submit">
+        {{ loading ? 'Signing in…' : 'Sign in' }}
       </button>
     </form>
 
-    <div class="ftp-divider">
-      <span class="ftp-divider-line"></span>
-      <span class="ftp-divider-text">ou</span>
-      <span class="ftp-divider-line"></span>
+    <div class="divider">
+      <span class="divider-line"></span>
+      <span class="divider-text">or</span>
+      <span class="divider-line"></span>
     </div>
 
-    <button type="button" class="ftp-btn-42" @click="loginWith42">
-      <span class="ftp-42-badge">42</span>
-      Se connecter avec 42
+    <button type="button" class="btn-ghost btn-42" @click="loginWith42">
+      <span class="mark-42">42</span>
+      Continue with 42
     </button>
 
     <template #footer>
-      Pas de compte ?
-      <RouterLink to="/signup" class="ftp-link-strong">Créer un compte</RouterLink>
+      No account?
+      <RouterLink to="/signup" class="link">Create one</RouterLink>
     </template>
   </AuthShell>
 </template>
+
+<style scoped>
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.forgot {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.submit {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+.divider-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+}
+
+.btn-42 {
+  width: 100%;
+}
+.mark-42 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-strong);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-dim);
+}
+</style>

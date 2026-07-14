@@ -26,7 +26,7 @@ async function submit() {
     await auth.verify(email.value, code.value)
     await router.push('/')
   } catch (e) {
-    error.value = (e as ApiError).message ?? 'Code invalide ou expiré'
+    error.value = (e as ApiError).message ?? 'Invalid or expired code'
   } finally {
     loading.value = false
   }
@@ -34,10 +34,10 @@ async function submit() {
 </script>
 
 <template>
-  <AuthShell title="Vérification" :subtitle="`// code envoyé à ${email}`">
-    <form class="ftp-form" @submit.prevent="submit">
-      <div class="ftp-field">
-        <label class="ftp-label" for="code">CODE (6 CHIFFRES)</label>
+  <AuthShell title="Verify" :subtitle="`// code sent to ${email}`">
+    <form class="form" @submit.prevent="submit">
+      <div class="field">
+        <label class="label" for="code">CODE (6 DIGITS)</label>
         <input
           id="code"
           v-model="code"
@@ -45,15 +45,15 @@ async function submit() {
           pattern="[0-9]{6}"
           maxlength="6"
           required
-          class="ftp-input ftp-code"
+          class="input code-input"
           placeholder="000000"
         />
       </div>
 
-      <p v-if="error" class="ftp-error">! {{ error }}</p>
+      <p v-if="error" class="error-text">{{ error }}</p>
 
-      <button type="submit" :disabled="loading" class="ftp-btn">
-        {{ loading ? 'Vérification…' : 'Valider' }}
+      <button type="submit" :disabled="loading" class="btn">
+        {{ loading ? 'Verifying…' : 'Verify' }}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path
             d="M5 12h13M13 6l6 6-6 6"
@@ -67,8 +67,26 @@ async function submit() {
     </form>
 
     <template #footer>
-      Mauvais email ?
-      <RouterLink to="/signup" class="ftp-link-strong">Recommencer</RouterLink>
+      Wrong email?
+      <RouterLink to="/signup" class="link">Start over</RouterLink>
     </template>
   </AuthShell>
 </template>
+
+<style scoped>
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.btn {
+  width: 100%;
+}
+.code-input {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  text-align: center;
+  letter-spacing: 0.6em;
+  text-indent: 0.6em;
+}
+</style>

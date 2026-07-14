@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
+import { useAuthStore } from '@/stores/auth'
 
 interface SuggestUser {
   id: string
@@ -18,7 +19,8 @@ interface SuggestTeam {
 }
 
 const route = useRoute()
-const campusId = ref('')
+const auth = useAuthStore()
+const campusId = ref(auth.user?.campusId ?? '')
 const teams = ref<SuggestTeam[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -44,39 +46,62 @@ async function search() {
     )
     done.value = true
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Suggestion impossible'
+    error.value = (e as { message?: string }).message ?? 'Could not load suggestions'
   } finally {
     loading.value = false
   }
 }
+
+// Auto-load recommendations as soon as we have both a project and a campus.
+function maybeSearch() {
+  if (projectId() && campusId.value) search()
+}
+
+onMounted(maybeSearch)
+
+// Prefill the campus from auth as soon as it becomes available, then load.
+watch(
+  () => auth.user?.campusId,
+  (id) => {
+    if (id && !campusId.value) {
+      campusId.value = id
+      maybeSearch()
+    }
+  },
+)
 </script>
 
 <template>
   <section class="wrap">
-    <h1 class="title">Suggérer une équipe</h1>
-    <p class="sub">// entre un campus pour découvrir les équipes actives.</p>
+    <h1 class="title">Suggested teams</h1>
+    <p class="sub mono">// teams working on this project at your campus.</p>
 
-    <div class="row">
-      <input
-        v-model="campusId"
-        class="input"
-        placeholder="campusId (ex. 31 = Angoulême)"
-        @keyup.enter="search"
-      />
-      <button class="btn" :disabled="loading" @click="search">
-        {{ loading ? 'Recherche…' : 'Chercher' }}
-      </button>
+    <div class="field campus">
+      <label class="label" for="campus-id">Campus</label>
+      <div class="row">
+        <input
+          id="campus-id"
+          v-model="campusId"
+          class="input"
+          placeholder="campus id"
+          @keyup.enter="search"
+        />
+        <button class="btn" :disabled="loading" @click="search">
+          {{ loading ? 'Searching…' : 'Search' }}
+        </button>
+      </div>
     </div>
 
-    <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="done && !teams.length" class="muted">Aucune équipe trouvée.</p>
+    <p v-if="error" class="error-text">{{ error }}</p>
+    <p v-if="done && !teams.length" class="muted empty">No teams found.</p>
 
     <div class="teams">
-      <div v-for="t in teams" :key="t.teamId" class="team">
-        <div class="team-head">
-          <span class="team-name">Équipe · note {{ t.final_mark ?? '?' }}</span>
-          <span class="team-n">{{ t.users.length }} membres</span>
-        </div>
+      <article v-for="t in teams" :key="t.teamId" class="card card-pad team">
+        <header class="team-head">
+          <span class="team-name">Team · rating <span class="badge">{{ t.final_mark ?? '?' }}</span></span>
+          <span class="team-n mono">{{ t.users.length }} members</span>
+        </header>
+
         <div class="members">
           <span
             v-for="u in t.users"
@@ -84,16 +109,18 @@ async function search() {
             class="member"
             :title="`${u.name} (${u.login})${u.location ? ' · ' + u.location : ''}`"
           >
-            <img v-if="u.ppurl" :src="u.ppurl" class="m-pp" alt="" />
-            <span v-else class="m-av">{{ initials(u.name || u.login) }}</span>
+            <img v-if="u.ppurl" :src="u.ppurl" class="avatar m-av" alt="" />
+            <span v-else class="avatar m-av">{{ initials(u.name || u.login) }}</span>
           </span>
         </div>
-        <div class="logins">
-          <span v-for="u in t.users" :key="u.id" class="login">
-            {{ u.login }}<span v-if="u.location" class="loc"> · {{ u.location }}</span>
-          </span>
-        </div>
-      </div>
+
+        <ul class="logins">
+          <li v-for="u in t.users" :key="u.id" class="login-row">
+            <span class="login mono">{{ u.login }}</span>
+            <span v-if="u.location" class="loc mono">· {{ u.location }}</span>
+          </li>
+        </ul>
+      </article>
     </div>
   </section>
 </template>
@@ -103,126 +130,86 @@ async function search() {
   max-width: 620px;
 }
 .title {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.02em;
   margin: 0 0 4px;
-  color: #f6f6f7;
+  color: var(--color-text);
 }
 .sub {
-  margin: 0 0 22px;
-  font-family: 'JetBrains Mono', monospace;
+  margin: 0 0 24px;
   font-size: 12.5px;
-  color: #74747e;
+  color: var(--color-muted);
+}
+.campus {
+  margin-bottom: 24px;
 }
 .row {
   display: flex;
   gap: 10px;
-  margin-bottom: 22px;
 }
-.input {
+.row .input {
   flex: 1;
-  height: 46px;
-  padding: 0 14px;
-  border-radius: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: rgba(255, 255, 255, 0.035);
-  color: #f3f3f4;
-  font: inherit;
-  font-size: 14.5px;
-  outline: none;
 }
-.input:focus {
-  border-color: #6e7bf2;
-  box-shadow: 0 0 0 3px rgba(110, 123, 242, 0.2);
-}
-.btn {
-  height: 46px;
-  padding: 0 20px;
-  border-radius: 11px;
-  border: none;
-  background: linear-gradient(180deg, #5e6cf0, #4a5fe8);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.btn:hover {
-  filter: brightness(1.08);
-}
-.btn:disabled {
-  opacity: 0.6;
+.empty {
+  font-size: 13.5px;
 }
 .teams {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-.team {
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(17, 17, 21, 0.6);
-  padding: 16px 18px;
+  margin-top: 16px;
 }
 .team-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 .team-name {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 15px;
-  font-weight: 700;
-  color: #dfe2ff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
 }
 .team-n {
-  font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
-  color: #74747e;
+  color: var(--color-muted);
 }
 .members {
   display: flex;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 .member {
   margin-right: -8px;
 }
-.m-pp,
 .m-av {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 2px solid #101014;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: 10px;
+  border: 2px solid var(--color-surface);
   object-fit: cover;
 }
-.m-av {
-  background: linear-gradient(135deg, #3a3a52, #54547a);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: 700;
-  color: #dfe2ff;
-}
 .logins {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
+  flex-direction: column;
+  gap: 6px;
+}
+.login-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
 }
 .login {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: #9a9aa2;
+  color: var(--color-text-dim);
 }
 .loc {
-  color: #5c5c66;
-}
-.muted {
-  color: #74747e;
-}
-.error {
-  color: #ef6d72;
+  color: var(--color-muted);
 }
 </style>

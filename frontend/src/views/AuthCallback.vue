@@ -33,7 +33,54 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center text-muted">
-    Connexion en cours…
+  <div class="callback">
+    <div class="brand">
+      <span class="brand-mark">H</span>
+      <span class="brand-word">Hub<span class="brand-accent">42</span></span>
+    </div>
+    <p class="hint mono">Signing you in…</p>
   </div>
 </template>
+
+<style scoped>
+.callback {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: var(--color-bg);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 18px;
+}
+.brand-word {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+.brand-accent {
+  color: var(--color-accent);
+}
+.hint {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+</style>

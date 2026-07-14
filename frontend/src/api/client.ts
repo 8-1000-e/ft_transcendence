@@ -16,7 +16,7 @@ async function getAuthStore() {
 }
 
 function buildError(statusCode: number, payload: unknown): ApiError {
-  let message = 'Une erreur est survenue'
+  let message = 'Something went wrong'
   if (payload && typeof payload === 'object' && 'message' in payload) {
     const m = (payload as { message: unknown }).message
     message = Array.isArray(m) ? m.join(', ') : String(m)
@@ -78,7 +78,7 @@ export async function request<T>(
     store.clear()
     const { default: router } = await import('@/router')
     await router.push('/login')
-    throw buildError(401, { message: 'Session expirée' })
+    throw buildError(401, { message: 'Session expired' })
   }
 
   if (!res.ok) {

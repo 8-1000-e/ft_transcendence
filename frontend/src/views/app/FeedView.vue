@@ -16,12 +16,12 @@ function code(name?: string | null): string {
 
 <template>
   <section>
-    <h1 class="title">Choisis un projet</h1>
-    <p class="sub">// parie sur les rendus, suis les prédictions du campus.</p>
+    <h1 class="title">Your projects</h1>
+    <p class="sub">// jump into a project's discussions and teams.</p>
 
-    <p v-if="groups.loading" class="muted">Chargement…</p>
-    <p v-else-if="!groups.projects().length" class="muted">
-      Aucun projet — tu n'es membre d'aucun groupe 42.
+    <p v-if="groups.loading" class="muted rail-msg">Loading…</p>
+    <p v-else-if="!groups.projects().length" class="muted rail-msg">
+      No projects yet — you're not part of any 42 group.
     </p>
 
     <div class="grid">
@@ -29,14 +29,14 @@ function code(name?: string | null): string {
         v-for="p in groups.projects()"
         :key="p.projectId"
         :to="{ name: 'project', params: { projectId: p.projectId } }"
-        class="card"
+        class="card proj-card"
       >
         <div class="card-top">
           <span class="card-code">{{ code(p.projectName) }}</span>
-          <span class="card-tag">42</span>
+          <span class="badge">42</span>
         </div>
         <div class="card-name">{{ p.projectName }}</div>
-        <div class="card-desc">Fil de discussion et prédictions du projet.</div>
+        <div class="card-desc">Discussions and team suggestions.</div>
       </RouterLink>
     </div>
   </section>
@@ -44,36 +44,35 @@ function code(name?: string | null): string {
 
 <style scoped>
 .title {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.02em;
   margin: 0;
-  color: #f6f6f7;
+  color: var(--color-text);
 }
 .sub {
-  margin: 8px 0 24px;
-  font-family: 'JetBrains Mono', monospace;
+  margin: 8px 0 26px;
+  font-family: var(--font-mono);
   font-size: 12.5px;
-  color: #74747e;
+  color: var(--color-muted);
+}
+.rail-msg {
+  font-size: 13px;
 }
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
 }
-.card {
+.proj-card {
   display: block;
   text-align: left;
   padding: 20px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(17, 17, 21, 0.72);
   text-decoration: none;
-  transition: transform 0.14s, border-color 0.14s;
+  transition: border-color 0.14s;
 }
-.card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(110, 123, 242, 0.45);
+.proj-card:hover {
+  border-color: var(--color-border-strong);
 }
 .card-top {
   display: flex;
@@ -82,32 +81,20 @@ function code(name?: string | null): string {
   margin-bottom: 14px;
 }
 .card-code {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 15px;
+  font-family: var(--font-mono);
+  font-size: 14px;
   font-weight: 700;
-  color: #dfe2ff;
-}
-.card-tag {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  color: #74747e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 3px 7px;
-  border-radius: 999px;
+  color: var(--color-accent);
 }
 .card-name {
   font-size: 15px;
   font-weight: 600;
-  color: #ededee;
+  color: var(--color-text);
   margin-bottom: 6px;
 }
 .card-desc {
   font-size: 12.5px;
-  color: #74747e;
+  color: var(--color-muted);
   line-height: 1.5;
-}
-.muted {
-  color: #74747e;
 }
 </style>

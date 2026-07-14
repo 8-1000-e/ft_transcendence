@@ -68,7 +68,7 @@ async function load() {
     githubLink.value = group.value.githubLink ?? ''
     await fetchMessages(true)
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Erreur de chargement'
+    error.value = (e as { message?: string }).message ?? 'Failed to load'
   } finally {
     loading.value = false
   }
@@ -80,7 +80,7 @@ async function onFile(e: Event) {
   try {
     pendingFile.value = [await uploadImage(file, true)]
   } catch {
-    error.value = "Échec de l'upload"
+    error.value = 'Upload failed'
   }
 }
 
@@ -102,7 +102,7 @@ async function send() {
     })
     await fetchMessages(true)
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Envoi impossible'
+    error.value = (e as { message?: string }).message ?? 'Could not send message'
   }
 }
 
@@ -119,17 +119,17 @@ async function saveEdit(m: Message) {
     editingId.value = ''
     await fetchMessages()
   } catch {
-    error.value = 'Modification impossible'
+    error.value = 'Could not edit message'
   }
 }
 
 async function remove(m: Message) {
-  if (!confirm('Supprimer ce message ?')) return
+  if (!confirm('Delete this message?')) return
   try {
     await api.del(ROUTES.groups.deleteMessage(groupId(), m.id))
     await fetchMessages()
   } catch {
-    error.value = 'Suppression impossible'
+    error.value = 'Could not delete message'
   }
 }
 
@@ -142,7 +142,7 @@ async function saveGroup() {
     group.value = await api.get<Group>(ROUTES.groups.byId(groupId()))
     showGroupEdit.value = false
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Mise à jour impossible'
+    error.value = (e as { message?: string }).message ?? 'Could not update group'
   }
 }
 
@@ -176,31 +176,37 @@ onBeforeUnmount(teardown)
       <span class="ch-av">{{ initials(group?.groupName) }}</span>
       <div class="ch-main">
         <div class="ch-top">
-          <span class="ch-name">{{ group?.groupName ?? 'Groupe' }}</span>
+          <span class="ch-name">{{ group?.groupName ?? 'Group' }}</span>
           <span class="badge">
             <span class="badge-dot"></span>{{ live ? 'LIVE' : 'POLLING' }}
           </span>
         </div>
         <span class="ch-proj">{{ group?.projectName }}</span>
       </div>
-      <a v-if="group?.githubLink" :href="group.githubLink" target="_blank" class="ch-ic" aria-label="GitHub">
+      <a
+        v-if="group?.githubLink"
+        :href="group.githubLink"
+        target="_blank"
+        class="icon-btn"
+        aria-label="GitHub"
+      >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.6 2 12.3c0 4.5 2.9 8.3 6.8 9.7.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.4-3.4-1.4-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5.1 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9 9 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 4-2.4 4.8-4.7 5.1.4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5 3.9-1.4 6.8-5.2 6.8-9.7C22 6.6 17.5 2 12 2z" /></svg>
       </a>
-      <button class="ch-ic" aria-label="éditer" @click="showGroupEdit = !showGroupEdit">
+      <button class="icon-btn" aria-label="Edit group" @click="showGroupEdit = !showGroupEdit">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 20h4L18 10l-4-4L4 16v4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="1.7" /></svg>
       </button>
     </header>
 
     <div v-if="showGroupEdit" class="grp-edit">
-      <input v-model="groupName" class="input" placeholder="Nom du groupe" />
-      <input v-model="githubLink" class="input" placeholder="Lien GitHub" />
-      <button class="send-btn" @click="saveGroup">OK</button>
+      <input v-model="groupName" class="input" placeholder="Group name" />
+      <input v-model="githubLink" class="input" placeholder="GitHub link" />
+      <button class="btn" @click="saveGroup">Save</button>
     </div>
 
-    <p v-if="error" class="error">{{ error }}</p>
+    <p v-if="error" class="error-text">{{ error }}</p>
 
     <div ref="listEl" class="messages scroll">
-      <p v-if="loading" class="muted center">Chargement…</p>
+      <p v-if="loading" class="muted center">Loading…</p>
       <div
         v-for="m in messages"
         :key="m.id"
@@ -210,17 +216,17 @@ onBeforeUnmount(teardown)
         <span v-if="!mine(m)" class="m-av">{{ initials(m.user?.name ?? m.sender) }}</span>
         <div class="m-body">
           <div class="m-meta">
-            <span class="m-author">{{ mine(m) ? 'moi' : (m.user?.name ?? m.sender) }}</span>
+            <span class="m-author">{{ mine(m) ? 'you' : (m.user?.name ?? m.sender) }}</span>
           </div>
           <div class="bubble" :class="{ mine: mine(m) }">
             <div v-if="m.messageReply" class="quote">
               <span class="quote-content">{{ findMessage(m.messageReply)?.content ?? 'message' }}</span>
             </div>
             <template v-if="editingId === m.id">
-              <input v-model="editDraft" class="input dark" @keyup.enter="saveEdit(m)" />
+              <input v-model="editDraft" class="input edit-in" @keyup.enter="saveEdit(m)" />
               <div class="m-actions">
-                <button class="txt-btn accent" @click="saveEdit(m)">OK</button>
-                <button class="txt-btn" @click="editingId = ''">annuler</button>
+                <button class="txt-btn accent" @click="saveEdit(m)">Save</button>
+                <button class="txt-btn" @click="editingId = ''">cancel</button>
               </div>
             </template>
             <template v-else>
@@ -229,10 +235,10 @@ onBeforeUnmount(teardown)
             </template>
           </div>
           <div v-if="editingId !== m.id" class="m-actions">
-            <button class="txt-btn" @click="replyingTo = m">répondre</button>
+            <button class="txt-btn" @click="replyingTo = m">reply</button>
             <template v-if="mine(m)">
-              <button class="txt-btn" @click="startEdit(m)">éditer</button>
-              <button class="txt-btn" @click="remove(m)">suppr.</button>
+              <button class="txt-btn" @click="startEdit(m)">edit</button>
+              <button class="txt-btn" @click="remove(m)">delete</button>
             </template>
           </div>
         </div>
@@ -242,10 +248,10 @@ onBeforeUnmount(teardown)
     <div v-if="replyingTo" class="reply-banner">
       <span class="reply-bar"></span>
       <div class="reply-main">
-        <span class="reply-to">réponse à {{ replyingTo.user?.name ?? replyingTo.sender }}</span>
+        <span class="reply-to">replying to {{ replyingTo.user?.name ?? replyingTo.sender }}</span>
         <span class="reply-content">{{ replyingTo.content }}</span>
       </div>
-      <button class="reply-x" aria-label="annuler" @click="replyingTo = null">
+      <button class="reply-x" aria-label="cancel" @click="replyingTo = null">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
       </button>
     </div>
@@ -255,9 +261,9 @@ onBeforeUnmount(teardown)
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.5 12.5 21a5 5 0 0 1-7-7l8-8a3.3 3.3 0 0 1 4.7 4.7l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.3-7.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
         <input type="file" accept="image/*" hidden @change="onFile" />
       </label>
-      <span v-if="pendingFile.length" class="chip">image prête</span>
-      <input v-model="draft" class="input" placeholder="Écris un message…" @keyup.enter="send" />
-      <button class="send-btn sq" @click="send">
+      <span v-if="pendingFile.length" class="chip">image ready</span>
+      <input v-model="draft" class="input" placeholder="Write a message…" @keyup.enter="send" />
+      <button class="send-btn" aria-label="Send" @click="send">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </button>
     </div>
@@ -270,25 +276,28 @@ onBeforeUnmount(teardown)
   flex-direction: column;
   height: calc(100vh - 112px);
 }
+
+/* ---- header ---- */
 .chat-head {
   display: flex;
   align-items: center;
   gap: 12px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #1c1c22;
+  border-bottom: 1px solid var(--color-border);
 }
 .ch-av {
   width: 40px;
   height: 40px;
-  border-radius: 11px;
-  background: linear-gradient(135deg, #5e6cf0, #8c97f7);
+  border-radius: var(--radius);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
+  font-family: var(--font-mono);
+  font-size: 13px;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-text-dim);
 }
 .ch-main {
   flex: 1;
@@ -302,54 +311,31 @@ onBeforeUnmount(teardown)
 .ch-name {
   font-size: 16px;
   font-weight: 700;
-  color: #f0f0f2;
-}
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: #7e7e88;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  padding: 3px 8px;
-  border-radius: 999px;
+  color: var(--color-text);
 }
 .badge-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #5ee08a;
-  box-shadow: 0 0 8px #5ee08a;
-  animation: ftpPulse 1.8s ease-in-out infinite;
+  background: var(--color-success);
 }
 .ch-proj {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: #74747e;
+  color: var(--color-muted);
 }
-.ch-ic {
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  color: #9a9aa2;
-  background: none;
-  cursor: pointer;
-}
-.ch-ic:hover {
-  color: #ededee;
-  border-color: rgba(255, 255, 255, 0.2);
-}
+
+/* ---- group edit row ---- */
 .grp-edit {
   display: flex;
   gap: 8px;
-  padding: 12px 0;
+  padding: 14px 0;
 }
+.grp-edit .btn {
+  flex-shrink: 0;
+}
+
+/* ---- message list ---- */
 .messages {
   flex: 1;
   padding: 20px 2px;
@@ -371,14 +357,15 @@ onBeforeUnmount(teardown)
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3a3a52, #54547a);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
-  color: #dfe2ff;
+  color: var(--color-text-dim);
 }
 .m-body {
   min-width: 0;
@@ -390,42 +377,41 @@ onBeforeUnmount(teardown)
   margin-bottom: 4px;
 }
 .m-author {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #cfcfd4;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-muted);
 }
+
+/* ---- bubbles ---- */
 .bubble {
   display: inline-block;
   text-align: left;
-  background: #17171d;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 4px 14px 14px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
   padding: 10px 14px;
   font-size: 14px;
-  color: #e4e4e8;
+  color: var(--color-text);
   line-height: 1.5;
 }
 .bubble.mine {
-  background: linear-gradient(180deg, #4d5bd8, #3f4fc9);
-  border: none;
-  border-radius: 14px 4px 14px 14px;
-  color: #fff;
+  background: var(--color-surface-2);
+  border-color: var(--color-border-strong);
 }
 .quote {
-  border-left: 2px solid #6e7bf2;
+  border-left: 2px solid var(--color-accent);
   padding: 2px 0 2px 10px;
   margin-bottom: 7px;
-  opacity: 0.85;
 }
 .quote-content {
   font-size: 12.5px;
-  color: #9a9aa2;
-}
-.bubble.mine .quote-content {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-text-dim);
 }
 .m-text {
   white-space: pre-wrap;
+}
+.edit-in {
+  height: 36px;
 }
 .m-actions {
   display: flex;
@@ -435,20 +421,41 @@ onBeforeUnmount(teardown)
 .msg.mine .m-actions {
   justify-content: flex-end;
 }
+.txt-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.14s;
+}
+.txt-btn:hover {
+  color: var(--color-text);
+}
+.txt-btn.accent {
+  color: var(--color-accent);
+}
+.txt-btn.accent:hover {
+  color: var(--color-accent-hover);
+}
+
+/* ---- reply banner ---- */
 .reply-banner {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  border-radius: 10px 10px 0 0;
-  border: 1px solid #23232b;
+  border-radius: var(--radius) var(--radius) 0 0;
+  border: 1px solid var(--color-border);
   border-bottom: none;
-  background: rgba(110, 123, 242, 0.08);
+  background: var(--color-surface-2);
 }
 .reply-bar {
   width: 3px;
   height: 28px;
-  background: #6e7bf2;
+  background: var(--color-accent);
   border-radius: 2px;
 }
 .reply-main {
@@ -457,14 +464,14 @@ onBeforeUnmount(teardown)
 }
 .reply-to {
   display: block;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10.5px;
-  color: #8c97f7;
+  color: var(--color-accent);
 }
 .reply-content {
   display: block;
   font-size: 12px;
-  color: #9a9aa2;
+  color: var(--color-text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -472,112 +479,80 @@ onBeforeUnmount(teardown)
 .reply-x {
   width: 26px;
   height: 26px;
-  border-radius: 7px;
+  border-radius: var(--radius);
   border: none;
-  background: rgba(255, 255, 255, 0.05);
-  color: #9a9aa2;
+  background: transparent;
+  color: var(--color-muted);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: color 0.14s;
 }
+.reply-x:hover {
+  color: var(--color-text);
+}
+
+/* ---- composer ---- */
 .composer {
+  position: sticky;
+  bottom: 0;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 12px;
-  border: 1px solid #23232b;
-  border-radius: 14px;
-  background: rgba(17, 17, 21, 0.72);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
 }
 .composer.no-round {
-  border-radius: 0 0 14px 14px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 .attach {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.035);
-  color: #9a9aa2;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-dim);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: color 0.14s, border-color 0.14s;
 }
 .attach:hover {
-  color: #ededee;
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
 }
 .chip {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: #74747e;
+  color: var(--color-muted);
 }
-.input {
+.composer .input {
   flex: 1;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: rgba(255, 255, 255, 0.035);
-  color: #f3f3f4;
-  font: inherit;
-  font-size: 14px;
-  outline: none;
-}
-.input.dark {
-  height: 36px;
-  background: rgba(0, 0, 0, 0.2);
-}
-.input:focus {
-  border-color: #6e7bf2;
-  box-shadow: 0 0 0 3px rgba(110, 123, 242, 0.2);
 }
 .send-btn {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
   border: none;
-  background: linear-gradient(180deg, #5e6cf0, #4a5fe8);
+  background: var(--color-accent);
   color: #fff;
   cursor: pointer;
-  border-radius: 11px;
-  padding: 0 16px;
-  height: 44px;
-  font: inherit;
-  font-weight: 600;
+  border-radius: var(--radius);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-.send-btn.sq {
-  width: 44px;
-  padding: 0;
-  flex-shrink: 0;
+  transition: background 0.14s;
 }
 .send-btn:hover {
-  filter: brightness(1.08);
+  background: var(--color-accent-hover);
 }
-.txt-btn {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: #74747e;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-.txt-btn:hover {
-  color: #8c97f7;
-}
-.txt-btn.accent {
-  color: #fff;
-}
-.muted {
-  color: #74747e;
-}
+
 .center {
   text-align: center;
-}
-.error {
-  color: #ef6d72;
 }
 </style>
