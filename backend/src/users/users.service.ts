@@ -32,6 +32,7 @@ export class UsersService {
       select: {
         id: true,
         name: true,
+        locale: true,
         login: true,
         email: true,
         campus: true,
@@ -53,6 +54,7 @@ export class UsersService {
     return {
       id: user.id,
       name: user.name,
+      locale: user.locale,
       login: user.login,
       email: user.email,
       campus: user.campus,

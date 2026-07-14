@@ -27,6 +27,7 @@ model User {
   rdmCampus     String?
   //
   name          String
+  locale        String         @default("en") // UI language: en | fr | es
   email         String         @unique
   passwordHash  String?
   createdAt     DateTime       @default(now())
