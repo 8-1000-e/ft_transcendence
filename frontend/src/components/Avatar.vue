@@ -10,9 +10,14 @@ import { useAuthStore } from '@/stores/auth'
  * initials of `name`. Visual skin (shape, colour, shadow) comes from the class
  * the call site passes; `size` drives the pixel dimensions.
  */
+/**
+ * `userId` → proxied app-user picture (`GET /avatar/:id`, RGPD-gated).
+ * `pfpUrl` → a raw 42-CDN url (e.g. a suggested mentor who isn't an app user),
+ *            proxied SSRF-safe through `GET /ft-avatar?url=`. Takes precedence.
+ */
 const props = withDefaults(
-  defineProps<{ userId: string; name: string; size?: number }>(),
-  { size: 40 },
+  defineProps<{ userId?: string; pfpUrl?: string; name: string; size?: number }>(),
+  { size: 40, userId: '', pfpUrl: '' },
 )
 
 const auth = useAuthStore()
@@ -42,15 +47,19 @@ async function load() {
   loaded.value = false
   revoke()
   src.value = ''
-  const id = props.userId
-  if (!id) return
+  const url = props.pfpUrl
+    ? `${API_BASE_URL}/ft-avatar?url=${encodeURIComponent(props.pfpUrl)}`
+    : props.userId
+      ? `${API_BASE_URL}/avatar/${props.userId}`
+      : ''
+  if (!url) return
   try {
-    const res = await fetch(`${API_BASE_URL}/avatar/${id}`, {
+    const res = await fetch(url, {
       headers: auth.accessToken
         ? { Authorization: `Bearer ${auth.accessToken}` }
         : {},
     })
-    // 404 = user has no 42 picture; any other failure is equally a fallback.
+    // 404 = no picture (or a non-42 viewer denied one); any failure = fallback.
     if (!res.ok) return
     const blob = await res.blob()
     if (!blob.size) return
@@ -62,7 +71,7 @@ async function load() {
   }
 }
 
-watch(() => props.userId, load, { immediate: true })
+watch(() => [props.userId, props.pfpUrl], load, { immediate: true })
 onBeforeUnmount(revoke)
 </script>
 

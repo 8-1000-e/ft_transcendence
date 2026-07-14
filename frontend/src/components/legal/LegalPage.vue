@@ -17,7 +17,7 @@ function goBack() {
   <div class="ftp-page">
     <div class="ftp-glow"></div>
 
-    <div class="wrap">
+    <header class="legal-bar">
       <RouterLink :to="{ name: 'feed' }" class="brand">
         <span class="brand-mark">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -27,43 +27,58 @@ function goBack() {
         </span>
         <span class="brand-word">ft<span class="brand-accent">_hub</span></span>
       </RouterLink>
-
       <button class="back" @click="goBack">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        back
+        {{ $t('legal.back') }}
       </button>
+    </header>
 
+    <div class="wrap">
       <article class="doc">
         <h1 class="doc-title">{{ title }}</h1>
-        <p v-if="updated" class="doc-updated">Last updated: {{ updated }}</p>
+        <p v-if="updated" class="doc-updated">{{ $t('legal.lastUpdated') }}: {{ updated }}</p>
         <div class="doc-body">
           <slot />
         </div>
       </article>
 
       <p class="foot">
-        <RouterLink :to="{ name: 'privacy' }" class="foot-link">Privacy</RouterLink>
+        <RouterLink :to="{ name: 'privacy' }" class="foot-link">{{ $t('legal.foot.privacy') }}</RouterLink>
         <span class="foot-dot">·</span>
-        <RouterLink :to="{ name: 'terms' }" class="foot-link">Terms</RouterLink>
+        <RouterLink :to="{ name: 'terms' }" class="foot-link">{{ $t('legal.foot.terms') }}</RouterLink>
       </p>
     </div>
   </div>
 </template>
 
 <style scoped>
+.legal-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 60px;
+  padding: 0 22px;
+  border-bottom: 1px solid #1c1c22;
+  background: rgba(10, 10, 12, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
 .wrap {
   position: relative;
   z-index: 5;
   max-width: 680px;
   margin: 0 auto;
-  padding: 40px 22px 60px;
+  padding: 34px 22px 60px;
 }
 .brand {
   display: inline-flex;
   align-items: center;
   gap: 9px;
   text-decoration: none;
-  margin-bottom: 26px;
 }
 .brand-mark {
   display: inline-flex;
@@ -96,7 +111,6 @@ function goBack() {
   font-size: 12px;
   cursor: pointer;
   padding: 0;
-  margin-bottom: 20px;
 }
 .back:hover {
   color: #8c97f7;
