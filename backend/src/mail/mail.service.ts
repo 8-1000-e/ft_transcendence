@@ -48,4 +48,8 @@ export class MailService {
       text: `Your code is: ${code}\nValid for 15min`,
     });
   }
+
+  async sendNotice(to: string, subject: string, text: string) {
+    await this.transporter.sendMail({ from: this.from, to, subject, text });
+  }
 }

@@ -20,6 +20,7 @@ export const ROUTES = {
   users: {
     me: '/me',
     activity: '/me/activity',
+    export: '/me/export',
     ping: '/me/ping',
     updateMe: '/me',
     password: '/me/password',
@@ -71,6 +72,11 @@ export const ROUTES = {
     byProject: (projectId: string, campusId: string) =>
       `/suggest/${projectId}/${campusId}`,
     forProject: (projectId: string) => `/suggest/${projectId}`,
+  },
+
+  notifications: {
+    list: '/notifications',
+    read: '/notifications/read',
   },
 
   friends: {

@@ -8,6 +8,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { VoteValue } from 'generated/prisma/client';
 import { authorView, isFtMember } from 'src/utils/anonymize';
+import { MailService } from 'src/mail/mail.service';
 
 // (UP − DOWN) score for a set of votes
 const scoreVotes = (votes: { vote: VoteValue }[]) =>
@@ -20,7 +21,10 @@ const countVotes = (votes: { vote: VoteValue }[]) => ({
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mail: MailService,
+  ) {}
 
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -212,11 +216,115 @@ export class UsersService {
   }
 
   async requestDeletion(id: string) {
-    await this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id },
       data: { deleteAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) }, // 14Days
+      select: { email: true, deleteAt: true },
     });
+    if (user.email) {
+      void this.mail
+        .sendNotice(
+          user.email,
+          'ft_hub — account deletion scheduled',
+          `Your account is scheduled for deletion on ${user.deleteAt?.toDateString()}. ` +
+            `Cancel it from Settings before then to keep your account.`,
+        )
+        .catch(() => {});
+    }
     return { message: 'Account will be deleted in 14 days' };
+  }
+
+  // GDPR: a machine-readable dump of everything tied to this account.
+  async exportData(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        login: true,
+        campus: true,
+        ftId: true,
+        createdAt: true,
+      },
+    });
+    if (!user) throw new NotFoundException();
+
+    const [posts, comments, postVotes, chatVotes, friends, groupMessages] =
+      await Promise.all([
+        this.prisma.projectsPost.findMany({
+          where: { writer: userId },
+          select: {
+            id: true,
+            projectId: true,
+            title: true,
+            content: true,
+            filesUrl: true,
+            postedAt: true,
+            editedAt: true,
+          },
+          orderBy: { postedAt: 'asc' },
+        }),
+        this.prisma.projectsChat.findMany({
+          where: { writer: userId },
+          select: {
+            id: true,
+            answeringPost: true,
+            answeringChat: true,
+            content: true,
+            filesUrl: true,
+            postedAt: true,
+            editedAt: true,
+          },
+          orderBy: { postedAt: 'asc' },
+        }),
+        this.prisma.postVote.findMany({
+          where: { userId },
+          select: { postId: true, vote: true },
+        }),
+        this.prisma.chatVote.findMany({
+          where: { userId },
+          select: { chatId: true, vote: true },
+        }),
+        this.prisma.friendship.findMany({
+          where: {
+            status: 'ACCEPTED',
+            OR: [{ requesterId: userId }, { addresseeId: userId }],
+          },
+          select: { requesterId: true, addresseeId: true, createdAt: true },
+        }),
+        this.prisma.groupChat.findMany({
+          where: { sender: userId },
+          select: {
+            id: true,
+            group: true,
+            content: true,
+            filesUrl: true,
+            sendTime: true,
+          },
+          orderBy: { sendTime: 'asc' },
+        }),
+      ]);
+
+    if (user.email) {
+      void this.mail
+        .sendNotice(
+          user.email,
+          'ft_hub — your data export',
+          'A copy of your personal data was generated and downloaded from your account.',
+        )
+        .catch(() => {});
+    }
+
+    return {
+      exportedAt: new Date().toISOString(),
+      account: user,
+      posts,
+      comments,
+      votes: { posts: postVotes, comments: chatVotes },
+      friends,
+      groupMessages,
+    };
   }
 
   async cancelDelete(id: string) {

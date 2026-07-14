@@ -8,13 +8,17 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { VoteDto } from './dto/vote.dto';
-import { VoteValue } from 'generated/prisma/client';
+import { VoteValue, NotifType } from 'generated/prisma/client';
 import { assertFilesExist } from 'src/utils/files';
 import { authorView } from 'src/utils/anonymize';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class PostsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   // Browse-all forum list: the synced 42 projects (common core + outer-circle
   // specializations) with their category and post count, ordered by name.
@@ -248,7 +252,7 @@ export class PostsService {
 
     assertFilesExist(body.filesUrl);
 
-    return this.prisma.projectsChat.create({
+    const comment = await this.prisma.projectsChat.create({
       data: {
         answeringPost: id,
         writer: userId,
@@ -256,6 +260,16 @@ export class PostsService {
         filesUrl: body.filesUrl,
       },
     });
+    void this.notifications
+      .notify({
+        recipientId: post.writer,
+        actorId: userId,
+        type: NotifType.COMMENT,
+        entityLabel: post.title ?? null,
+        link: `/post/${post.id}?projectId=${post.projectId}`,
+      })
+      .catch(() => {});
+    return comment;
   }
 
   async editComment(commentId: string, body: CreateCommentDto, userId: string) {
@@ -323,7 +337,7 @@ export class PostsService {
 
     assertFilesExist(body.filesUrl);
 
-    return this.prisma.projectsChat.create({
+    const reply = await this.prisma.projectsChat.create({
       data: {
         answeringChat: id,
         writer: userId,
@@ -331,6 +345,17 @@ export class PostsService {
         filesUrl: body.filesUrl,
       },
     });
+    const root = await this.resolveRoot(comment);
+    void this.notifications
+      .notify({
+        recipientId: comment.writer,
+        actorId: userId,
+        type: NotifType.REPLY,
+        entityLabel: root?.postTitle ?? null,
+        link: root ? `/post/${root.postId}?projectId=${root.projectId}` : null,
+      })
+      .catch(() => {});
+    return reply;
   }
 
   async editReply(commentId: string, body: CreateCommentDto, userId: string) {

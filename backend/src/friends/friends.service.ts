@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { NotifType } from 'generated/prisma/client';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 // A user is "online" if seen in the last 2 minutes (lastSeenAt is touched by the
 // heartbeat POST /me/ping and by GET /me).
@@ -33,7 +35,10 @@ type FriendRow = {
 
 @Injectable()
 export class FriendsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   // Friends are between real, consenting 42 identities only (non-42 accounts are
   // read-only + anonymised, so they can neither friend nor be friended).
@@ -82,6 +87,14 @@ export class FriendsService {
           data: { status: 'ACCEPTED' },
         });
       }
+      void this.notifications
+        .notify({
+          recipientId: targetId,
+          actorId: userId,
+          type: NotifType.FRIEND_ACCEPT,
+          link: '/friends',
+        })
+        .catch(() => {});
       return { status: 'friends' as const };
     }
 
@@ -92,6 +105,14 @@ export class FriendsService {
       update: {},
       create: { requesterId: userId, addresseeId: targetId },
     });
+    void this.notifications
+      .notify({
+        recipientId: targetId,
+        actorId: userId,
+        type: NotifType.FRIEND_REQUEST,
+        link: '/friends',
+      })
+      .catch(() => {});
     return { status: 'pending_out' as const };
   }
 
@@ -106,6 +127,14 @@ export class FriendsService {
         data: { status: 'ACCEPTED' },
       });
     }
+    void this.notifications
+      .notify({
+        recipientId: requesterId,
+        actorId: userId,
+        type: NotifType.FRIEND_ACCEPT,
+        link: '/friends',
+      })
+      .catch(() => {});
     return { status: 'friends' as const };
   }
 

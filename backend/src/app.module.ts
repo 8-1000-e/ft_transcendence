@@ -16,6 +16,7 @@ import { SuggestModule } from './suggest/suggest.module';
 import { TasksModule } from './tasks/tasks.module';
 import { PusherModule } from './pusher/pusher.module';
 import { FriendsModule } from './friends/friends.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { FriendsModule } from './friends/friends.module';
     TasksModule,
     PusherModule,
     FriendsModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

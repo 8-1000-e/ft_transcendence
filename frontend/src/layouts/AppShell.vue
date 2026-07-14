@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useGroupsStore } from '@/stores/groups'
 import Modal from '@/components/Modal.vue'
 import Avatar from '@/components/Avatar.vue'
+import type { NotificationItem, NotificationsPage } from '@/types/api'
 
 const auth = useAuthStore()
 const groups = useGroupsStore()
@@ -39,18 +40,60 @@ async function refreshRequests() {
   }
 }
 
+const notifs = ref<NotificationItem[]>([])
+const unread = ref(0)
+const showNotifs = ref(false)
+
+async function refreshNotifs() {
+  if (!auth.user?.has42) return
+  try {
+    const r = await api.get<NotificationsPage>(ROUTES.notifications.list)
+    notifs.value = r.items
+    unread.value = r.unread
+  } catch {
+    /* ignore */
+  }
+}
+
+async function openNotifs() {
+  showNotifs.value = !showNotifs.value
+  if (showNotifs.value && unread.value) {
+    unread.value = 0
+    notifs.value = notifs.value.map((n) => ({ ...n, read: true }))
+    try {
+      await api.post(ROUTES.notifications.read)
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function openNotif(n: NotificationItem) {
+  showNotifs.value = false
+  if (n.link) void router.push(n.link)
+}
+
+function notifTime(iso: string): string {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
+  if (mins < 1) return 'now'
+  if (mins < 60) return `${mins}m`
+  const h = Math.round(mins / 60)
+  return h < 24 ? `${h}h` : `${Math.round(h / 24)}d`
+}
+
 onMounted(() => {
-  // Only 42-linked accounts have group chats; GET /groups returns [] for non-42
-  // accounts, so skip the request entirely for them.
+  // Only 42-linked accounts have group chats (GET /groups returns [] otherwise).
   if (auth.user?.has42 && !groups.loaded) groups.fetchGroups()
-  // 42 accounts: run the online heartbeat (2-min window → 60s beat) and poll
-  // incoming friend requests to drive the nav badge.
+  // 42 accounts: online heartbeat (2-min window → 60s beat) + poll friend
+  // requests and notifications for the topbar badges.
   if (auth.user?.has42) {
     void auth.ping()
     void refreshRequests()
+    void refreshNotifs()
     heartbeat = setInterval(() => {
       void auth.ping()
       void refreshRequests()
+      void refreshNotifs()
     }, 60_000)
   }
 })
@@ -115,6 +158,31 @@ async function cancelDeletion() {
       </form>
 
       <div class="topbar-right">
+        <div v-if="auth.user?.has42" class="notif-wrap">
+          <button class="notif-btn" :aria-label="$t('notif.title')" @click="openNotifs">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6M10.5 20a2 2 0 0 0 3 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            <span v-if="unread" class="notif-badge">{{ unread }}</span>
+          </button>
+          <template v-if="showNotifs">
+            <button class="menu-backdrop" :aria-label="$t('notif.title')" @click="showNotifs = false"></button>
+            <div class="notif-panel" role="menu">
+              <div class="notif-head">{{ $t('notif.title') }}</div>
+              <p v-if="!notifs.length" class="notif-empty">{{ $t('notif.empty') }}</p>
+              <button
+                v-for="n in notifs"
+                :key="n.id"
+                class="notif-item"
+                :class="{ unread: !n.read }"
+                role="menuitem"
+                @click="openNotif(n)"
+              >
+                <span class="notif-text"><b>{{ n.actorName ?? '—' }}</b> {{ $t('notif.type.' + n.type) }}</span>
+                <span v-if="n.entityLabel" class="notif-sub">{{ n.entityLabel }}</span>
+                <span class="notif-time">{{ notifTime(n.createdAt) }}</span>
+              </button>
+            </div>
+          </template>
+        </div>
         <div class="pill-wrap">
           <button class="pill" aria-haspopup="menu" :aria-expanded="showMenu" @click="showMenu = !showMenu">
             <Avatar
@@ -285,4 +353,84 @@ async function cancelDeletion() {
   align-items: center;
   justify-content: center;
 }
+.notif-wrap { position: relative; }
+.notif-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-2);
+  cursor: pointer;
+}
+.notif-btn:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.18); }
+.notif-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--accent-2);
+  color: #0d0d12;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 66;
+  width: 320px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.6);
+  padding: 6px;
+}
+.notif-head {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 8px 10px 6px;
+}
+.notif-empty { color: var(--muted); font-size: 13px; padding: 10px; margin: 0; }
+.notif-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 9px 10px;
+  border-radius: 8px;
+}
+.notif-item:hover { background: var(--surface-3); }
+.notif-item.unread { background: rgba(140, 151, 247, 0.08); }
+.notif-text { font-size: 13px; color: var(--text-2); }
+.notif-text b { color: var(--text); font-weight: 600; }
+.notif-sub {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notif-time { font-family: var(--mono); font-size: 10.5px; color: var(--dim); }
 </style>

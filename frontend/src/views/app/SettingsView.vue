@@ -80,6 +80,28 @@ const showDelete = ref(false)
 const deleting = ref(false)
 const deleteError = ref('')
 
+const dataBusy = ref(false)
+async function downloadData() {
+  dataBusy.value = true
+  message.value = ''
+  error.value = ''
+  try {
+    const data = await api.get<unknown>(ROUTES.users.export)
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'ft_hub_data.json'
+    a.click()
+    URL.revokeObjectURL(url)
+    message.value = t('settings.data.done')
+  } catch (e) {
+    error.value = (e as { message?: string }).message ?? 'Failed'
+  } finally {
+    dataBusy.value = false
+  }
+}
+
 async function saveName() {
   if (!name.value.trim() || savingName.value) return
   message.value = ''
@@ -221,6 +243,15 @@ async function logout() {
             <div class="set-row-x">{{ $t('settings.session.desc') }}</div>
           </div>
           <button class="sbtn" @click="logout">{{ $t('settings.logout') }}</button>
+        </div>
+
+        <div class="set-row">
+          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+          <div class="set-row-main">
+            <div class="set-row-t">{{ $t('settings.data') }}</div>
+            <div class="set-row-x">{{ $t('settings.data.desc') }}</div>
+          </div>
+          <button class="sbtn" :disabled="dataBusy" @click="downloadData">{{ dataBusy ? $t('settings.data.downloading') : $t('settings.data.download') }}</button>
         </div>
       </div>
 

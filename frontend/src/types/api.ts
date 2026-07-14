@@ -89,6 +89,28 @@ export interface Message {
   user?: Author
 }
 
+export type NotifType =
+  | 'COMMENT'
+  | 'REPLY'
+  | 'MESSAGE'
+  | 'FRIEND_REQUEST'
+  | 'FRIEND_ACCEPT'
+
+export interface NotificationItem {
+  id: string
+  type: NotifType
+  actorName: string | null
+  entityLabel: string | null
+  link: string | null
+  read: boolean
+  createdAt: string
+}
+
+export interface NotificationsPage {
+  items: NotificationItem[]
+  unread: number
+}
+
 /** A friend or incoming request — from GET /friends and /friends/requests. */
 export interface FriendView {
   id: string

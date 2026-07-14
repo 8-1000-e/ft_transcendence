@@ -37,6 +37,13 @@ export class UsersController {
     return this.usersService.getActivity(request.user.sub);
   }
 
+  @Get('me/export')
+  @UseGuards(JwtAuthGuard)
+  @AllowWhilePending()
+  exportData(@Req() req: AuthedRequest) {
+    return this.usersService.exportData(req.user.sub);
+  }
+
   @Post('me/ping')
   @UseGuards(JwtAuthGuard)
   ping(@Req() req: AuthedRequest) {
