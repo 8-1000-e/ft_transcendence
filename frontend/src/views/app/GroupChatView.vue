@@ -7,6 +7,7 @@ import { uploadImage } from '@/api/upload'
 import { subscribeGroup, pusherEnabled } from '@/api/realtime'
 import { useAuthStore } from '@/stores/auth'
 import PrivateImage from '@/components/PrivateImage.vue'
+import Modal from '@/components/Modal.vue'
 import type { Group, Message } from '@/types/api'
 
 const route = useRoute()
@@ -28,10 +29,24 @@ const showGroupEdit = ref(false)
 const groupName = ref('')
 const githubLink = ref('')
 
+const pendingDelete = ref<Message | null>(null)
+
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let unsub: (() => void) | null = null
 
 const live = computed(() => pusherEnabled())
+
+// O(1) lookup for reply quotes instead of an Array.find per rendered row.
+const messageById = computed(() => {
+  const map = new Map<string, Message>()
+  for (const m of messages.value) map.set(m.id, m)
+  return map
+})
+
+function quotedContent(id: string | null): string {
+  const quoted = id ? messageById.value.get(id) : undefined
+  return quoted?.content ?? 'message'
+}
 
 function groupId(): string {
   return route.params.groupId as string
@@ -42,35 +57,72 @@ function initials(name?: string | null): string {
   return name.trim().slice(0, 2).toUpperCase()
 }
 
-function findMessage(id: string | null): Message | undefined {
-  return id ? messages.value.find((m) => m.id === id) : undefined
-}
-
 function mine(m: Message): boolean {
   return m.sender === auth.user?.id
 }
 
-async function fetchMessages(scroll = false) {
-  const m = await api.get<Message[]>(ROUTES.groups.messages(groupId()))
-  messages.value = m.slice().reverse()
-  if (scroll) {
-    await nextTick()
-    listEl.value?.scrollTo({ top: listEl.value.scrollHeight })
+// Chronological order does not depend on the raw API order: oldest at top,
+// newest at the bottom.
+function byTime(a: Message, b: Message): number {
+  return new Date(a.sendTime).getTime() - new Date(b.sendTime).getTime()
+}
+
+function isNearBottom(): boolean {
+  const el = listEl.value
+  if (!el) return true
+  return el.scrollHeight - el.scrollTop - el.clientHeight < 120
+}
+
+async function scrollToBottom(): Promise<void> {
+  await nextTick()
+  const el = listEl.value
+  if (el) el.scrollTo({ top: el.scrollHeight })
+}
+
+// Merge a single message in place (dedupe by id), keeping the list sorted.
+function upsertMessage(msg: Message): void {
+  const map = new Map<string, Message>()
+  for (const m of messages.value) map.set(m.id, m)
+  map.set(msg.id, msg)
+  messages.value = [...map.values()].sort(byTime)
+}
+
+async function fetchMessages(force = false): Promise<void> {
+  const gid = groupId()
+  // Decide whether to stick to the bottom BEFORE new content arrives so an
+  // incoming message doesn't yank a user who scrolled up to read history.
+  const stick = force || isNearBottom()
+  try {
+    const list = await api.get<Message[]>(ROUTES.groups.messages(gid))
+    // Ignore a response for a group we already navigated away from.
+    if (gid !== groupId()) return
+    messages.value = list.slice().sort(byTime)
+    if (stick) await scrollToBottom()
+  } catch (e) {
+    if (gid !== groupId()) return
+    error.value = (e as { message?: string }).message ?? 'Failed to load'
   }
 }
 
 async function load() {
+  const gid = groupId()
   loading.value = true
   error.value = ''
+  // Clear stale content so switching groups doesn't flash the previous chat.
+  messages.value = []
+  group.value = null
   try {
-    group.value = await api.get<Group>(ROUTES.groups.byId(groupId()))
-    groupName.value = group.value.groupName
-    githubLink.value = group.value.githubLink ?? ''
+    const g = await api.get<Group>(ROUTES.groups.byId(gid))
+    if (gid !== groupId()) return
+    group.value = g
+    groupName.value = g.groupName
+    githubLink.value = g.githubLink ?? ''
     await fetchMessages(true)
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Erreur de chargement'
+    if (gid !== groupId()) return
+    error.value = (e as { message?: string }).message ?? 'Failed to load'
   } finally {
-    loading.value = false
+    if (gid === groupId()) loading.value = false
   }
 }
 
@@ -80,29 +132,36 @@ async function onFile(e: Event) {
   try {
     pendingFile.value = [await uploadImage(file, true)]
   } catch {
-    error.value = "Échec de l'upload"
+    error.value = 'Upload failed'
   }
 }
 
 async function send() {
   if (!draft.value.trim() && !pendingFile.value.length) return
-  const content = draft.value || '(image)'
-  const filesUrl = pendingFile.value
+  error.value = ''
+  // Snapshot but do NOT clear the composer yet: if the POST fails the user's
+  // text, image and reply context must survive.
+  const content = draft.value.trim()
+  const filesUrl = pendingFile.value.slice()
   const replyId = replyingTo.value?.id
-  draft.value = ''
-  pendingFile.value = []
-  replyingTo.value = null
+  const gid = groupId()
   try {
     const path = replyId
-      ? ROUTES.groups.replyMessage(groupId(), replyId)
-      : ROUTES.groups.sendMessage(groupId())
-    await api.post(path, {
+      ? ROUTES.groups.replyMessage(gid, replyId)
+      : ROUTES.groups.sendMessage(gid)
+    const created = await api.post<Message>(path, {
       content,
       filesUrl: filesUrl.length ? filesUrl : undefined,
     })
-    await fetchMessages(true)
+    // Success — now it's safe to reset the composer.
+    draft.value = ''
+    pendingFile.value = []
+    replyingTo.value = null
+    // Optimistically show the sent message; realtime/poll will reconcile.
+    if (created?.id && gid === groupId()) upsertMessage(created)
+    await scrollToBottom()
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Envoi impossible'
+    error.value = (e as { message?: string }).message ?? 'Failed to send'
   }
 }
 
@@ -112,6 +171,7 @@ function startEdit(m: Message) {
 }
 
 async function saveEdit(m: Message) {
+  error.value = ''
   try {
     await api.patch(ROUTES.groups.editMessage(groupId(), m.id), {
       content: editDraft.value,
@@ -119,30 +179,50 @@ async function saveEdit(m: Message) {
     editingId.value = ''
     await fetchMessages()
   } catch {
-    error.value = 'Modification impossible'
+    error.value = 'Failed to update'
   }
 }
 
-async function remove(m: Message) {
-  if (!confirm('Supprimer ce message ?')) return
+function askDelete(m: Message) {
+  pendingDelete.value = m
+}
+
+async function confirmDelete() {
+  const m = pendingDelete.value
+  if (!m) return
+  error.value = ''
   try {
     await api.del(ROUTES.groups.deleteMessage(groupId(), m.id))
+    pendingDelete.value = null
     await fetchMessages()
   } catch {
-    error.value = 'Suppression impossible'
+    pendingDelete.value = null
+    error.value = 'Failed to delete'
   }
+}
+
+function toggleGroupEdit() {
+  // Re-seed the form from the live group so stale unsaved edits never leak
+  // across opens.
+  if (!showGroupEdit.value && group.value) {
+    groupName.value = group.value.groupName
+    githubLink.value = group.value.githubLink ?? ''
+  }
+  showGroupEdit.value = !showGroupEdit.value
 }
 
 async function saveGroup() {
+  error.value = ''
   try {
     await api.patch(ROUTES.groups.edit(groupId()), {
       groupName: groupName.value || undefined,
-      githubLink: githubLink.value || undefined,
+      // Send the raw value (empty string included) so a link can be cleared.
+      githubLink: githubLink.value,
     })
     group.value = await api.get<Group>(ROUTES.groups.byId(groupId()))
     showGroupEdit.value = false
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Mise à jour impossible'
+    error.value = (e as { message?: string }).message ?? 'Failed to update'
   }
 }
 
@@ -158,6 +238,8 @@ watch(
   () => {
     teardown()
     load()
+    // fetchMessages swallows its own errors, so the poll/realtime callbacks
+    // can never leak an unhandled rejection.
     if (live.value) {
       unsub = subscribeGroup(groupId(), () => fetchMessages())
     } else {
@@ -176,31 +258,40 @@ onBeforeUnmount(teardown)
       <span class="ch-av">{{ initials(group?.groupName) }}</span>
       <div class="ch-main">
         <div class="ch-top">
-          <span class="ch-name">{{ group?.groupName ?? 'Groupe' }}</span>
+          <span class="ch-name">{{ group?.groupName ?? 'Group' }}</span>
           <span class="badge">
             <span class="badge-dot"></span>{{ live ? 'LIVE' : 'POLLING' }}
           </span>
         </div>
         <span class="ch-proj">{{ group?.projectName }}</span>
       </div>
-      <a v-if="group?.githubLink" :href="group.githubLink" target="_blank" class="ch-ic" aria-label="GitHub">
+      <a
+        v-if="group?.githubLink"
+        :href="group.githubLink"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="ch-ic"
+        aria-label="GitHub"
+      >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.6 2 12.3c0 4.5 2.9 8.3 6.8 9.7.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.4-3.4-1.4-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5.1 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9 9 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 4-2.4 4.8-4.7 5.1.4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5 3.9-1.4 6.8-5.2 6.8-9.7C22 6.6 17.5 2 12 2z" /></svg>
       </a>
-      <button class="ch-ic" aria-label="éditer" @click="showGroupEdit = !showGroupEdit">
+      <button class="ch-ic" aria-label="edit" @click="toggleGroupEdit">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 20h4L18 10l-4-4L4 16v4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="1.7" /></svg>
       </button>
     </header>
 
     <div v-if="showGroupEdit" class="grp-edit">
-      <input v-model="groupName" class="input" placeholder="Nom du groupe" />
-      <input v-model="githubLink" class="input" placeholder="Lien GitHub" />
+      <input v-model="groupName" class="input" placeholder="Group name" aria-label="Group name" />
+      <input v-model="githubLink" class="input" placeholder="GitHub link" aria-label="GitHub link" />
       <button class="send-btn" @click="saveGroup">OK</button>
+      <button class="send-btn ghost" @click="showGroupEdit = false">Cancel</button>
     </div>
 
     <p v-if="error" class="error">{{ error }}</p>
 
-    <div ref="listEl" class="messages scroll">
-      <p v-if="loading" class="muted center">Chargement…</p>
+    <div ref="listEl" class="messages">
+      <p v-if="loading" class="muted center">Loading…</p>
+      <p v-else-if="!messages.length" class="muted center">No messages yet.</p>
       <div
         v-for="m in messages"
         :key="m.id"
@@ -210,29 +301,40 @@ onBeforeUnmount(teardown)
         <span v-if="!mine(m)" class="m-av">{{ initials(m.user?.name ?? m.sender) }}</span>
         <div class="m-body">
           <div class="m-meta">
-            <span class="m-author">{{ mine(m) ? 'moi' : (m.user?.name ?? m.sender) }}</span>
+            <RouterLink
+              v-if="!mine(m)"
+              class="m-author"
+              :to="{ name: 'user', params: { id: m.sender } }"
+            >{{ m.user?.name ?? m.sender }}</RouterLink>
+            <span v-else class="m-author">me</span>
           </div>
           <div class="bubble" :class="{ mine: mine(m) }">
             <div v-if="m.messageReply" class="quote">
-              <span class="quote-content">{{ findMessage(m.messageReply)?.content ?? 'message' }}</span>
+              <span class="quote-content">{{ quotedContent(m.messageReply) }}</span>
             </div>
             <template v-if="editingId === m.id">
-              <input v-model="editDraft" class="input dark" @keyup.enter="saveEdit(m)" />
+              <textarea
+                v-model="editDraft"
+                class="input dark"
+                rows="1"
+                aria-label="Edit message"
+                @keydown.enter.exact.prevent="saveEdit(m)"
+              ></textarea>
               <div class="m-actions">
                 <button class="txt-btn accent" @click="saveEdit(m)">OK</button>
-                <button class="txt-btn" @click="editingId = ''">annuler</button>
+                <button class="txt-btn" @click="editingId = ''">cancel</button>
               </div>
             </template>
             <template v-else>
-              <span class="m-text">{{ m.content }}</span>
+              <span v-if="m.content" class="m-text">{{ m.content }}</span>
               <PrivateImage v-for="f in m.filesUrl" :key="f" :path="f" />
             </template>
           </div>
           <div v-if="editingId !== m.id" class="m-actions">
-            <button class="txt-btn" @click="replyingTo = m">répondre</button>
+            <button class="txt-btn" @click="replyingTo = m">reply</button>
             <template v-if="mine(m)">
-              <button class="txt-btn" @click="startEdit(m)">éditer</button>
-              <button class="txt-btn" @click="remove(m)">suppr.</button>
+              <button class="txt-btn" @click="startEdit(m)">edit</button>
+              <button class="txt-btn" @click="askDelete(m)">del.</button>
             </template>
           </div>
         </div>
@@ -242,25 +344,44 @@ onBeforeUnmount(teardown)
     <div v-if="replyingTo" class="reply-banner">
       <span class="reply-bar"></span>
       <div class="reply-main">
-        <span class="reply-to">réponse à {{ replyingTo.user?.name ?? replyingTo.sender }}</span>
+        <span class="reply-to">replying to {{ replyingTo.user?.name ?? replyingTo.sender }}</span>
         <span class="reply-content">{{ replyingTo.content }}</span>
       </div>
-      <button class="reply-x" aria-label="annuler" @click="replyingTo = null">
+      <button class="reply-x" aria-label="cancel" @click="replyingTo = null">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
       </button>
     </div>
 
     <div class="composer" :class="{ 'no-round': replyingTo }">
-      <label class="attach">
+      <label class="attach" aria-label="Attach image">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.5 12.5 21a5 5 0 0 1-7-7l8-8a3.3 3.3 0 0 1 4.7 4.7l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.3-7.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
         <input type="file" accept="image/*" hidden @change="onFile" />
       </label>
-      <span v-if="pendingFile.length" class="chip">image prête</span>
-      <input v-model="draft" class="input" placeholder="Écris un message…" @keyup.enter="send" />
-      <button class="send-btn sq" @click="send">
+      <span v-if="pendingFile.length" class="chip">image ready</span>
+      <textarea
+        v-model="draft"
+        class="input"
+        rows="1"
+        placeholder="Write a message…"
+        aria-label="Write a message"
+        @keydown.enter.exact.prevent="send"
+      ></textarea>
+      <button class="send-btn sq" aria-label="Send" @click="send">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </button>
     </div>
+
+    <Modal
+      :open="pendingDelete !== null"
+      title="Delete this message?"
+      @close="pendingDelete = null"
+    >
+      <p>This can't be undone.</p>
+      <template #actions>
+        <button class="mbtn" @click="pendingDelete = null">Cancel</button>
+        <button class="mbtn danger" @click="confirmDelete">Delete</button>
+      </template>
+    </Modal>
   </section>
 </template>
 
@@ -269,6 +390,7 @@ onBeforeUnmount(teardown)
   display: flex;
   flex-direction: column;
   height: calc(100vh - 112px);
+  height: calc(100dvh - 112px);
 }
 .chat-head {
   display: flex;
@@ -352,6 +474,8 @@ onBeforeUnmount(teardown)
 }
 .messages {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 20px 2px;
   display: flex;
   flex-direction: column;
@@ -393,6 +517,10 @@ onBeforeUnmount(teardown)
   font-size: 12.5px;
   font-weight: 600;
   color: #cfcfd4;
+  text-decoration: none;
+}
+a.m-author:hover {
+  color: #8c97f7;
 }
 .bubble {
   display: inline-block;
@@ -483,7 +611,7 @@ onBeforeUnmount(teardown)
 }
 .composer {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 10px;
   padding: 12px;
   border: 1px solid #23232b;
@@ -510,6 +638,7 @@ onBeforeUnmount(teardown)
   color: #ededee;
 }
 .chip {
+  align-self: center;
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: #74747e;
@@ -526,9 +655,23 @@ onBeforeUnmount(teardown)
   font-size: 14px;
   outline: none;
 }
+textarea.input {
+  height: auto;
+  min-height: 44px;
+  max-height: 140px;
+  padding: 11px 14px;
+  line-height: 1.45;
+  resize: none;
+  overflow-y: auto;
+}
 .input.dark {
   height: 36px;
   background: rgba(0, 0, 0, 0.2);
+}
+textarea.input.dark {
+  height: auto;
+  min-height: 36px;
+  padding: 8px 12px;
 }
 .input:focus {
   border-color: #6e7bf2;
@@ -547,6 +690,16 @@ onBeforeUnmount(teardown)
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+.send-btn.ghost {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cfcfd4;
+}
+.send-btn.ghost:hover {
+  color: #ededee;
+  border-color: rgba(255, 255, 255, 0.24);
+  filter: none;
 }
 .send-btn.sq {
   width: 44px;
@@ -579,5 +732,28 @@ onBeforeUnmount(teardown)
 }
 .error {
   color: #ef6d72;
+}
+.mbtn {
+  border-radius: 10px;
+  padding: 9px 16px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #cfcfd4;
+}
+.mbtn:hover {
+  color: #ededee;
+  border-color: rgba(255, 255, 255, 0.24);
+}
+.mbtn.danger {
+  border: none;
+  background: linear-gradient(180deg, #e0575c, #d0474c);
+  color: #fff;
+}
+.mbtn.danger:hover {
+  filter: brightness(1.08);
 }
 </style>

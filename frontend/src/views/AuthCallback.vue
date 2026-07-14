@@ -34,6 +34,6 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-screen flex items-center justify-center text-muted">
-    Connexion en cours…
+    Signing in…
   </div>
 </template>

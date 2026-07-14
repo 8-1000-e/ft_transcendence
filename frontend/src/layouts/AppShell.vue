@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter, RouterLink, RouterView } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useGroupsStore } from '@/stores/groups'
+import Modal from '@/components/Modal.vue'
 
 const auth = useAuthStore()
 const groups = useGroupsStore()
 const router = useRouter()
+
+const cancelError = ref('')
 
 onMounted(() => {
   if (!groups.loaded) groups.fetchGroups()
@@ -30,10 +33,11 @@ async function logout() {
 }
 
 async function cancelDeletion() {
+  cancelError.value = ''
   try {
     await auth.cancelDeletion()
-  } catch {
-    /* ignore */
+  } catch (e) {
+    cancelError.value = (e as { message?: string }).message ?? 'Failed to cancel deletion'
   }
 }
 </script>
@@ -51,22 +55,15 @@ async function cancelDeletion() {
             <path d="M15.5 6.5 H21 V12" stroke="#8C97F7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
         </span>
-        <span class="brand-word">ft<span class="brand-accent">_predict</span></span>
+        <span class="brand-word">ft<span class="brand-accent">_hub</span></span>
       </RouterLink>
-
-      <div class="search">
-        <span class="search-ic">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" /><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
-        </span>
-        <input class="search-in" placeholder="Rechercher un projet, un étudiant…" />
-      </div>
 
       <div class="hd-right">
         <RouterLink :to="{ name: 'me' }" class="pill">
           <span class="pill-av">{{ initials(auth.user?.name) }}</span>
-          <span class="pill-name">{{ auth.user?.name ?? 'Profil' }}</span>
+          <span class="pill-name">{{ auth.user?.name ?? 'Profile' }}</span>
         </RouterLink>
-        <button class="icon-btn logout" aria-label="Déconnexion" @click="logout">
+        <button class="icon-btn logout" aria-label="Log out" @click="logout">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /><path d="M10 8l-4 4 4 4M6 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
         </button>
       </div>
@@ -78,9 +75,9 @@ async function cancelDeletion() {
           <span class="rail-title">YOUR GROUPCHAT</span>
           <span class="rail-count">{{ groups.groups.length }}</span>
         </div>
-        <p v-if="groups.loading" class="muted">Chargement…</p>
+        <p v-if="groups.loading" class="muted">Loading…</p>
         <p v-else-if="groups.error" class="muted">{{ groups.error }}</p>
-        <p v-else-if="!groups.groups.length" class="muted">Aucun groupe.</p>
+        <p v-else-if="!groups.groups.length" class="muted">No groups yet.</p>
         <RouterLink
           v-for="g in groups.groups"
           :key="g.id"
@@ -100,7 +97,7 @@ async function cancelDeletion() {
       </main>
 
       <aside class="rail rail-right scroll">
-        <div class="rail-head"><span class="rail-title">PROJETS</span></div>
+        <div class="rail-head"><span class="rail-title">PROJECTS</span></div>
         <RouterLink
           v-for="p in groups.projects()"
           :key="p.projectId"
@@ -113,22 +110,23 @@ async function cancelDeletion() {
       </aside>
     </div>
 
-    <div v-if="auth.pendingDeletion" class="overlay">
-      <div class="modal">
-        <div class="modal-ic">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3z" stroke="#ef6d72" stroke-width="1.7" stroke-linejoin="round" /><path d="M12 10v4M12 17h0" stroke="#ef6d72" stroke-width="1.9" stroke-linecap="round" /></svg>
-        </div>
-        <h2 class="modal-title">Compte en cours de suppression</h2>
-        <p class="modal-text">
-          Ton compte est programmé pour suppression. Annule la demande pour
-          continuer à l'utiliser, ou déconnecte-toi.
-        </p>
-        <div class="modal-actions">
-          <button class="btn-ghost" @click="logout">Se déconnecter</button>
-          <button class="btn-primary" @click="cancelDeletion">Annuler la suppression</button>
-        </div>
-      </div>
-    </div>
+    <!-- Blocking barrier: backdrop-close disabled so it can't be dismissed
+         without either cancelling the request or logging out. -->
+    <Modal
+      :open="auth.pendingDeletion"
+      title="Account scheduled for deletion"
+      :backdrop-close="false"
+    >
+      <p class="modal-text">
+        Your account is scheduled for deletion. Cancel the request to keep
+        using it, or log out.
+      </p>
+      <p v-if="cancelError" class="modal-err" role="alert">{{ cancelError }}</p>
+      <template #actions>
+        <button class="btn-ghost" @click="logout">Log out</button>
+        <button class="btn-primary" @click="cancelDeletion">Cancel deletion</button>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -195,36 +193,6 @@ async function cancelDeletion() {
 }
 .brand-accent {
   color: #8c97f7;
-}
-.search {
-  flex: 1;
-  max-width: 460px;
-  margin: 0 auto;
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.search-ic {
-  position: absolute;
-  left: 13px;
-  color: #5c5c66;
-  display: inline-flex;
-}
-.search-in {
-  width: 100%;
-  height: 38px;
-  padding: 0 14px 0 38px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  color: #f3f3f4;
-  font-size: 13.5px;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.search-in:focus {
-  border-color: #6e7bf2;
-  box-shadow: 0 0 0 3px rgba(110, 123, 242, 0.16);
 }
 .hd-right {
   margin-left: auto;
@@ -413,53 +381,14 @@ async function cancelDeletion() {
   padding: 0 6px;
 }
 
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  background: rgba(4, 4, 6, 0.7);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-.modal {
-  width: min(420px, 100%);
-  border-radius: 18px;
-  border: 1px solid rgba(239, 109, 114, 0.3);
-  background: rgba(17, 17, 21, 0.92);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.9);
-  padding: 26px;
-}
-.modal-ic {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(239, 109, 114, 0.12);
-  border: 1px solid rgba(239, 109, 114, 0.3);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-}
-.modal-title {
-  font-size: 19px;
-  font-weight: 700;
-  color: #f6f6f7;
-  margin: 0 0 8px;
-}
 .modal-text {
-  font-size: 13.5px;
-  color: #9a9aa2;
-  line-height: 1.6;
-  margin: 0 0 22px;
+  margin: 0;
 }
-.modal-actions {
-  display: flex;
-  gap: 10px;
+.modal-err {
+  margin: 12px 0 0;
+  color: #ef6d72;
+  font-size: 13px;
+  line-height: 1.5;
 }
 .btn-ghost {
   flex: 1;
@@ -498,9 +427,6 @@ async function cancelDeletion() {
   }
   .grid {
     grid-template-columns: 1fr;
-  }
-  .search {
-    display: none;
   }
 }
 </style>

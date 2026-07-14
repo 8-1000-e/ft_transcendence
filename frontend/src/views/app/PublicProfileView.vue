@@ -10,6 +10,7 @@ const router = useRouter()
 const user = ref<PublicUser | null>(null)
 const loading = ref(false)
 const error = ref('')
+const avatarFailed = ref(false)
 
 function initials(n?: string | null): string {
   if (!n) return '??'
@@ -20,12 +21,13 @@ async function load() {
   loading.value = true
   error.value = ''
   user.value = null
+  avatarFailed.value = false
   try {
     user.value = await api.get<PublicUser>(
       ROUTES.users.byId(route.params.id as string),
     )
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Profil introuvable'
+    error.value = (e as { message?: string }).message ?? 'Profile not found'
   } finally {
     loading.value = false
   }
@@ -37,20 +39,26 @@ watch(() => route.params.id, load, { immediate: true })
 <template>
   <section class="wrap">
     <button class="back" @click="router.back()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
-      retour
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      back
     </button>
 
-    <p v-if="loading" class="muted">Chargement…</p>
-    <p v-if="error" class="error">{{ error }}</p>
+    <p v-if="loading" class="muted" role="status">Loading…</p>
+    <p v-if="error" class="error" role="alert">{{ error }}</p>
 
     <div v-if="user" class="card">
       <div class="glow"></div>
-      <img v-if="user.ftPfpUrl" :src="user.ftPfpUrl" class="pp" alt="" />
+      <img
+        v-if="user.ftPfpUrl && !avatarFailed"
+        :src="user.ftPfpUrl"
+        class="pp"
+        :alt="`Profile picture of ${user.name}`"
+        @error="avatarFailed = true"
+      />
       <span v-else class="av">{{ initials(user.name) }}</span>
       <h1 class="name">{{ user.name }}</h1>
       <p v-if="user.campus" class="campus">{{ user.campus }}</p>
-      <p v-if="user.createdAt" class="since">membre depuis {{ user.createdAt.slice(0, 10) }}</p>
+      <p v-if="user.createdAt" class="since">member since {{ user.createdAt.slice(0, 10) }}</p>
     </div>
   </section>
 </template>

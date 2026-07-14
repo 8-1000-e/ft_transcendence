@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
+import { disconnectRealtime } from '@/api/realtime'
 import type { Tokens, User } from '@/types/auth'
 
 const REFRESH_KEY = 'ft_refresh'
@@ -25,6 +26,9 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken.value = null
     user.value = null
     localStorage.removeItem(REFRESH_KEY)
+    // Tear down the realtime socket so the next user gets a fresh client and
+    // never reuses the previous session's authenticated Pusher connection.
+    disconnectRealtime()
   }
 
   async function fetchMe() {

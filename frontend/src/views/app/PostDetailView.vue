@@ -27,6 +27,10 @@ function initials(name?: string | null): string {
   return name.trim().slice(0, 2).toUpperCase()
 }
 
+function message(e: unknown, fallback: string): string {
+  return (e as { message?: string }).message ?? fallback
+}
+
 async function loadPost() {
   if (!projectId) return
   try {
@@ -47,7 +51,7 @@ async function load() {
   try {
     await Promise.all([loadPost(), loadComments()])
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Erreur de chargement'
+    error.value = message(e, 'Failed to load')
   } finally {
     loading.value = false
   }
@@ -55,14 +59,24 @@ async function load() {
 
 async function addComment() {
   if (!newComment.value.trim()) return
-  await api.post(ROUTES.comments.create(postId), { content: newComment.value })
-  newComment.value = ''
-  await loadComments()
+  error.value = ''
+  try {
+    await api.post(ROUTES.comments.create(postId), { content: newComment.value })
+    newComment.value = ''
+    await loadComments()
+  } catch (e) {
+    error.value = message(e, 'Failed to post comment')
+  }
 }
 
 async function voteComment(c: Comment, value: VoteValue) {
-  await api.post(ROUTES.comments.vote(c.id), { vote: value })
-  await loadComments()
+  error.value = ''
+  try {
+    await api.post(ROUTES.comments.vote(c.id), { vote: value })
+    await loadComments()
+  } catch (e) {
+    error.value = message(e, 'Failed to register vote')
+  }
 }
 
 async function toggleReplies(c: Comment) {
@@ -70,19 +84,29 @@ async function toggleReplies(c: Comment) {
     delete repliesByComment.value[c.id]
     return
   }
-  repliesByComment.value[c.id] = await api.get<Reply[]>(
-    ROUTES.replies.listByComment(c.id),
-  )
+  error.value = ''
+  try {
+    repliesByComment.value[c.id] = await api.get<Reply[]>(
+      ROUTES.replies.listByComment(c.id),
+    )
+  } catch (e) {
+    error.value = message(e, 'Failed to load replies')
+  }
 }
 
 async function addReply(c: Comment) {
   const draft = replyDrafts.value[c.id]
   if (!draft?.trim()) return
-  await api.post(ROUTES.replies.create(c.id), { content: draft })
-  replyDrafts.value[c.id] = ''
-  repliesByComment.value[c.id] = await api.get<Reply[]>(
-    ROUTES.replies.listByComment(c.id),
-  )
+  error.value = ''
+  try {
+    await api.post(ROUTES.replies.create(c.id), { content: draft })
+    replyDrafts.value[c.id] = ''
+    repliesByComment.value[c.id] = await api.get<Reply[]>(
+      ROUTES.replies.listByComment(c.id),
+    )
+  } catch (e) {
+    error.value = message(e, 'Failed to post reply')
+  }
 }
 
 function startEdit(id: string, content: string) {
@@ -91,17 +115,27 @@ function startEdit(id: string, content: string) {
 }
 
 async function saveCommentEdit(c: Comment) {
-  await api.patch(ROUTES.comments.edit(c.id), { content: editContent.value })
-  editId.value = ''
-  await loadComments()
+  error.value = ''
+  try {
+    await api.patch(ROUTES.comments.edit(c.id), { content: editContent.value })
+    editId.value = ''
+    await loadComments()
+  } catch (e) {
+    error.value = message(e, 'Failed to update comment')
+  }
 }
 
 async function saveReplyEdit(c: Comment, r: Reply) {
-  await api.patch(ROUTES.replies.edit(r.id), { content: editContent.value })
-  editId.value = ''
-  repliesByComment.value[c.id] = await api.get<Reply[]>(
-    ROUTES.replies.listByComment(c.id),
-  )
+  error.value = ''
+  try {
+    await api.patch(ROUTES.replies.edit(r.id), { content: editContent.value })
+    editId.value = ''
+    repliesByComment.value[c.id] = await api.get<Reply[]>(
+      ROUTES.replies.listByComment(c.id),
+    )
+  } catch (e) {
+    error.value = message(e, 'Failed to update reply')
+  }
 }
 
 onMounted(load)
@@ -115,97 +149,127 @@ onMounted(load)
       class="back"
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
-      retour au fil
+      back to feed
     </RouterLink>
 
     <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="loading" class="muted">Chargement…</p>
+    <p v-if="loading" class="muted">Loading…</p>
 
-    <article v-if="post" class="post">
-      <div class="body">
-        <div class="meta">
-          <span class="av big">{{ initials(post.user?.name) }}</span>
-          <span class="author">{{ post.user?.name ?? 'anonyme' }}</span>
+    <div v-else-if="!post" class="not-found">
+      <p class="nf-title">Post not found</p>
+      <p class="nf-sub">
+        This post could not be loaded. It may have been removed, or the link is
+        incomplete.
+      </p>
+      <RouterLink :to="{ name: 'feed' }" class="nf-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        back to feed
+      </RouterLink>
+    </div>
+
+    <template v-else>
+      <article class="post">
+        <div class="body">
+          <div class="meta">
+            <span class="av big">{{ initials(post.user?.name) }}</span>
+            <RouterLink
+              v-if="post.writer"
+              :to="{ name: 'user', params: { id: post.writer } }"
+              class="author"
+            >{{ post.user?.name ?? 'anonymous' }}</RouterLink>
+            <span v-else class="author">{{ post.user?.name ?? 'anonymous' }}</span>
+          </div>
+          <h1 v-if="post.title" class="p-title">{{ post.title }}</h1>
+          <p class="p-content">{{ post.content }}</p>
+          <img v-for="f in post.filesUrl" :key="f" :src="publicUrl(f)" class="p-img" alt="" />
         </div>
-        <h1 v-if="post.title" class="p-title">{{ post.title }}</h1>
-        <p class="p-content">{{ post.content }}</p>
-        <img v-for="f in post.filesUrl" :key="f" :src="publicUrl(f)" class="p-img" alt="" />
+      </article>
+
+      <div class="divider">
+        <span class="divider-lab">COMMENTS</span>
+        <span class="divider-line"></span>
+        <span class="divider-n">{{ comments.length }}</span>
       </div>
-    </article>
 
-    <div class="divider">
-      <span class="divider-lab">COMMENTAIRES</span>
-      <span class="divider-line"></span>
-      <span class="divider-n">{{ comments.length }}</span>
-    </div>
+      <div class="cmt-composer">
+        <input
+          v-model="newComment"
+          class="input"
+          placeholder="Add a comment…"
+          aria-label="Add a comment"
+          @keyup.enter="addComment"
+        />
+        <button class="send-sq" aria-label="Send comment" @click="addComment">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
+      </div>
 
-    <div class="cmt-composer">
-      <input
-        v-model="newComment"
-        class="input"
-        placeholder="Ajoute un commentaire…"
-        @keyup.enter="addComment"
-      />
-      <button class="send-sq" @click="addComment">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-      </button>
-    </div>
-
-    <div class="comments">
-      <div v-for="c in comments" :key="c.id" class="comment">
-        <div class="meta">
-          <span class="av sm">{{ initials(c.user?.name) }}</span>
-          <span class="author sm">{{ c.user?.name ?? 'anonyme' }}</span>
-          <div class="cvotes">
-            <button class="cvote" :class="{ up: c.myVote === 'UP' }" @click="voteComment(c, 'UP')">▲</button>
-            <span class="cscore">{{ c.upvotes - c.downvotes }}</span>
-            <button class="cvote" :class="{ down: c.myVote === 'DOWN' }" @click="voteComment(c, 'DOWN')">▼</button>
-          </div>
-        </div>
-
-        <template v-if="editId === c.id">
-          <input v-model="editContent" class="input" />
-          <div class="c-actions">
-            <button class="txt-btn accent" @click="saveCommentEdit(c)">OK</button>
-            <button class="txt-btn" @click="editId = ''">annuler</button>
-          </div>
-        </template>
-        <template v-else>
-          <p class="c-content">{{ c.content }}</p>
-          <img v-for="f in c.filesUrl" :key="f" :src="publicUrl(f)" class="c-img" alt="" />
-          <div class="c-actions">
-            <button class="txt-btn" @click="toggleReplies(c)">
-              {{ c._count?.replies ?? 0 }} réponse(s)
-            </button>
-            <button v-if="c.writer === auth.user?.id" class="txt-btn" @click="startEdit(c.id, c.content)">éditer</button>
-          </div>
-        </template>
-
-        <div v-if="repliesByComment[c.id]" class="replies">
-          <div v-for="r in repliesByComment[c.id]" :key="r.id" class="reply">
-            <div class="meta">
-              <span class="av xs">{{ initials(r.user?.name) }}</span>
-              <span class="author sm">{{ r.user?.name ?? 'anonyme' }}</span>
+      <div class="comments">
+        <div v-for="c in comments" :key="c.id" class="comment">
+          <div class="meta">
+            <span class="av sm">{{ initials(c.user?.name) }}</span>
+            <RouterLink
+              v-if="c.writer"
+              :to="{ name: 'user', params: { id: c.writer } }"
+              class="author sm"
+            >{{ c.user?.name ?? 'anonymous' }}</RouterLink>
+            <span v-else class="author sm">{{ c.user?.name ?? 'anonymous' }}</span>
+            <div class="cvotes">
+              <button class="cvote" :class="{ up: c.myVote === 'UP' }" aria-label="Upvote" @click="voteComment(c, 'UP')">▲</button>
+              <span class="cscore">{{ c.upvotes - c.downvotes }}</span>
+              <button class="cvote" :class="{ down: c.myVote === 'DOWN' }" aria-label="Downvote" @click="voteComment(c, 'DOWN')">▼</button>
             </div>
-            <template v-if="editId === r.id">
-              <input v-model="editContent" class="input" />
-              <div class="c-actions">
-                <button class="txt-btn accent" @click="saveReplyEdit(c, r)">OK</button>
-                <button class="txt-btn" @click="editId = ''">annuler</button>
-              </div>
-            </template>
-            <template v-else>
-              <p class="c-content">{{ r.content }}</p>
-              <button v-if="r.writer === auth.user?.id" class="txt-btn" @click="startEdit(r.id, r.content)">éditer</button>
-            </template>
           </div>
-          <div class="reply-composer">
-            <input v-model="replyDrafts[c.id]" class="input" placeholder="Répondre…" @keyup.enter="addReply(c)" />
-            <button class="txt-btn accent" @click="addReply(c)">Répondre</button>
+
+          <template v-if="editId === c.id">
+            <input v-model="editContent" class="input" aria-label="Edit comment" />
+            <div class="c-actions">
+              <button class="txt-btn accent" @click="saveCommentEdit(c)">OK</button>
+              <button class="txt-btn" @click="editId = ''">cancel</button>
+            </div>
+          </template>
+          <template v-else>
+            <p class="c-content">{{ c.content }}</p>
+            <img v-for="f in c.filesUrl" :key="f" :src="publicUrl(f)" class="c-img" alt="" />
+            <div class="c-actions">
+              <button class="txt-btn" @click="toggleReplies(c)">
+                {{ c._count?.replies ?? 0 }} replies
+              </button>
+              <button v-if="c.writer === auth.user?.id" class="txt-btn" @click="startEdit(c.id, c.content)">edit</button>
+            </div>
+          </template>
+
+          <div v-if="repliesByComment[c.id]" class="replies">
+            <div v-for="r in repliesByComment[c.id]" :key="r.id" class="reply">
+              <div class="meta">
+                <span class="av xs">{{ initials(r.user?.name) }}</span>
+                <RouterLink
+                  v-if="r.writer"
+                  :to="{ name: 'user', params: { id: r.writer } }"
+                  class="author sm"
+                >{{ r.user?.name ?? 'anonymous' }}</RouterLink>
+                <span v-else class="author sm">{{ r.user?.name ?? 'anonymous' }}</span>
+              </div>
+              <template v-if="editId === r.id">
+                <input v-model="editContent" class="input" aria-label="Edit reply" />
+                <div class="c-actions">
+                  <button class="txt-btn accent" @click="saveReplyEdit(c, r)">OK</button>
+                  <button class="txt-btn" @click="editId = ''">cancel</button>
+                </div>
+              </template>
+              <template v-else>
+                <p class="c-content">{{ r.content }}</p>
+                <button v-if="r.writer === auth.user?.id" class="txt-btn" @click="startEdit(r.id, r.content)">edit</button>
+              </template>
+            </div>
+            <div class="reply-composer">
+              <input v-model="replyDrafts[c.id]" class="input" placeholder="Reply…" aria-label="Write a reply" @keyup.enter="addReply(c)" />
+              <button class="txt-btn accent" @click="addReply(c)">Reply</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </template>
   </section>
 </template>
 
@@ -222,6 +286,38 @@ onMounted(load)
 }
 .back:hover {
   color: #8c97f7;
+}
+.not-found {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(17, 17, 21, 0.72);
+  padding: 40px 22px;
+  text-align: center;
+}
+.nf-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f6f6f7;
+  margin: 0 0 8px;
+}
+.nf-sub {
+  font-size: 13.5px;
+  color: #9a9aa2;
+  line-height: 1.6;
+  margin: 0 auto 18px;
+  max-width: 360px;
+}
+.nf-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #8c97f7;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  text-decoration: none;
+}
+.nf-link:hover {
+  color: #aeb6fa;
 }
 .post {
   display: flex;
@@ -272,6 +368,10 @@ onMounted(load)
   font-size: 13.5px;
   font-weight: 600;
   color: #cfcfd4;
+  text-decoration: none;
+}
+a.author:hover {
+  color: #8c97f7;
 }
 .author.sm {
   font-size: 12.5px;

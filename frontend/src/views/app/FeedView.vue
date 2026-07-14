@@ -16,12 +16,12 @@ function code(name?: string | null): string {
 
 <template>
   <section>
-    <h1 class="title">Choisis un projet</h1>
-    <p class="sub">// parie sur les rendus, suis les prédictions du campus.</p>
+    <h1 class="title">Choose a project</h1>
+    <p class="sub">// discuss submissions, share feedback, and vote on the best takes.</p>
 
-    <p v-if="groups.loading" class="muted">Chargement…</p>
+    <p v-if="groups.loading" class="muted">Loading…</p>
     <p v-else-if="!groups.projects().length" class="muted">
-      Aucun projet — tu n'es membre d'aucun groupe 42.
+      No projects — you're not a member of any 42 group yet.
     </p>
 
     <div class="grid">
@@ -36,7 +36,7 @@ function code(name?: string | null): string {
           <span class="card-tag">42</span>
         </div>
         <div class="card-name">{{ p.projectName }}</div>
-        <div class="card-desc">Fil de discussion et prédictions du projet.</div>
+        <div class="card-desc">Project discussion feed — posts, comments and votes.</div>
       </RouterLink>
     </div>
   </section>

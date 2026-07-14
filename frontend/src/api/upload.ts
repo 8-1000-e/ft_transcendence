@@ -12,7 +12,7 @@ export async function uploadImage(file: File, group = false): Promise<string> {
       : {},
     body: form,
   })
-  if (!res.ok) throw new Error("Échec de l'upload")
+  if (!res.ok) throw new Error('Upload failed')
   const data = (await res.json()) as { url: string }
   return data.url
 }

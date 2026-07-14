@@ -12,8 +12,10 @@ interface SuggestUser {
   location: string | null
 }
 interface SuggestTeam {
-  teamId: string
+  id: string
+  isGroupe: boolean
   final_mark?: number
+  marked_at?: string
   users: SuggestUser[]
 }
 
@@ -23,6 +25,7 @@ const teams = ref<SuggestTeam[]>([])
 const loading = ref(false)
 const error = ref('')
 const done = ref(false)
+const failedAvatars = ref(new Set<string>())
 
 function projectId(): string {
   return route.params.projectId as string
@@ -44,7 +47,7 @@ async function search() {
     )
     done.value = true
   } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Suggestion impossible'
+    error.value = (e as { message?: string }).message ?? 'Suggestion failed'
   } finally {
     loading.value = false
   }
@@ -53,29 +56,31 @@ async function search() {
 
 <template>
   <section class="wrap">
-    <h1 class="title">Suggérer une équipe</h1>
-    <p class="sub">// entre un campus pour découvrir les équipes actives.</p>
+    <h1 class="title">Suggest a team</h1>
+    <p class="sub">// enter a campus to discover active teams.</p>
 
     <div class="row">
       <input
         v-model="campusId"
         class="input"
-        placeholder="campusId (ex. 31 = Angoulême)"
+        type="search"
+        aria-label="Campus ID"
+        placeholder="campusId (e.g. 31 = Angoulême)"
         @keyup.enter="search"
       />
       <button class="btn" :disabled="loading" @click="search">
-        {{ loading ? 'Recherche…' : 'Chercher' }}
+        {{ loading ? 'Searching…' : 'Search' }}
       </button>
     </div>
 
-    <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="done && !teams.length" class="muted">Aucune équipe trouvée.</p>
+    <p v-if="error" class="error" role="alert">{{ error }}</p>
+    <p v-if="done && !teams.length" class="muted" role="status">No team found.</p>
 
     <div class="teams">
-      <div v-for="t in teams" :key="t.teamId" class="team">
+      <div v-for="t in teams" :key="t.id" class="team">
         <div class="team-head">
-          <span class="team-name">Équipe · note {{ t.final_mark ?? '?' }}</span>
-          <span class="team-n">{{ t.users.length }} membres</span>
+          <span class="team-name">Team · mark {{ t.final_mark ?? '?' }}</span>
+          <span class="team-n">{{ t.users.length }} members</span>
         </div>
         <div class="members">
           <span
@@ -84,7 +89,13 @@ async function search() {
             class="member"
             :title="`${u.name} (${u.login})${u.location ? ' · ' + u.location : ''}`"
           >
-            <img v-if="u.ppurl" :src="u.ppurl" class="m-pp" alt="" />
+            <img
+              v-if="u.ppurl && !failedAvatars.has(u.id)"
+              :src="u.ppurl"
+              class="m-pp"
+              :alt="`Profile picture of ${u.name || u.login}`"
+              @error="failedAvatars.add(u.id)"
+            />
             <span v-else class="m-av">{{ initials(u.name || u.login) }}</span>
           </span>
         </div>

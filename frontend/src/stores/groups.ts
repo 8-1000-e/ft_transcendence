@@ -17,7 +17,7 @@ export const useGroupsStore = defineStore('groups', () => {
       groups.value = await api.get<Group[]>(ROUTES.groups.list)
       loaded.value = true
     } catch {
-      error.value = 'Impossible de charger les groupes'
+      error.value = 'Failed to load groups'
     } finally {
       loading.value = false
     }

@@ -21,7 +21,7 @@ async function submit() {
     await auth.signup(email.value, password.value, name.value)
     await router.push({ name: 'verify', query: { email: email.value } })
   } catch (e) {
-    error.value = (e as ApiError).message ?? 'Inscription impossible'
+    error.value = (e as ApiError).message ?? 'Sign-up failed'
   } finally {
     loading.value = false
   }
@@ -29,10 +29,10 @@ async function submit() {
 </script>
 
 <template>
-  <AuthShell title="Inscription" subtitle="// crée ton compte étudiant.">
+  <AuthShell title="Sign up" subtitle="// create your student account.">
     <form class="ftp-form" @submit.prevent="submit">
       <div class="ftp-field">
-        <label class="ftp-label" for="name">NOM</label>
+        <label class="ftp-label" for="name">NAME</label>
         <input
           id="name"
           v-model="name"
@@ -40,7 +40,7 @@ async function submit() {
           required
           minlength="2"
           class="ftp-input"
-          placeholder="ton nom"
+          placeholder="your name"
         />
       </div>
 
@@ -58,7 +58,7 @@ async function submit() {
       </div>
 
       <div class="ftp-field">
-        <label class="ftp-label" for="password">MOT DE PASSE</label>
+        <label class="ftp-label" for="password">PASSWORD</label>
         <input
           id="password"
           v-model="password"
@@ -69,13 +69,13 @@ async function submit() {
           class="ftp-input"
           placeholder="••••••••"
         />
-        <p class="ftp-hint">8 caractères minimum.</p>
+        <p class="ftp-hint">8 characters minimum.</p>
       </div>
 
       <p v-if="error" class="ftp-error">! {{ error }}</p>
 
       <button type="submit" :disabled="loading" class="ftp-btn">
-        {{ loading ? 'Envoi…' : 'Créer mon compte' }}
+        {{ loading ? 'Sending…' : 'Create my account' }}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path
             d="M5 12h13M13 6l6 6-6 6"
@@ -89,8 +89,8 @@ async function submit() {
     </form>
 
     <template #footer>
-      Déjà inscrit ?
-      <RouterLink to="/login" class="ftp-link-strong">Se connecter</RouterLink>
+      Already registered?
+      <RouterLink to="/login" class="ftp-link-strong">Log in</RouterLink>
     </template>
   </AuthShell>
 </template>

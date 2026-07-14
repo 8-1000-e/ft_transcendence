@@ -9,7 +9,6 @@ export const ROUTES = {
     refresh: '/refresh',
     logout: '/logout',
     ft: '/auth/42',
-    ftCallback: '/auth/42/callback',
   },
 
   users: {
@@ -60,11 +59,3 @@ export const ROUTES = {
       `/suggest/${projectId}/${campusId}`,
   },
 } as const;
-
-export function apiUrl(path: string): string {
-  return `${API_BASE_URL}${path}`;
-}
-
-export function fileUrl(filename: string): string {
-  return `${API_BASE_URL}/files/${filename}`;
-}
