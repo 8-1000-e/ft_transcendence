@@ -46,7 +46,7 @@ export class UsersController {
 
   @Get('users/:id')
   @UseGuards(JwtAuthGuard)
-  getUser(@Param('id') id: string) {
-    return this.usersService.getUserProfile(id);
+  getUser(@Param('id') id: string, @Req() req: AuthedRequest) {
+    return this.usersService.getUserProfile(id, req.user.sub);
   }
 }

@@ -9,6 +9,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { VoteDto } from './dto/vote.dto';
 import { VoteValue } from 'generated/prisma/client';
 import { assertFilesExist } from 'src/utils/files';
+import { authorView } from 'src/utils/anonymize';
 
 @Injectable()
 export class PostsService {
@@ -97,20 +98,13 @@ export class PostsService {
       const downvotes = votes.filter((v) => v.vote === VoteValue.DOWN).length;
       const myVote = votes.find((v) => v.userId === userId)?.vote ?? null;
 
-      if (user && !user.ftId) {
-        return {
-          ...post,
-          upvotes,
-          downvotes,
-          myVote,
-          user: {
-            name: post.user.rdmName,
-            ftPfpUrl: post.user.rdmPfp,
-            campus: post.user.rdmCampus,
-          },
-        };
-      }
-      return { ...post, upvotes, downvotes, myVote };
+      return {
+        ...post,
+        upvotes,
+        downvotes,
+        myVote,
+        user: authorView(user, post.user),
+      };
     });
   }
 
@@ -185,20 +179,13 @@ export class PostsService {
       const downvotes = votes.filter((v) => v.vote === VoteValue.DOWN).length;
       const myVote = votes.find((v) => v.userId === userId)?.vote ?? null;
 
-      if (user && !user.ftId) {
-        return {
-          ...comment,
-          upvotes,
-          downvotes,
-          myVote,
-          user: {
-            name: comment.user.rdmName,
-            ftPfpUrl: comment.user.rdmPfp,
-            campus: comment.user.rdmCampus,
-          },
-        };
-      }
-      return { ...comment, upvotes, downvotes, myVote };
+      return {
+        ...comment,
+        upvotes,
+        downvotes,
+        myVote,
+        user: authorView(user, comment.user),
+      };
     });
   }
 
@@ -276,20 +263,13 @@ export class PostsService {
       const downvotes = votes.filter((v) => v.vote === VoteValue.DOWN).length;
       const myVote = votes.find((v) => v.userId === userId)?.vote ?? null;
 
-      if (user && !user.ftId) {
-        return {
-          ...reply,
-          upvotes,
-          downvotes,
-          myVote,
-          user: {
-            name: reply.user.rdmName,
-            ftPfpUrl: reply.user.rdmPfp,
-            campus: reply.user.rdmCampus,
-          },
-        };
-      }
-      return { ...reply, upvotes, downvotes, myVote };
+      return {
+        ...reply,
+        upvotes,
+        downvotes,
+        myVote,
+        user: authorView(user, reply.user),
+      };
     });
   }
 

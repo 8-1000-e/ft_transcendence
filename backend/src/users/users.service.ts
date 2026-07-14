@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { authorView } from 'src/utils/anonymize';
 
 @Injectable()
 export class UsersService {
@@ -37,18 +38,32 @@ export class UsersService {
     return { message: 'Delete request cancelled' };
   }
 
-  async getUserProfile(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-        ftPfpUrl: true,
-        campus: true,
-        createdAt: true,
-      },
-    });
+  async getUserProfile(id: string, viewerId: string) {
+    const [viewer, user] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: viewerId },
+        select: { ftId: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          createdAt: true,
+          name: true,
+          ftPfpUrl: true,
+          campus: true,
+          rdmName: true,
+          rdmPfp: true,
+          rdmCampus: true,
+        },
+      }),
+    ]);
     if (!user) throw new NotFoundException();
-    return user;
+    // Non-42 viewers only ever see the anonymous identity — default-deny.
+    return {
+      id: user.id,
+      createdAt: user.createdAt,
+      ...authorView(viewer, user),
+    };
   }
 }
