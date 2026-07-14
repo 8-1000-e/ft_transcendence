@@ -2,6 +2,7 @@ import type { Request } from 'express';
 
 export interface JwtPayload {
   sub: string;
+  tv?: number; // token version — must equal User.tokenVersion (bumped on password change)
 }
 
 // Request once the JwtAuthGuard has attached the decoded payload.
