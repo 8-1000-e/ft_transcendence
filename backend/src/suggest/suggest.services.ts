@@ -12,8 +12,7 @@ type FtApiRequestCounter = {
   projectsUsers: number;
 };
 
-// The mentor rail shows only a short list; resolving live 42 locations for more
-// than this just multiplies rate-limited API calls (and hit the nginx 504).
+// Cap the live-42 location lookups the mentor rail resolves (avoids the nginx 504).
 const MAX_SUGGESTIONS = 12;
 
 @Injectable()
@@ -58,9 +57,7 @@ export class SuggestService {
         campusId,
         requestCounter,
       );
-      // Never suggest the logged-in user to themselves. `user.ftId` is the
-      // stringified 42 id (auth.service) and matches `projectUser.user.id`;
-      // `login` is a second, equally reliable key.
+      // Never suggest the logged-in user to themselves (match on ftId or login).
       const validatedProjectsUsers = projectUsers
         .filter((projectUser) => projectUser['validated?'] === true)
         .filter(
@@ -111,10 +108,8 @@ export class SuggestService {
           };
         },
       );
-      // Only resolve live locations for the handful the rail actually shows.
-      // `test` is already ordered best-mark-first; capping here keeps every
-      // remaining user id inside a single `locations` query (one live call)
-      // instead of the O(users) peel-off loop that was timing out (nginx 504).
+      // Resolve locations only for the top few shown — one `locations` call
+      // instead of the O(users) loop that was timing out (nginx 504).
       const topTeams = test.slice(0, MAX_SUGGESTIONS);
       const suggestions = await this.checkLocations(
         topTeams,
@@ -166,9 +161,8 @@ export class SuggestService {
         );
         continue;
       }
-      // The API already sorts by -final_mark, so page 1 holds the top 100
-      // validated students — far more than the rail shows. Stop there instead
-      // of walking every page (each extra page is a rate-limited live 42 call).
+      // Page 1 (sorted by -final_mark) holds the top 100 — enough for the rail,
+      // and avoids walking extra rate-limited pages.
       usersProject.push(...users);
       break;
     }
