@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
 import { useAuthStore } from '@/stores/auth'
-import { useI18n } from '@/i18n'
+import { useI18n, type Locale } from '@/i18n'
 import Modal from '@/components/Modal.vue'
 
 const auth = useAuthStore()
@@ -114,6 +114,22 @@ async function saveName() {
     error.value = (e as { message?: string }).message ?? 'Update failed'
   } finally {
     savingName.value = false
+  }
+}
+
+// Switch language: apply instantly (optimistic) + persist per-account on the server.
+async function changeLanguage(code: Locale) {
+  const prev = locale.value
+  setLocale(code)
+  if (auth.user) auth.user.locale = code
+  error.value = ''
+  try {
+    await api.patch(ROUTES.users.updateMe, { locale: code })
+  } catch (e) {
+    // Roll back the optimistic switch so client + localStorage don't drift from the server.
+    setLocale(prev)
+    if (auth.user) auth.user.locale = prev
+    error.value = (e as { message?: string }).message ?? 'Update failed'
   }
 }
 
@@ -266,7 +282,7 @@ async function logout() {
               v-for="l in LOCALES"
               :key="l.code"
               :class="{ on: locale === l.code }"
-              @click="setLocale(l.code)"
+              @click="changeLanguage(l.code)"
             >{{ l.label }}</button>
           </div>
         </div>

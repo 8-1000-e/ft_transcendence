@@ -217,13 +217,25 @@ function toggleGroupEdit() {
   showGroupEdit.value = !showGroupEdit.value
 }
 
+// First validation layer, mirroring the backend GITHUB_URL_RE so both layers agree.
+const GITHUB_URL_RE = /^(https?:\/\/)?(www\.)?github\.com\/.+/i
+
 async function saveGroup() {
   error.value = ''
+  const link = githubLink.value.trim()
+  const original = (group.value?.githubLink ?? '').trim()
+  const linkChanged = link !== original
+  // Only validate/submit the link when the user actually changed it, so a legacy
+  // non-github link can't block a name-only edit.
+  if (linkChanged && link && !GITHUB_URL_RE.test(link)) {
+    error.value = t('chat.invalidGithub')
+    return
+  }
   try {
     await api.patch(ROUTES.groups.edit(groupId()), {
       groupName: groupName.value.trim() || undefined,
-      // null clears the link and skips @IsUrl; sending '' would trip @IsUrl when only the name was edited.
-      githubLink: githubLink.value.trim() || null,
+      // Unchanged → omit (leave as-is); changed → set the new URL or null to clear.
+      githubLink: linkChanged ? link || null : undefined,
     })
     group.value = await api.get<Group>(ROUTES.groups.byId(groupId()))
     showGroupEdit.value = false

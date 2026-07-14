@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
-import { publicUrl } from '@/api/upload'
+import { publicUrl, uploadImage, validateImage, deleteUpload } from '@/api/upload'
 import { useAuthStore } from '@/stores/auth'
 import { usePaginated } from '@/composables/pagination'
 import { useI18n } from '@/i18n'
@@ -33,6 +33,15 @@ const {
 const newComment = ref('')
 const loading = ref(false)
 const error = ref('')
+
+// Author-only inline edit (title, body and image) — mirrors the feed composer.
+const isAuthor = computed(() => !!auth.user && post.value?.writer === auth.user.id)
+const editing = ref(false)
+const editTitle = ref('')
+const editContent = ref('')
+const editFiles = ref<string[]>([])
+const editUploadPct = ref<number | null>(null)
+const saving = ref(false)
 
 const has42 = computed(() => !!auth.user?.has42)
 
@@ -116,6 +125,67 @@ async function addComment() {
   }
 }
 
+function startEdit() {
+  if (!post.value) return
+  editTitle.value = post.value.title ?? ''
+  editContent.value = post.value.content
+  editFiles.value = [...(post.value.filesUrl ?? [])]
+  editing.value = true
+}
+
+async function onEditFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  const invalid = validateImage(file)
+  if (invalid) {
+    error.value = invalid
+    input.value = ''
+    return
+  }
+  error.value = ''
+  editUploadPct.value = 0
+  try {
+    editFiles.value = [await uploadImage(file, false, (p) => (editUploadPct.value = p))]
+  } catch (err) {
+    error.value = message(err, t('forum.uploadFailed'))
+  } finally {
+    editUploadPct.value = null
+    input.value = ''
+  }
+}
+
+function removeEditImage() {
+  editFiles.value = []
+}
+
+async function saveEdit() {
+  if (!post.value || !editContent.value.trim()) return
+  saving.value = true
+  error.value = ''
+  const prevFiles = post.value.filesUrl ?? []
+  try {
+    // Always send filesUrl (even []) so the image can be replaced or cleared —
+    // the feed edit omits it, which is why it can't touch images.
+    await api.patch(ROUTES.posts.edit(post.value.projectId, post.value.id), {
+      // null (not undefined) so clearing the title actually removes it.
+      title: editTitle.value.trim() ? editTitle.value : null,
+      content: editContent.value,
+      filesUrl: editFiles.value,
+    })
+    editing.value = false
+    // Free images that were replaced/removed — only after the save succeeds.
+    for (const url of prevFiles) {
+      if (!editFiles.value.includes(url)) await deleteUpload(url)
+    }
+    await loadPost()
+  } catch (e) {
+    error.value = message(e, t('forum.updateFailed'))
+  } finally {
+    saving.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -151,10 +221,34 @@ onMounted(load)
             <span class="pcard-author">{{ post.user?.name ?? $t('forum.anonymous') }}</span>
           </RouterLink>
           <span class="time">· {{ timeAgo(post.postedAt) }}</span>
+          <button v-if="isAuthor && !editing" class="txt-btn" style="margin-left: auto" @click="startEdit">{{ $t('common.edit') }}</button>
         </div>
-        <h1 v-if="post.title" class="pcard-title" style="font-size: 22px">{{ post.title }}</h1>
-        <p class="pcard-body" style="font-size: 14.5px; line-height: 1.7">{{ post.content }}</p>
-        <ImageCarousel v-if="post.filesUrl.length" :images="post.filesUrl.map(publicUrl)" :alt="post.title || $t('forum.postImage')" />
+        <template v-if="editing">
+          <input v-model="editTitle" class="field" style="margin-bottom: 10px" :placeholder="$t('forum.postTitle')" :aria-label="$t('forum.postTitle')" />
+          <textarea v-model="editContent" rows="4" class="field" :aria-label="$t('forum.postContent')"></textarea>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px">
+            <div style="display: flex; align-items: center; gap: 10px">
+              <label class="btn-ghost" style="height: 38px; cursor: pointer">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="margin-right: 6px"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7" /><circle cx="9" cy="10" r="1.8" stroke="currentColor" stroke-width="1.7" /><path d="m4 18 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
+                {{ editUploadPct !== null ? editUploadPct + '%' : editFiles.length ? $t('forum.imageReady') : $t('forum.image') }}
+                <input type="file" accept="image/*" hidden :aria-label="$t('forum.attachImage')" @change="onEditFile" />
+              </label>
+              <span v-if="editFiles.length" style="display: inline-flex; align-items: center; gap: 6px">
+                <img :src="publicUrl(editFiles[0])" alt="" style="width: 34px; height: 34px; object-fit: cover; border-radius: 6px" />
+                <button type="button" class="txt-btn" :aria-label="$t('common.remove')" @click="removeEditImage">✕</button>
+              </span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px">
+              <button class="txt-btn" @click="editing = false">{{ $t('common.cancel') }}</button>
+              <button class="btn-primary" :disabled="saving || editUploadPct !== null || !editContent.trim()" @click="saveEdit">{{ $t('common.save') }}</button>
+            </div>
+          </div>
+        </template>
+        <template v-else>
+          <h1 v-if="post.title" class="pcard-title" style="font-size: 22px">{{ post.title }}</h1>
+          <p class="pcard-body" style="font-size: 14.5px; line-height: 1.7">{{ post.content }}</p>
+          <ImageCarousel v-if="post.filesUrl.length" :images="post.filesUrl.map(publicUrl)" :alt="post.title || $t('forum.postImage')" />
+        </template>
         <div class="c-foot" style="margin-top: 16px">
           <span class="votepill" :style="!has42 ? 'opacity:.45' : ''">
             <button class="vbtn up" :class="{ on: post.myVote === 'UP' }" :aria-label="$t('forum.upvote')" @click="votePost('UP')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5l7 8H5l7-8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg></button>

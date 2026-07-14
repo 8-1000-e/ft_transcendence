@@ -245,7 +245,7 @@ async function cancelDeletion() {
               <span class="rail-title">{{ $t('shell.groupchats') }}</span>
               <span class="rail-count">{{ groups.groups.length }}</span>
             </div>
-            <p v-if="groups.loading" class="muted" style="padding: 0 8px">{{ $t('shell.groupchats.loading') }}</p>
+            <p v-if="groups.loading || (groups.syncing && !groups.groups.length)" class="muted" style="padding: 0 8px">{{ $t('shell.groupchats.loading') }}</p>
             <p v-else-if="groups.error" class="muted" style="padding: 0 8px">{{ groups.error }}</p>
             <p v-else-if="!groups.groups.length" class="muted" style="padding: 0 8px">{{ $t('shell.groupchats.empty') }}</p>
             <RouterLink
@@ -260,6 +260,7 @@ async function cancelDeletion() {
                 <span class="grp-proj">{{ g.projectName }}</span>
               </span>
             </RouterLink>
+            <p v-if="groups.syncing && groups.groups.length" class="muted" style="padding: 4px 8px; font-size: 11px">{{ $t('shell.groupchats.syncing') }}</p>
           </template>
 
           <!-- non-42 accounts: Link-42 CTA in place of the group-chat list -->
