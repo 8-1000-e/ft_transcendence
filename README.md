@@ -153,6 +153,13 @@ cd frontend && npm ci && npm run dev
 - Input validated **front and back** (class-validator DTOs + Vue-side checks).
 - Private state (`deleteAt`, etc.) is exposed only on `GET /api/me`, never on `/api/users/:id`; a shared
   default-deny `authorView` anonymizes non-consenting identities.
+- **Scope of anonymisation (by design):** what is protected is the *identity directory / ranking* of 42
+  members — a non-42 viewer never learns which real 42 login authored a post (author shown as `rdm*`) and
+  never sees the 42-only mentor/location data. **Forum post content itself is public** (a 42 member who
+  posts text or an image is deliberately sharing it on a public forum), so post images are served openly;
+  they are not treated as private identity data. Group-chat images, by contrast, are private and gated
+  (`GET /api/files/:name` requires membership). On account deletion the row is anonymised in place and the
+  user's uploaded media is unlinked from disk (right-to-erasure).
 - HTTPS everywhere in prod (nginx TLS). `.env` is git-ignored; `.env.example` lists every key.
 - **Privacy Policy** (`/privacy`) and **Terms of Service** (`/terms`) are linked in the footer.
 
