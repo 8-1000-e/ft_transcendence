@@ -247,7 +247,8 @@ export class AuthService {
     });
     if (count === 0) throw new UnauthorizedException();
 
-    this.ft.syncUserTeam(stored.userId).catch(() => {});
+    // Team sync happens on login/link/verify, not here — refresh runs often and
+    // re-crawling the 42 API on every token refresh just drips rate-limited calls.
     return this.issueTokens(stored.userId);
   }
 }
