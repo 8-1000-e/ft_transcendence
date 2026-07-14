@@ -145,8 +145,9 @@ export class PostsService {
   }
 
   async getPosts(id: string, userId: string, cursor?: string, limit?: string) {
+    // Off-catalogue project (e.g. a group's 42 project) → empty feed, not 404.
     const project = await this.prisma.projects.findUnique({ where: { id } });
-    if (!project) throw new NotFoundException();
+    if (!project) return { items: [], nextCursor: null };
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     const take = this.pageLimit(limit);
