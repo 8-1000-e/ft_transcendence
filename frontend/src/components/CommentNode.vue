@@ -167,7 +167,7 @@ async function saveEdit() {
         </template>
         <template v-else>
           <p class="tbody">{{ n.content }}</p>
-          <img v-for="f in n.filesUrl" :key="f" :src="publicUrl(f)" class="cmt-img" alt="" />
+          <img v-for="f in n.filesUrl" :key="f" :src="publicUrl(f)" class="cmt-img" alt="" @error="($event.target as HTMLImageElement).style.display = 'none'" />
           <div class="tactions">
             <button v-if="has42" class="txt-btn" @click="replyOpen = !replyOpen">{{ $t('common.reply') }}</button>
             <button v-if="replyCount && !atThreadCap" class="txt-btn accent" @click="toggleReplies">

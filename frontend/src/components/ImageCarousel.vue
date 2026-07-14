@@ -3,16 +3,21 @@ import { ref, watch } from 'vue'
 
 const props = defineProps<{ images: string[]; alt?: string }>()
 const i = ref(0)
+// Track failed srcs reactively — mutating one <img>'s style imperatively left it
+// display:none for every later (valid) slide since the <img> element is reused.
+const failed = ref<string[]>([])
 
 // Reset only when the image set actually changes, not on every re-render (the prop is often a fresh array literal).
 watch(
   () => props.images.join('|'),
-  () => (i.value = 0),
+  () => {
+    i.value = 0
+    failed.value = []
+  },
 )
 
-function onImgError(e: Event) {
-  const img = e.target as HTMLImageElement
-  img.style.display = 'none'
+function onImgError(src: string) {
+  if (!failed.value.includes(src)) failed.value.push(src)
 }
 
 function go(n: number) {
@@ -24,7 +29,10 @@ function go(n: number) {
 <template>
   <div v-if="images.length" class="carousel" :class="{ single: images.length === 1 }">
     <div class="track">
-      <img :src="images[i]" :alt="alt || 'attached image'" @error="onImgError" />
+      <img v-if="!failed.includes(images[i])" :src="images[i]" :alt="alt || 'attached image'" @error="onImgError(images[i])" />
+      <span v-else class="broken" role="img" :aria-label="alt || 'image unavailable'">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M3 5h18v14H3z" stroke="currentColor" stroke-width="1.5"/><path d="m3 16 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m4 4 16 16" stroke="currentColor" stroke-width="1.5"/></svg>
+      </span>
     </div>
 
     <template v-if="images.length > 1">
@@ -69,6 +77,13 @@ function go(n: number) {
   max-height: 460px;
   object-fit: contain;
   display: block;
+}
+.broken {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 44px;
+  color: var(--muted);
 }
 .nav {
   position: absolute;
