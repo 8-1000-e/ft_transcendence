@@ -1,0 +1,74 @@
+# ft_transcendence — one-command stack.
+#   docker compose up --build
+# Then open https://localhost (accept the self-signed cert).
+# Verification emails (signup codes) are visible at http://localhost:1080 (Maildev).
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ft}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ft_password}
+      POSTGRES_DB: ${POSTGRES_DB:-ft_transcendence}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ft} -d ${POSTGRES_DB:-ft_transcendence}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  maildev:
+    image: maildev/maildev:2.1.0
+    restart: unless-stopped
+    ports:
+      - "${MAILDEV_WEB_PORT:-1080}:1080" # web UI to read verification codes
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ft}:${POSTGRES_PASSWORD:-ft_password}@db:5432/${POSTGRES_DB:-ft_transcendence}?schema=public
+      PORT: 3000
+      FRONTEND_URL: ${FRONTEND_URL:-https://localhost}
+      JWT_SECRET: ${JWT_SECRET:-dev_only_change_me_0000000000000000000000000000000000000000000000}
+      # Mail: dev SMTP sink (Maildev). Remove SMTP_* + set GMAIL_* to use real email.
+      SMTP_HOST: ${SMTP_HOST:-maildev}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@ft-transcendence.local}
+      # 42 OAuth — optional; email/password works without it. Set for real 42 login.
+      FT_OAUTH_CLIENT_ID: ${FT_OAUTH_CLIENT_ID:-placeholder}
+      FT_OAUTH_CLIENT_SECRET: ${FT_OAUTH_CLIENT_SECRET:-placeholder}
+      FT_OAUTH_REDIRECT_URI: ${FT_OAUTH_REDIRECT_URI:-https://localhost/api/auth/42/callback}
+      # Pusher — optional; empty/placeholder key makes the frontend use polling.
+      PUSHER_APP_ID: ${PUSHER_APP_ID:-000000}
+      PUSHER_KEY: ${PUSHER_KEY:-placeholder}
+      PUSHER_SECRET: ${PUSHER_SECRET:-placeholder}
+      PUSHER_CLUSTER: ${PUSHER_CLUSTER:-eu}
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      maildev:
+        condition: service_started
+
+  proxy:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+        VITE_PUSHER_KEY: ${PUSHER_KEY:-}
+        VITE_PUSHER_CLUSTER: ${PUSHER_CLUSTER:-eu}
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
+  uploads:
