@@ -15,6 +15,7 @@ import { join } from 'path';
 import { SuggestModule } from './suggest/suggest.module';
 import { TasksModule } from './tasks/tasks.module';
 import { PusherModule } from './pusher/pusher.module';
+import { FriendsModule } from './friends/friends.module';
 
 @Module({
   imports: [
@@ -30,12 +31,13 @@ import { PusherModule } from './pusher/pusher.module';
     UploadModule,
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'),
-      serveRoot: '/uploads',
+      serveRoot: '/api/uploads',
     }),
     SuggestModule,
     ScheduleModule.forRoot(),
     TasksModule,
     PusherModule,
+    FriendsModule,
   ],
 })
 export class AppModule {}
