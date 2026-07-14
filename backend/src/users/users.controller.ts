@@ -9,8 +9,10 @@ import {
   Body,
   Delete,
   Post,
+  Res,
   StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -112,11 +114,14 @@ export class UsersController {
   async getAvatar(
     @Param('id') id: string,
     @Req() req: AuthedRequest,
-  ): Promise<StreamableFile> {
-    const { buffer, contentType } = await this.usersService.getAvatar(
-      id,
-      req.user.sub,
-    );
-    return new StreamableFile(buffer, { type: contentType });
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile | void> {
+    // No picture → 204 (not 404) to keep the console clean; Avatar shows initials.
+    const img = await this.usersService.getAvatar(id, req.user.sub);
+    if (!img) {
+      res.status(204);
+      return;
+    }
+    return new StreamableFile(img.buffer, { type: img.contentType });
   }
 }

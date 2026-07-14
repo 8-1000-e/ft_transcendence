@@ -12,6 +12,9 @@ type FtApiRequestCounter = {
   projectsUsers: number;
 };
 
+// Cap the live-42 location lookups the mentor rail resolves (avoids the nginx 504).
+const MAX_SUGGESTIONS = 12;
+
 @Injectable()
 export class SuggestService {
   constructor(
@@ -54,9 +57,7 @@ export class SuggestService {
         campusId,
         requestCounter,
       );
-      // Never suggest the logged-in user to themselves. `user.ftId` is the
-      // stringified 42 id (auth.service) and matches `projectUser.user.id`;
-      // `login` is a second, equally reliable key.
+      // Never suggest the logged-in user to themselves (match on ftId or login).
       const validatedProjectsUsers = projectUsers
         .filter((projectUser) => projectUser['validated?'] === true)
         .filter(
@@ -107,8 +108,11 @@ export class SuggestService {
           };
         },
       );
+      // Resolve locations only for the top few shown — one `locations` call
+      // instead of the O(users) loop that was timing out (nginx 504).
+      const topTeams = test.slice(0, MAX_SUGGESTIONS);
       const suggestions = await this.checkLocations(
-        test,
+        topTeams,
         campusId,
         requestCounter,
       );
@@ -140,17 +144,15 @@ export class SuggestService {
     });
 
     if (campusId) query.set('filter[campus]', campusId);
-    let page = 1;
 
     const usersProject: FtProjectUser[] = [];
     while (true) {
-      query.set('page[number]', String(page));
       const users = await this.ftApiService.Get<FtProjectUser[]>(
         `v2/projects/${projectId}/projects_users?${query.toString()}`,
       );
       requestCounter.projectsUsers++;
 
-      if (users.length == 0 && page == 1 && monthsBack < 10) {
+      if (users.length == 0 && monthsBack < 10) {
         xMonthsAgo.setMonth(xMonthsAgo.getMonth() - 1);
         monthsBack++;
         query.set(
@@ -159,9 +161,10 @@ export class SuggestService {
         );
         continue;
       }
+      // Page 1 (sorted by -final_mark) holds the top 100 — enough for the rail,
+      // and avoids walking extra rate-limited pages.
       usersProject.push(...users);
-      if (users.length < 100) break;
-      page++;
+      break;
     }
     return usersProject;
   }

@@ -247,7 +247,7 @@ export class AuthService {
     });
     if (count === 0) throw new UnauthorizedException();
 
-    this.ft.syncUserTeam(stored.userId).catch(() => {});
+    // Team sync runs on login, not on refresh (frequent) — no 42 re-crawl here.
     return this.issueTokens(stored.userId);
   }
 }
