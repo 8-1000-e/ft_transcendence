@@ -103,8 +103,9 @@ Non-game social app → all Gaming / AI-Opponent / Graphics / Pong modules are *
 | 9 | Accessibility & i18n — multiple languages (≥3) | Minor | 1 | EN / FR / ES + switcher, all UI text translatable (`frontend/src/i18n`) |
 | 10 | Data & Analytics — GDPR compliance | Minor | 1 | data request/export + deletion with confirmation + confirmation email |
 | 11 | Accessibility — support for the visually impaired (WCAG 2.1 AA) | Minor | 1 | keyboard-operable (visible `:focus-visible`, skip-link, ESC-closes menus), screen-reader friendly (landmarks, ARIA roles/labels, `aria-pressed` votes, `aria-live` chat log, decorative SVGs hidden), AA contrast, `prefers-reduced-motion`, `lang` sync |
+| 12 | Cybersecurity — Two-Factor Authentication (2FA) + JWT | Major | 2 | TOTP (RFC 6238, authenticator apps) enrol/verify in Settings, login gated by a 6-digit code; JWT access + rotating refresh tokens (`auth`, `utils/totp.ts`) |
 
-**Total: 15 points.**
+**Total: 17 points.**
 
 **Module of choice — mentor-matching (`suggest`):** deterministic (no ML) ranking of the best students on a
 given 42 project, computed from **live 42-API reads** (project users, marks, current physical location),
