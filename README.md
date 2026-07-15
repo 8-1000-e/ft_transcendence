@@ -102,8 +102,9 @@ Non-game social app → all Gaming / AI-Opponent / Graphics / Pong modules are *
 | 8 | User Management — OAuth 2.0 (42) | Minor | 1 | `auth` 42 login resolved by `ftId` |
 | 9 | Accessibility & i18n — multiple languages (≥3) | Minor | 1 | EN / FR / ES + switcher, all UI text translatable (`frontend/src/i18n`) |
 | 10 | Data & Analytics — GDPR compliance | Minor | 1 | data request/export + deletion with confirmation + confirmation email |
+| 11 | Accessibility — support for the visually impaired (WCAG 2.1 AA) | Minor | 1 | keyboard-operable (visible `:focus-visible`, skip-link, ESC-closes menus), screen-reader friendly (landmarks, ARIA roles/labels, `aria-pressed` votes, `aria-live` chat log, decorative SVGs hidden), AA contrast, `prefers-reduced-motion`, `lang` sync |
 
-**Total: 14 points.**
+**Total: 15 points.**
 
 **Module of choice — mentor-matching (`suggest`):** deterministic (no ML) ranking of the best students on a
 given 42 project, computed from **live 42-API reads** (project users, marks, current physical location),

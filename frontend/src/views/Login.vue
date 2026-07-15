@@ -72,11 +72,11 @@ function loginWith42() {
         />
       </div>
 
-      <p v-if="error" class="ftp-error">! {{ error }}</p>
+      <p v-if="error" class="ftp-error" role="alert">! {{ error }}</p>
 
       <button type="submit" :disabled="loading" class="ftp-btn">
         {{ loading ? $t('auth.login.loading') : $t('auth.login.title') }}
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path
             d="M5 12h13M13 6l6 6-6 6"
             stroke="currentColor"

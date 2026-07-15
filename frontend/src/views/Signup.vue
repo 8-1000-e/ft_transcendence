@@ -74,11 +74,11 @@ async function submit() {
         <p class="ftp-hint">{{ $t('auth.field.password.hint') }}</p>
       </div>
 
-      <p v-if="error" class="ftp-error">! {{ error }}</p>
+      <p v-if="error" class="ftp-error" role="alert">! {{ error }}</p>
 
       <button type="submit" :disabled="loading" class="ftp-btn">
         {{ loading ? $t('auth.signup.loading') : $t('auth.signup.submit') }}
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path
             d="M5 12h13M13 6l6 6-6 6"
             stroke="currentColor"

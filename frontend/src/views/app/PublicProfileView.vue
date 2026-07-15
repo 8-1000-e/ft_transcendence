@@ -99,7 +99,7 @@ watch(() => route.params.id, load, { immediate: true })
 <template>
   <section>
     <button class="back-link" @click="router.back()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
       {{ $t('common.back') }}
     </button>
 

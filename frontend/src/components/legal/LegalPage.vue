@@ -19,7 +19,7 @@ function goBack() {
     <header class="legal-bar">
       <RouterLink :to="{ name: 'feed' }" class="brand">
         <span class="brand-mark">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
             <path d="M3 16.5 L9 10.5 L13 14.5 L21 6.5" stroke="#8C97F7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
             <path d="M15.5 6.5 H21 V12" stroke="#8C97F7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
           </svg>

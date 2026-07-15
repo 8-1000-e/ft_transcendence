@@ -43,6 +43,16 @@ const notifs = ref<NotificationItem[]>([])
 const unread = ref(0)
 const showNotifs = ref(false)
 
+// Close all popovers on Escape so keyboard users can dismiss menus/drawer (2.1.2).
+function onEscape(e: KeyboardEvent) {
+  if (e.key !== 'Escape') return
+  showMenu.value = false
+  showNotifs.value = false
+  drawerOpen.value = false
+}
+onMounted(() => window.addEventListener('keydown', onEscape))
+onUnmounted(() => window.removeEventListener('keydown', onEscape))
+
 async function refreshNotifs() {
   if (!auth.user?.has42) return
   try {
@@ -131,16 +141,17 @@ async function cancelDeletion() {
 
 <template>
   <div class="hub">
+    <a class="skip-link" href="#main-content">{{ $t('shell.skipToContent') }}</a>
     <div class="hub-bg-dots"></div>
     <div class="hub-bg-glow"></div>
 
     <header class="topbar">
       <button class="hamburger" aria-label="Open menu" @click="drawerOpen = true">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" /></svg>
+        <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" /></svg>
       </button>
       <RouterLink :to="{ name: 'feed' }" class="brand">
         <span class="brand-mark">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
             <path d="M3 16.5 L9 10.5 L13 14.5 L21 6.5" stroke="#8C97F7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
             <path d="M15.5 6.5 H21 V12" stroke="#8C97F7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
@@ -148,7 +159,7 @@ async function cancelDeletion() {
         <span class="brand-word">ft<span class="brand-accent">_hub</span></span>
       </RouterLink>
 
-      <form class="search" @submit.prevent="submitSearch">
+      <form class="search" role="search" @submit.prevent="submitSearch">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" /><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
         <input v-model="search" :placeholder="$t('shell.search.placeholder')" :aria-label="$t('shell.search.placeholder')" />
         <kbd>/</kbd>
@@ -156,8 +167,8 @@ async function cancelDeletion() {
 
       <div class="topbar-right">
         <div v-if="auth.user?.has42" class="notif-wrap">
-          <button class="notif-btn" :aria-label="$t('notif.title')" @click="openNotifs">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6M10.5 20a2 2 0 0 0 3 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <button class="notif-btn" :aria-label="$t('notif.title')" aria-haspopup="menu" :aria-expanded="showNotifs" @click="openNotifs">
+            <svg aria-hidden="true" focusable="false" width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6M10.5 20a2 2 0 0 0 3 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
             <span v-if="unread" class="notif-badge">{{ unread }}</span>
           </button>
           <template v-if="showNotifs">
@@ -190,7 +201,7 @@ async function cancelDeletion() {
               style="font-size: 11px"
             />
             <span class="pill-name">{{ auth.user?.name ?? 'Account' }}</span>
-            <svg class="pill-caret" width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            <svg aria-hidden="true" focusable="false" class="pill-caret" width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
           </button>
 
           <template v-if="showMenu">
@@ -201,16 +212,16 @@ async function cancelDeletion() {
             ></button>
             <div class="menu" role="menu">
               <RouterLink :to="{ name: 'me' }" role="menuitem" @click="showMenu = false">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.7" /><path d="M5 20a7 7 0 0 1 14 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+                <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.7" /><path d="M5 20a7 7 0 0 1 14 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
                 {{ $t('shell.menu.profile') }}
               </RouterLink>
               <RouterLink :to="{ name: 'settings' }" role="menuitem" @click="showMenu = false">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+                <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
                 {{ $t('shell.menu.settings') }}
               </RouterLink>
               <div class="sep"></div>
               <button class="danger" role="menuitem" @click="logout">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /><path d="M10 8l-4 4 4 4M6 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /><path d="M10 8l-4 4 4 4M6 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
                 {{ $t('shell.menu.logout') }}
               </button>
             </div>
@@ -223,17 +234,17 @@ async function cancelDeletion() {
       <button v-if="drawerOpen" class="drawer-backdrop" aria-label="Close menu" @click="drawerOpen = false"></button>
       <div class="grid" :class="{ 'no-rail': !hasRail }">
         <aside class="rail rail-left" :class="{ 'drawer-open': drawerOpen }">
-          <nav class="lnav">
+          <nav class="lnav" :aria-label="$t('shell.nav.primary')">
             <RouterLink :to="{ name: 'feed' }">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 11.5 12 4l8 7.5M6 10v9h12v-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              <svg aria-hidden="true" focusable="false" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 11.5 12 4l8 7.5M6 10v9h12v-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
               {{ $t('shell.nav.home') }}
             </RouterLink>
             <RouterLink :to="{ name: 'browse' }">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7.5" stroke="currentColor" stroke-width="1.8" /><path d="m14 8-1.6 4.4L8 14l1.6-4.4L14 8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>
+              <svg aria-hidden="true" focusable="false" width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7.5" stroke="currentColor" stroke-width="1.8" /><path d="m14 8-1.6 4.4L8 14l1.6-4.4L14 8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>
               {{ $t('shell.nav.explore') }}
             </RouterLink>
             <RouterLink v-if="auth.user?.has42" :to="{ name: 'friends' }">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM22 19v-1a4 4 0 0 0-3-3.9M16 3.1a3.5 3.5 0 0 1 0 6.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              <svg aria-hidden="true" focusable="false" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM22 19v-1a4 4 0 0 0-3-3.9M16 3.1a3.5 3.5 0 0 1 0 6.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
               {{ $t('shell.nav.friends') }}
               <span v-if="requestCount" class="nav-badge">{{ requestCount }}</span>
             </RouterLink>
@@ -266,7 +277,7 @@ async function cancelDeletion() {
           <!-- non-42 accounts: Link-42 CTA in place of the group-chat list -->
           <div v-else class="link42">
             <span class="link42-mark">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
             </span>
             <p class="link42-t">{{ $t('shell.link42.title') }}</p>
             <p class="link42-x">{{ $t('shell.link42.desc') }}</p>
@@ -274,7 +285,7 @@ async function cancelDeletion() {
           </div>
         </aside>
 
-        <main class="main" :class="{ 'chat-main': route.name === 'group' }">
+        <main id="main-content" tabindex="-1" class="main" :class="{ 'chat-main': route.name === 'group' }">
           <RouterView />
         </main>
 
@@ -288,14 +299,14 @@ async function cancelDeletion() {
       <div class="foot-main">
         <div class="foot-brand">
           <span class="brand-mark">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M3 16.5 L9 10.5 L13 14.5 L21 6.5" stroke="#8C97F7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /><path d="M15.5 6.5 H21 V12" stroke="#8C97F7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M3 16.5 L9 10.5 L13 14.5 L21 6.5" stroke="#8C97F7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /><path d="M15.5 6.5 H21 V12" stroke="#8C97F7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
           </span>
           <div>
             <div class="fbrand">ft<span>_hub</span></div>
             <div class="foot-tag">{{ $t('shell.foot.tag') }}</div>
           </div>
         </div>
-        <nav class="foot-links">
+        <nav class="foot-links" :aria-label="$t('shell.nav.footer')">
           <RouterLink :to="{ name: 'feed' }">{{ $t('shell.nav.home') }}</RouterLink>
           <RouterLink :to="{ name: 'browse' }">{{ $t('shell.nav.explore') }}</RouterLink>
           <RouterLink :to="{ name: 'privacy' }">{{ $t('shell.nav.privacy') }}</RouterLink>

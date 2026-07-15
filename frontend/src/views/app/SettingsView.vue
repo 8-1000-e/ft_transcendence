@@ -191,7 +191,7 @@ async function logout() {
         <h2 class="set-h">{{ $t('settings.42.h') }}</h2>
         <p class="set-sub">{{ $t('settings.42.desc') }}</p>
         <div v-if="has42" class="set-row">
-          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+          <span class="ic"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
           <div class="set-row-main">
             <div class="set-row-t">{{ $t('settings.42.connectedAs', { name: auth.user?.name ?? '' }) }}</div>
             <div class="set-row-x">{{ auth.user?.campus ? '42 ' + auth.user.campus : $t('settings.42.verified') }}</div>
@@ -199,7 +199,7 @@ async function logout() {
           <span class="set-status on"><span class="badge42-sq" style="width: 16px; height: 16px">42</span>{{ $t('settings.42.linked') }}</span>
         </div>
         <div v-else class="set-row">
-          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+          <span class="ic"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
           <div class="set-row-main">
             <div class="set-row-t">{{ $t('settings.42.notLinked') }}</div>
             <div class="set-row-x">{{ $t('settings.42.notLinkedDesc') }}</div>
@@ -221,7 +221,7 @@ async function logout() {
         </div>
 
         <div class="set-row">
-          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.7" /><path d="M5 20a7 7 0 0 1 14 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg></span>
+          <span class="ic"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.7" /><path d="M5 20a7 7 0 0 1 14 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg></span>
           <div class="set-row-main">
             <div class="set-row-t">{{ $t('settings.displayName') }}</div>
             <input v-model="name" class="field name-field" :aria-label="$t('settings.displayName')" @keyup.enter="saveName" />
@@ -233,7 +233,7 @@ async function logout() {
         </div>
 
         <div class="set-row">
-          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7" /><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.7" /></svg></span>
+          <span class="ic"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7" /><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.7" /></svg></span>
           <div class="set-row-main">
             <div class="set-row-t">{{ memberEmail }}</div>
             <div class="set-row-x">{{ $t('settings.email') }}</div>
@@ -241,7 +241,7 @@ async function logout() {
         </div>
 
         <div class="set-row">
-          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" stroke-width="1.7" /><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7" /></svg></span>
+          <span class="ic"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" stroke-width="1.7" /><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7" /></svg></span>
           <div class="set-row-main">
             <div class="set-row-t">{{ $t('settings.password') }}</div>
             <div class="set-row-x">{{ hasPassword ? $t('settings.password.change') : $t('settings.password.set') }}</div>
@@ -250,7 +250,7 @@ async function logout() {
         </div>
 
         <div class="set-row">
-          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /><path d="M10 8l-4 4 4 4M6 12h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+          <span class="ic"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /><path d="M10 8l-4 4 4 4M6 12h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
           <div class="set-row-main">
             <div class="set-row-t">{{ $t('settings.session') }}</div>
             <div class="set-row-x">{{ $t('settings.session.desc') }}</div>
@@ -259,7 +259,7 @@ async function logout() {
         </div>
 
         <div class="set-row">
-          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+          <span class="ic"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
           <div class="set-row-main">
             <div class="set-row-t">{{ $t('settings.data') }}</div>
             <div class="set-row-x">{{ $t('settings.data.desc') }}</div>
@@ -272,7 +272,7 @@ async function logout() {
         <h2 class="set-h">{{ $t('settings.prefs.h') }}</h2>
         <p class="set-sub">{{ $t('settings.prefs.desc') }}</p>
         <div class="set-row">
-          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6" /><path d="M3.5 12h17M12 3.5c2.5 2.4 2.5 14.6 0 17M12 3.5c-2.5 2.4-2.5 14.6 0 17" stroke="currentColor" stroke-width="1.4" /></svg></span>
+          <span class="ic"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6" /><path d="M3.5 12h17M12 3.5c2.5 2.4 2.5 14.6 0 17M12 3.5c-2.5 2.4-2.5 14.6 0 17" stroke="currentColor" stroke-width="1.4" /></svg></span>
           <div class="set-row-main">
             <div class="set-row-t">{{ $t('settings.language') }}</div>
             <div class="set-row-x">{{ $t('settings.language.desc') }}</div>
@@ -287,7 +287,7 @@ async function logout() {
           </div>
         </div>
         <div class="set-row">
-          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A8 8 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg></span>
+          <span class="ic"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A8 8 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg></span>
           <div class="set-row-main">
             <div class="set-row-t">{{ $t('settings.theme') }}</div>
             <div class="set-row-x">{{ $t('settings.theme.desc') }}</div>

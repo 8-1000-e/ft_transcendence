@@ -188,7 +188,7 @@ watch(
     </div>
 
     <div v-if="!has42" class="readonly">
-      <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg></span>
+      <span class="ic"><svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg></span>
       <div class="readonly-main">
         <div class="readonly-t">{{ $t('forum.readonlyPreview') }}</div>
         <div class="readonly-x">{{ $t('forum.readonlyPreviewDesc') }}</div>
@@ -206,7 +206,7 @@ watch(
       <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px">
         <div style="display: flex; align-items: center; gap: 10px">
           <label class="btn-ghost" style="height: 38px; cursor: pointer">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="margin-right: 6px"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7" /><circle cx="9" cy="10" r="1.8" stroke="currentColor" stroke-width="1.7" /><path d="m4 18 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
+            <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none" style="margin-right: 6px"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7" /><circle cx="9" cy="10" r="1.8" stroke="currentColor" stroke-width="1.7" /><path d="m4 18 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
             {{ uploadPct !== null ? uploadPct + '%' : newFiles.length ? $t('forum.imageReady') : $t('forum.image') }}
             <input type="file" accept="image/*" hidden :aria-label="$t('forum.attachImage')" @change="onFile" />
           </label>
@@ -252,12 +252,12 @@ watch(
         <ImageCarousel v-if="p.filesUrl.length" :images="p.filesUrl.map(publicUrl)" :alt="$t('forum.imageSharedBy', { name: p.user?.name ?? $t('forum.anonymous') })" />
         <div class="c-foot">
           <span class="votepill" :style="!has42 ? 'opacity:.45' : ''">
-            <button class="vbtn up" :class="{ on: p.myVote === 'UP' }" :aria-label="$t('forum.approve')" @click="vote(p, 'UP')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+            <button class="vbtn up" :class="{ on: p.myVote === 'UP' }" :aria-pressed="p.myVote === 'UP'" :aria-label="$t('forum.approve')" @click="vote(p, 'UP')"><svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
             <span class="score" :class="{ up: p.myVote === 'UP', down: p.myVote === 'DOWN' }">{{ p.upvotes - p.downvotes }}</span>
-            <button class="vbtn down" :class="{ on: p.myVote === 'DOWN' }" :aria-label="$t('forum.reject')" @click="vote(p, 'DOWN')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg></button>
+            <button class="vbtn down" :class="{ on: p.myVote === 'DOWN' }" :aria-pressed="p.myVote === 'DOWN'" :aria-label="$t('forum.reject')" @click="vote(p, 'DOWN')"><svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg></button>
           </span>
           <RouterLink :to="{ name: 'post', params: { postId: p.id }, query: { projectId: p.projectId ?? projectId() } }" class="chip">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
+            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
             <span class="n">{{ p._count?.chats ?? 0 }}</span> {{ $t('common.comments') }}
           </RouterLink>
         </div>
@@ -270,7 +270,7 @@ watch(
     <p v-else class="muted center" style="padding: 12px; font-size: 12px">— {{ $t('forum.endOfFeed') }} —</p>
 
     <button v-if="has42 && !composerOpen" class="fab" :aria-label="$t('forum.newPost')" @click="composerOpen = true">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
+      <svg aria-hidden="true" focusable="false" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
     </button>
   </section>
 </template>

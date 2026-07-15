@@ -214,7 +214,7 @@ onMounted(load)
       :to="{ name: 'project', params: { projectId } }"
       class="back-link"
     >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
       {{ $t('forum.backToProject') }}
     </RouterLink>
 
@@ -247,7 +247,7 @@ onMounted(load)
           <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px">
             <div style="display: flex; align-items: center; gap: 10px">
               <label class="btn-ghost" style="height: 38px; cursor: pointer">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="margin-right: 6px"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7" /><circle cx="9" cy="10" r="1.8" stroke="currentColor" stroke-width="1.7" /><path d="m4 18 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
+                <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none" style="margin-right: 6px"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7" /><circle cx="9" cy="10" r="1.8" stroke="currentColor" stroke-width="1.7" /><path d="m4 18 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
                 {{ editUploadPct !== null ? editUploadPct + '%' : editFiles.length ? $t('forum.imageReady') : $t('forum.image') }}
                 <input type="file" accept="image/*" hidden :aria-label="$t('forum.attachImage')" @change="onEditFile" />
               </label>
@@ -269,20 +269,20 @@ onMounted(load)
         </template>
         <div class="c-foot" style="margin-top: 16px">
           <span class="votepill" :style="!has42 ? 'opacity:.45' : ''">
-            <button class="vbtn up" :class="{ on: post.myVote === 'UP' }" :aria-label="$t('forum.upvote')" @click="votePost('UP')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5l7 8H5l7-8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg></button>
+            <button class="vbtn up" :class="{ on: post.myVote === 'UP' }" :aria-label="$t('forum.upvote')" @click="votePost('UP')"><svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5l7 8H5l7-8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg></button>
             <span class="score" :class="{ up: post.myVote === 'UP', down: post.myVote === 'DOWN' }">{{ score(post) }}</span>
-            <button class="vbtn down" :class="{ on: post.myVote === 'DOWN' }" :aria-label="$t('forum.downvote')" @click="votePost('DOWN')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19l-7-8h14l-7 8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg></button>
+            <button class="vbtn down" :class="{ on: post.myVote === 'DOWN' }" :aria-label="$t('forum.downvote')" @click="votePost('DOWN')"><svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19l-7-8h14l-7 8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg></button>
           </span>
-          <span class="chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg><span class="n">{{ comments.length }}</span> {{ $t('common.comments') }}</span>
+          <span class="chip"><svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg><span class="n">{{ comments.length }}</span> {{ $t('common.comments') }}</span>
         </div>
       </article>
 
       <div v-if="has42" class="composer" style="margin: 18px 0">
         <input v-model="newComment" class="msg-input" :placeholder="$t('forum.addComment')" :aria-label="$t('forum.addComment')" @keyup.enter="addComment" />
-        <button class="send-sq" :aria-label="$t('forum.sendComment')" @click="addComment"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+        <button class="send-sq" :aria-label="$t('forum.sendComment')" @click="addComment"><svg aria-hidden="true" focusable="false" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
       </div>
       <div v-else class="readonly" style="margin: 18px 0">
-        <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg></span>
+        <span class="ic"><svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg></span>
         <div class="readonly-main"><div class="readonly-t">{{ $t('common.readonly') }}</div><div class="readonly-x">{{ $t('forum.readonlyJoin') }}</div></div>
         <button class="readonly-btn" @click="auth.link42()"><span class="badge42-sq" style="width:18px;height:18px">42</span>{{ $t('common.linkYour42') }}</button>
       </div>

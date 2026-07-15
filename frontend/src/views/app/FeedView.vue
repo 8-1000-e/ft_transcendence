@@ -157,7 +157,7 @@ onMounted(load)
     </p>
 
     <div v-if="!has42" class="readonly">
-      <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg></span>
+      <span class="ic"><svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg></span>
       <div class="readonly-main">
         <div class="readonly-t">{{ $t('home.readonly.title') }}</div>
         <div class="readonly-x">{{ $t('home.readonly.desc') }}</div>
@@ -207,16 +207,16 @@ onMounted(load)
 
         <div class="c-foot">
           <span class="votepill" :style="!has42 ? 'opacity:.45' : ''">
-            <button class="vbtn up" :class="{ on: p.myVote === 'UP' }" aria-label="Upvote" @click="vote(p, 'UP')">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5l7 8H5l7-8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg>
+            <button class="vbtn up" :class="{ on: p.myVote === 'UP' }" :aria-pressed="p.myVote === 'UP'" aria-label="Upvote" @click="vote(p, 'UP')">
+              <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5l7 8H5l7-8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg>
             </button>
             <span class="score" :class="{ up: p.myVote === 'UP', down: p.myVote === 'DOWN' }">{{ score(p) }}</span>
-            <button class="vbtn down" :class="{ on: p.myVote === 'DOWN' }" aria-label="Downvote" @click="vote(p, 'DOWN')">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19l-7-8h14l-7 8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg>
+            <button class="vbtn down" :class="{ on: p.myVote === 'DOWN' }" :aria-pressed="p.myVote === 'DOWN'" aria-label="Downvote" @click="vote(p, 'DOWN')">
+              <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19l-7-8h14l-7 8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg>
             </button>
           </span>
           <RouterLink :to="{ name: 'post', params: { postId: p.id }, query: { projectId: p.projectId } }" class="chip">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
+            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
             <span class="n">{{ p._count?.chats ?? 0 }}</span> {{ $t('common.comments') }}
           </RouterLink>
         </div>

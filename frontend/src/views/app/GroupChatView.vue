@@ -291,10 +291,10 @@ onBeforeUnmount(teardown)
         <span class="chat-proj">{{ group?.projectName }}<template v-if="group?.usersId?.length"> · {{ group.usersId.length }} {{ $t('chat.members') }}</template></span>
       </div>
       <a v-if="group?.githubLink" :href="group.githubLink" target="_blank" rel="noopener noreferrer" class="icon-btn" aria-label="GitHub">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.6 2 12.3c0 4.5 2.9 8.3 6.8 9.7.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.4-3.4-1.4-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5.1 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9 9 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 4-2.4 4.8-4.7 5.1.4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5 3.9-1.4 6.8-5.2 6.8-9.7C22 6.6 17.5 2 12 2z" /></svg>
+        <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.6 2 12.3c0 4.5 2.9 8.3 6.8 9.7.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.4-3.4-1.4-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5.1 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9 9 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 4-2.4 4.8-4.7 5.1.4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5 3.9-1.4 6.8-5.2 6.8-9.7C22 6.6 17.5 2 12 2z" /></svg>
       </a>
       <button class="icon-btn" :aria-label="$t('chat.editGroup')" @click="toggleGroupEdit">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 20h4L18 10l-4-4L4 16v4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="1.7" /></svg>
+        <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 20h4L18 10l-4-4L4 16v4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="1.7" /></svg>
       </button>
     </header>
 
@@ -307,7 +307,7 @@ onBeforeUnmount(teardown)
 
     <p v-if="error" class="err">{{ error }}</p>
 
-    <div ref="listEl" class="messages">
+    <div ref="listEl" class="messages" role="log" aria-live="polite" aria-relevant="additions">
       <p v-if="loading" class="muted center">{{ $t('common.loading') }}</p>
       <p v-else-if="!messages.length" class="muted center">{{ $t('chat.noMessages') }}</p>
       <div v-for="m in messages" :key="m.id" class="msg" :class="{ mine: mine(m) }">
@@ -360,14 +360,14 @@ onBeforeUnmount(teardown)
         <span class="reply-content">{{ replyingTo.content }}</span>
       </div>
       <button class="icon-btn" style="width: 26px; height: 26px" :aria-label="$t('chat.cancelReply')" @click="replyingTo = null">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+        <svg aria-hidden="true" focusable="false" width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
       </button>
     </div>
 
     <div class="composer" :class="{ 'no-round': replyingTo }">
       <label class="attach" :aria-label="$t('chat.attachImage')">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.5 12.5 21a5 5 0 0 1-7-7l8-8a3.3 3.3 0 0 1 4.7 4.7l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.3-7.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        <input type="file" accept="image/*" hidden @change="onFile" />
+        <svg aria-hidden="true" focusable="false" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.5 12.5 21a5 5 0 0 1-7-7l8-8a3.3 3.3 0 0 1 4.7 4.7l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.3-7.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        <input type="file" accept="image/*" class="visually-hidden" :aria-label="$t('chat.attachImage')" @change="onFile" />
       </label>
       <span v-if="uploadPct !== null" class="chip-file">{{ uploadPct }}%</span>
       <span v-else-if="pendingFile.length" class="chip-file">{{ $t('chat.imageReady') }}</span>
@@ -380,7 +380,7 @@ onBeforeUnmount(teardown)
         @keydown.enter.exact.prevent="send"
       ></textarea>
       <button class="send-sq" :aria-label="$t('common.send')" @click="send">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </button>
     </div>
 

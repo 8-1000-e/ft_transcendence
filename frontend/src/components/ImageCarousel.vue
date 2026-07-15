@@ -31,16 +31,16 @@ function go(n: number) {
     <div class="track">
       <img v-if="!failed.includes(images[i])" :src="images[i]" :alt="alt || 'attached image'" @error="onImgError(images[i])" />
       <span v-else class="broken" role="img" :aria-label="alt || 'image unavailable'">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M3 5h18v14H3z" stroke="currentColor" stroke-width="1.5"/><path d="m3 16 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m4 4 16 16" stroke="currentColor" stroke-width="1.5"/></svg>
+        <svg aria-hidden="true" focusable="false" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M3 5h18v14H3z" stroke="currentColor" stroke-width="1.5"/><path d="m3 16 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m4 4 16 16" stroke="currentColor" stroke-width="1.5"/></svg>
       </span>
     </div>
 
     <template v-if="images.length > 1">
       <button class="nav prev" aria-label="Previous image" @click.prevent="go(i - 1)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </button>
       <button class="nav next" aria-label="Next image" @click.prevent="go(i + 1)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </button>
       <span class="count">{{ i + 1 }}/{{ images.length }}</span>
       <div class="dots">
