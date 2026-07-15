@@ -9,6 +9,11 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { VoteValue } from 'generated/prisma/client';
 import { authorView, isFtMember } from 'src/utils/anonymize';
 import { MailService } from 'src/mail/mail.service';
+import {
+  generateBase32Secret,
+  matchTotpStep,
+  otpauthUri,
+} from 'src/utils/totp';
 
 // (UP − DOWN) score for a set of votes
 const scoreVotes = (votes: { vote: VoteValue }[]) =>
@@ -39,6 +44,7 @@ export class UsersService {
         ftPfpUrl: true,
         ftId: true,
         passwordHash: true,
+        totpEnabled: true,
         deleteAt: true,
         createdAt: true,
         projectPosts: { select: { votes: { select: { vote: true } } } },
@@ -61,6 +67,7 @@ export class UsersService {
       ftPfpUrl: user.ftPfpUrl,
       has42: !!user.ftId,
       hasPassword: !!user.passwordHash,
+      twoFactorEnabled: user.totpEnabled,
       pendingDeletion: !!user.deleteAt,
       createdAt: user.createdAt.toISOString(),
       karma,
@@ -214,6 +221,71 @@ export class UsersService {
       });
     }
     return { message: isChange ? 'Password changed' : 'Password set' };
+  }
+
+  // 2FA (TOTP). setup stores a pending secret; enable/disable verify a code.
+  async setupTwoFactor(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, totpEnabled: true },
+    });
+    if (!user) throw new NotFoundException();
+    if (user.totpEnabled)
+      throw new BadRequestException(
+        'Two-factor authentication is already enabled',
+      );
+    const secret = generateBase32Secret();
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { totpSecret: secret },
+    });
+    return { secret, otpauthUri: otpauthUri(secret, user.email) };
+  }
+
+  async enableTwoFactor(userId: string, code: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { totpSecret: true, totpEnabled: true, totpLastUsedStep: true },
+    });
+    if (!user) throw new NotFoundException();
+    if (user.totpEnabled)
+      throw new BadRequestException(
+        'Two-factor authentication is already enabled',
+      );
+    if (!user.totpSecret)
+      throw new BadRequestException('Start the 2FA setup first');
+    const step = matchTotpStep(
+      user.totpSecret,
+      code,
+      user.totpLastUsedStep ?? -1,
+    );
+    if (step === null) throw new BadRequestException('Invalid code');
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { totpEnabled: true, totpLastUsedStep: step },
+    });
+    return { message: 'Two-factor authentication enabled' };
+  }
+
+  async disableTwoFactor(userId: string, code: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { totpSecret: true, totpEnabled: true, totpLastUsedStep: true },
+    });
+    if (!user) throw new NotFoundException();
+    if (!user.totpEnabled || !user.totpSecret)
+      throw new BadRequestException('Two-factor authentication is not enabled');
+    const step = matchTotpStep(
+      user.totpSecret,
+      code,
+      user.totpLastUsedStep ?? -1,
+    );
+    if (step === null) throw new BadRequestException('Invalid code');
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { totpEnabled: false, totpSecret: null, totpLastUsedStep: null },
+    });
+    return { message: 'Two-factor authentication disabled' };
   }
 
   async requestDeletion(id: string) {

@@ -30,6 +30,9 @@ model User {
   locale        String         @default("en") // UI language: en | fr | es
   email         String         @unique
   passwordHash  String?
+  totpSecret       String? // base32 TOTP secret, set at 2FA setup
+  totpEnabled      Boolean     @default(false) // 2FA active → login requires a code
+  totpLastUsedStep Int? // last accepted TOTP time-step → anti-replay
   createdAt     DateTime       @default(now())
   lastSeenAt    DateTime       @default(now()) // touched on activity → online status
   tokenVersion  Int            @default(0) // bumped on password change → invalidates old access tokens

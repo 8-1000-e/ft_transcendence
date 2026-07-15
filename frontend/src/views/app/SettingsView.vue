@@ -117,6 +117,66 @@ async function saveName() {
   }
 }
 
+// Two-factor authentication (TOTP) — guards the email/password login.
+const has2fa = computed(() => !!auth.user?.twoFactorEnabled)
+const show2fa = ref(false)
+const showDisable2fa = ref(false)
+const twofaSecret = ref('')
+const twofaUri = ref('')
+const twofaCode = ref('')
+const disableCode = ref('')
+const twofaError = ref('')
+const twofaSaving = ref(false)
+
+async function open2fa() {
+  twofaCode.value = ''
+  twofaError.value = ''
+  error.value = ''
+  try {
+    const r = await api.post<{ secret: string; otpauthUri: string }>(
+      ROUTES.users.twofaSetup,
+    )
+    twofaSecret.value = r.secret
+    twofaUri.value = r.otpauthUri
+    show2fa.value = true
+  } catch (e) {
+    error.value = (e as { message?: string }).message ?? 'Failed'
+  }
+}
+async function submitEnable2fa() {
+  twofaError.value = ''
+  twofaSaving.value = true
+  try {
+    await api.post(ROUTES.users.twofaEnable, { code: twofaCode.value })
+    await auth.fetchMe()
+    show2fa.value = false
+    message.value = t('settings.2fa.enabled')
+  } catch (e) {
+    twofaError.value = (e as { message?: string }).message ?? t('settings.2fa.badCode')
+  } finally {
+    twofaSaving.value = false
+  }
+}
+function openDisable2fa() {
+  disableCode.value = ''
+  twofaError.value = ''
+  showDisable2fa.value = true
+}
+async function submitDisable2fa() {
+  twofaError.value = ''
+  twofaSaving.value = true
+  try {
+    await api.post(ROUTES.users.twofaDisable, { code: disableCode.value })
+    await auth.fetchMe()
+    showDisable2fa.value = false
+    message.value = t('settings.2fa.disabled')
+  } catch (e) {
+    twofaError.value = (e as { message?: string }).message ?? t('settings.2fa.badCode')
+  } finally {
+    twofaSaving.value = false
+  }
+}
+
 // Switch language: apply instantly (optimistic) + persist per-account on the server.
 async function changeLanguage(code: Locale) {
   const prev = locale.value
@@ -249,6 +309,15 @@ async function logout() {
           <button class="sbtn" :class="{ primary: !hasPassword }" @click="openPassword">{{ hasPassword ? $t('settings.password.changeBtn') : $t('settings.password.setBtn') }}</button>
         </div>
 
+        <div v-if="hasPassword" class="set-row">
+          <span class="ic"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.4-3 7.7-7 9-4-1.3-7-4.6-7-9V6l7-3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+          <div class="set-row-main">
+            <div class="set-row-t">{{ $t('settings.2fa') }}</div>
+            <div class="set-row-x">{{ has2fa ? $t('settings.2fa.on') : $t('settings.2fa.off') }}</div>
+          </div>
+          <button class="sbtn" :class="{ primary: !has2fa }" @click="has2fa ? openDisable2fa() : open2fa()">{{ has2fa ? $t('settings.2fa.disableBtn') : $t('settings.2fa.enableBtn') }}</button>
+        </div>
+
         <div class="set-row">
           <span class="ic"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /><path d="M10 8l-4 4 4 4M6 12h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
           <div class="set-row-main">
@@ -341,6 +410,32 @@ async function logout() {
         <button class="btn-primary" style="flex: 1" :disabled="pwSaving || newPw.length < 8" @click="submitPassword">
           {{ pwSaving ? $t('settings.saving') : hasPassword ? $t('settings.pw.changeTitle') : $t('settings.password.setBtn') }}
         </button>
+      </template>
+    </Modal>
+
+    <Modal :open="show2fa" :title="$t('settings.2fa.setupTitle')" @close="show2fa = false">
+      <p style="margin: 0 0 12px">{{ $t('settings.2fa.setupIntro') }}</p>
+      <div class="set-row-x" style="margin-bottom: 4px">{{ $t('settings.2fa.secretHint') }}</div>
+      <code style="display: block; word-break: break-all; padding: 10px 12px; border-radius: 8px; background: var(--surface-2, #16161c); border: 1px solid var(--border, #26262e); font-size: 13px; letter-spacing: 1px; margin-bottom: 10px">{{ twofaSecret }}</code>
+      <details style="margin-bottom: 12px">
+        <summary class="set-row-x" style="cursor: pointer">{{ $t('settings.2fa.uriHint') }}</summary>
+        <code style="display: block; word-break: break-all; font-size: 11px; color: var(--muted); margin-top: 6px">{{ twofaUri }}</code>
+      </details>
+      <input v-model="twofaCode" inputmode="numeric" maxlength="6" class="field" :placeholder="$t('settings.2fa.codePh')" :aria-label="$t('settings.2fa.codePh')" @keyup.enter="submitEnable2fa" />
+      <p v-if="twofaError" class="err" style="margin: 10px 0 0">{{ twofaError }}</p>
+      <template #actions>
+        <button class="btn-ghost" style="flex: 1" :disabled="twofaSaving" @click="show2fa = false">{{ $t('common.cancel') }}</button>
+        <button class="btn-primary" style="flex: 1" :disabled="twofaSaving || twofaCode.length !== 6" @click="submitEnable2fa">{{ twofaSaving ? $t('settings.saving') : $t('settings.2fa.enableBtn') }}</button>
+      </template>
+    </Modal>
+
+    <Modal :open="showDisable2fa" :title="$t('settings.2fa.disableTitle')" @close="showDisable2fa = false">
+      <p style="margin: 0 0 12px">{{ $t('settings.2fa.disableIntro') }}</p>
+      <input v-model="disableCode" inputmode="numeric" maxlength="6" class="field" :placeholder="$t('settings.2fa.codePh')" :aria-label="$t('settings.2fa.codePh')" @keyup.enter="submitDisable2fa" />
+      <p v-if="twofaError" class="err" style="margin: 10px 0 0">{{ twofaError }}</p>
+      <template #actions>
+        <button class="btn-ghost" style="flex: 1" :disabled="twofaSaving" @click="showDisable2fa = false">{{ $t('common.cancel') }}</button>
+        <button class="sbtn danger" style="flex: 1; height: 44px; justify-content: center" :disabled="twofaSaving || disableCode.length !== 6" @click="submitDisable2fa">{{ $t('settings.2fa.disableBtn') }}</button>
       </template>
     </Modal>
 
