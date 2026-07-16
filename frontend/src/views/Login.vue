@@ -14,6 +14,8 @@ const { t } = useI18n()
 
 const email = ref('')
 const password = ref('')
+const code = ref('')
+const twoFaStep = ref(false)
 const error = ref('')
 const loading = ref(false)
 
@@ -27,10 +29,24 @@ async function submit() {
   error.value = ''
   loading.value = true
   try {
-    await auth.login(email.value, password.value)
-    await router.push('/')
+    const r = await auth.login(email.value, password.value)
+    if (r.twoFactorRequired) twoFaStep.value = true
+    else await router.push('/')
   } catch (e) {
     error.value = (e as ApiError).message ?? t('auth.login.err.invalidCreds')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function submitTwoFa() {
+  error.value = ''
+  loading.value = true
+  try {
+    await auth.loginTwoFactor(email.value, password.value, code.value)
+    await router.push('/')
+  } catch (e) {
+    error.value = (e as ApiError).message ?? t('auth.login.err.invalidCode')
   } finally {
     loading.value = false
   }
@@ -43,7 +59,7 @@ function loginWith42() {
 
 <template>
   <AuthShell :title="$t('auth.login.title')" :subtitle="$t('auth.login.subtitle')">
-    <form class="ftp-form" @submit.prevent="submit">
+    <form v-if="!twoFaStep" class="ftp-form" @submit.prevent="submit">
       <div class="ftp-field">
         <label class="ftp-label" for="email">{{ $t('auth.field.email') }}</label>
         <input
@@ -72,11 +88,11 @@ function loginWith42() {
         />
       </div>
 
-      <p v-if="error" class="ftp-error">! {{ error }}</p>
+      <p v-if="error" class="ftp-error" role="alert">! {{ error }}</p>
 
       <button type="submit" :disabled="loading" class="ftp-btn">
         {{ loading ? $t('auth.login.loading') : $t('auth.login.title') }}
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path
             d="M5 12h13M13 6l6 6-6 6"
             stroke="currentColor"
@@ -88,16 +104,41 @@ function loginWith42() {
       </button>
     </form>
 
-    <div class="ftp-divider">
-      <span class="ftp-divider-line"></span>
-      <span class="ftp-divider-text">{{ $t('auth.or') }}</span>
-      <span class="ftp-divider-line"></span>
-    </div>
+    <form v-else class="ftp-form" @submit.prevent="submitTwoFa">
+      <div class="ftp-field">
+        <label class="ftp-label" for="totp">{{ $t('auth.login.2fa.label') }}</label>
+        <input
+          id="totp"
+          v-model="code"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          required
+          class="ftp-input"
+          :placeholder="$t('auth.login.2fa.ph')"
+        />
+        <p class="ftp-hint">{{ $t('auth.login.2fa.hint') }}</p>
+      </div>
 
-    <button type="button" class="ftp-btn-42" @click="loginWith42">
-      <span class="ftp-42-badge">42</span>
-      {{ $t('auth.login.with42') }}
-    </button>
+      <p v-if="error" class="ftp-error" role="alert">! {{ error }}</p>
+
+      <button type="submit" :disabled="loading" class="ftp-btn">
+        {{ loading ? $t('auth.login.loading') : $t('auth.login.2fa.verify') }}
+      </button>
+    </form>
+
+    <template v-if="!twoFaStep">
+      <div class="ftp-divider">
+        <span class="ftp-divider-line"></span>
+        <span class="ftp-divider-text">{{ $t('auth.or') }}</span>
+        <span class="ftp-divider-line"></span>
+      </div>
+
+      <button type="button" class="ftp-btn-42" @click="loginWith42">
+        <span class="ftp-42-badge">42</span>
+        {{ $t('auth.login.with42') }}
+      </button>
+    </template>
 
     <template #footer>
       {{ $t('auth.login.noAccount') }}

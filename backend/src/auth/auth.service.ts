@@ -12,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import { FtApiService } from 'src/ftapi/ftapi.services';
 import { Prisma, User } from 'generated/prisma/client';
 import { randomIdentity } from 'src/utils/anon';
+import { matchTotpStep } from 'src/utils/totp';
 
 @Injectable()
 export class AuthService {
@@ -120,6 +121,34 @@ export class AuthService {
     if (user.passwordHash)
       match = await bcrypt.compare(password, user.passwordHash);
     if (!match) throw new UnauthorizedException();
+
+    // 2FA gate: withhold tokens — the client must POST /login/2fa with a code.
+    if (user.totpEnabled) return { twoFactorRequired: true };
+
+    this.ft.syncUserTeam(user.id).catch(() => {});
+    return this.issueTokens(user.id);
+  }
+
+  // Second step of a 2FA login: re-check the password (stateless — no pending
+  // token to leak) then the TOTP code, and only then issue the session.
+  async loginTwoFactor(email: string, password: string, code: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user?.passwordHash) throw new UnauthorizedException();
+    const match = await bcrypt.compare(password, user.passwordHash);
+    if (!match) throw new UnauthorizedException();
+    if (!user.totpEnabled || !user.totpSecret)
+      throw new UnauthorizedException();
+    const step = matchTotpStep(
+      user.totpSecret,
+      code,
+      user.totpLastUsedStep ?? -1,
+    );
+    if (step === null)
+      throw new UnauthorizedException('Invalid authentication code');
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { totpLastUsedStep: step },
+    });
 
     this.ft.syncUserTeam(user.id).catch(() => {});
     return this.issueTokens(user.id);

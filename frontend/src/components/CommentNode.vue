@@ -144,9 +144,9 @@ async function saveEdit() {
 <template>
   <div class="tnode" :class="{ reply: depth > 0 }">
     <div class="tvote" :style="!has42 ? 'opacity:.4' : ''">
-      <button class="tv up" :class="{ on: n.myVote === 'UP' }" :aria-label="$t('forum.upvote')" @click="vote('UP')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5l7 8H5l7-8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg></button>
+      <button class="tv up" :class="{ on: n.myVote === 'UP' }" :aria-pressed="n.myVote === 'UP'" :aria-label="$t('forum.upvote')" @click="vote('UP')"><svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5l7 8H5l7-8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg></button>
       <span class="tscore" :class="{ up: n.myVote === 'UP', down: n.myVote === 'DOWN' }">{{ score }}</span>
-      <button class="tv down" :class="{ on: n.myVote === 'DOWN' }" :aria-label="$t('forum.downvote')" @click="vote('DOWN')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 19l-7-8h14l-7 8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg></button>
+      <button class="tv down" :class="{ on: n.myVote === 'DOWN' }" :aria-pressed="n.myVote === 'DOWN'" :aria-label="$t('forum.downvote')" @click="vote('DOWN')"><svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 19l-7-8h14l-7 8z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg></button>
     </div>
 
     <div class="tmain">
@@ -167,7 +167,7 @@ async function saveEdit() {
         </template>
         <template v-else>
           <p class="tbody">{{ n.content }}</p>
-          <img v-for="f in n.filesUrl" :key="f" :src="publicUrl(f)" class="cmt-img" alt="" />
+          <img v-for="f in n.filesUrl" :key="f" :src="publicUrl(f)" class="cmt-img" :alt="$t('forum.postImage')" @error="($event.target as HTMLImageElement).style.display = 'none'" />
           <div class="tactions">
             <button v-if="has42" class="txt-btn" @click="replyOpen = !replyOpen">{{ $t('common.reply') }}</button>
             <button v-if="replyCount && !atThreadCap" class="txt-btn accent" @click="toggleReplies">

@@ -57,10 +57,27 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(email: string, password: string) {
-    const tokens = await api.post<Tokens>(
+  async function login(
+    email: string,
+    password: string,
+  ): Promise<{ twoFactorRequired: boolean }> {
+    const res = await api.post<Tokens & { twoFactorRequired?: boolean }>(
       ROUTES.auth.login,
       { email, password },
+      { auth: false },
+    )
+    // 2FA-enabled account: no tokens yet — the caller must collect a code and
+    // call loginTwoFactor(). Password is re-sent there (stateless, no pending token).
+    if (res.twoFactorRequired) return { twoFactorRequired: true }
+    setTokens(res)
+    await fetchMe()
+    return { twoFactorRequired: false }
+  }
+
+  async function loginTwoFactor(email: string, password: string, code: string) {
+    const tokens = await api.post<Tokens>(
+      ROUTES.auth.login2fa,
+      { email, password, code },
       { auth: false },
     )
     setTokens(tokens)
@@ -156,6 +173,7 @@ export const useAuthStore = defineStore('auth', () => {
     fetchMe,
     ping,
     login,
+    loginTwoFactor,
     signup,
     verify,
     logout,

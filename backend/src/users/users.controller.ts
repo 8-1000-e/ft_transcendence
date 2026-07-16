@@ -17,6 +17,7 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { TwoFactorDto } from './dto/two-factor.dto';
 import type { AuthedRequest } from 'src/auth/authed-request';
 import { AllowWhilePending } from 'src/auth/allow-pending.decorator';
 
@@ -66,6 +67,24 @@ export class UsersController {
       body.currentPassword,
       body.newPassword,
     );
+  }
+
+  @Post('me/2fa/setup')
+  @UseGuards(JwtAuthGuard)
+  setup2fa(@Req() req: AuthedRequest) {
+    return this.usersService.setupTwoFactor(req.user.sub);
+  }
+
+  @Post('me/2fa/enable')
+  @UseGuards(JwtAuthGuard)
+  enable2fa(@Body() body: TwoFactorDto, @Req() req: AuthedRequest) {
+    return this.usersService.enableTwoFactor(req.user.sub, body.code);
+  }
+
+  @Post('me/2fa/disable')
+  @UseGuards(JwtAuthGuard)
+  disable2fa(@Body() body: TwoFactorDto, @Req() req: AuthedRequest) {
+    return this.usersService.disableTwoFactor(req.user.sub, body.code);
   }
 
   @Delete('me')

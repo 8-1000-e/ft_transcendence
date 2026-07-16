@@ -73,7 +73,7 @@ watch(projectId, load, { immediate: true })
 <template>
   <section class="set-wrap">
     <RouterLink :to="{ name: 'project', params: { projectId } }" class="back-link">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
       {{ projName || projectId }}
     </RouterLink>
 
@@ -84,7 +84,7 @@ watch(projectId, load, { immediate: true })
     </p>
 
     <div v-if="forbidden" class="lock">
-      <span class="lock-mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg></span>
+      <span class="lock-mark"><svg aria-hidden="true" focusable="false" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg></span>
       <h2>{{ $t('browse.suggest.lockTitle') }}</h2>
       <p>{{ $t('browse.suggest.lockBody') }}</p>
       <RouterLink :to="{ name: 'settings' }" class="pbtn primary"><span class="badge42-sq" style="width: 18px; height: 18px">42</span>{{ $t('common.linkYour42') }}</RouterLink>

@@ -87,7 +87,7 @@ onBeforeUnmount(() => {
     <div class="ftp-center">
       <div class="ftp-brand">
         <span class="ftp-brand-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path
               d="M3 16.5 L9 10.5 L13 14.5 L21 6.5"
               stroke="#8C97F7"

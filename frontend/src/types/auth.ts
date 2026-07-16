@@ -14,6 +14,7 @@ export interface User {
   ftPfpUrl: string | null
   has42: boolean
   hasPassword: boolean
+  twoFactorEnabled: boolean
   pendingDeletion: boolean
   createdAt: string
   karma: number

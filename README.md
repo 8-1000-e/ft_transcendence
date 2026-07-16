@@ -102,8 +102,10 @@ Non-game social app → all Gaming / AI-Opponent / Graphics / Pong modules are *
 | 8 | User Management — OAuth 2.0 (42) | Minor | 1 | `auth` 42 login resolved by `ftId` |
 | 9 | Accessibility & i18n — multiple languages (≥3) | Minor | 1 | EN / FR / ES + switcher, all UI text translatable (`frontend/src/i18n`) |
 | 10 | Data & Analytics — GDPR compliance | Minor | 1 | data request/export + deletion with confirmation + confirmation email |
+| 11 | Accessibility — support for the visually impaired (WCAG 2.1 AA) | Minor | 1 | keyboard-operable (visible `:focus-visible`, skip-link, ESC-closes menus), screen-reader friendly (landmarks, ARIA roles/labels, `aria-pressed` votes, `aria-live` chat log, decorative SVGs hidden), AA contrast, `prefers-reduced-motion`, `lang` sync |
+| 12 | Cybersecurity — Two-Factor Authentication (2FA) + JWT | Major | 2 | TOTP (RFC 6238, authenticator apps) enrol/verify in Settings, login gated by a 6-digit code; JWT access + rotating refresh tokens (`auth`, `utils/totp.ts`) |
 
-**Total: 14 points.**
+**Total: 17 points.**
 
 **Module of choice — mentor-matching (`suggest`):** deterministic (no ML) ranking of the best students on a
 given 42 project, computed from **live 42-API reads** (project users, marks, current physical location),
@@ -153,6 +155,13 @@ cd frontend && npm ci && npm run dev
 - Input validated **front and back** (class-validator DTOs + Vue-side checks).
 - Private state (`deleteAt`, etc.) is exposed only on `GET /api/me`, never on `/api/users/:id`; a shared
   default-deny `authorView` anonymizes non-consenting identities.
+- **Scope of anonymisation (by design):** what is protected is the *identity directory / ranking* of 42
+  members — a non-42 viewer never learns which real 42 login authored a post (author shown as `rdm*`) and
+  never sees the 42-only mentor/location data. **Forum post content itself is public** (a 42 member who
+  posts text or an image is deliberately sharing it on a public forum), so post images are served openly;
+  they are not treated as private identity data. Group-chat images, by contrast, are private and gated
+  (`GET /api/files/:name` requires membership). On account deletion the row is anonymised in place and the
+  user's uploaded media is unlinked from disk (right-to-erasure).
 - HTTPS everywhere in prod (nginx TLS). `.env` is git-ignored; `.env.example` lists every key.
 - **Privacy Policy** (`/privacy`) and **Terms of Service** (`/terms`) are linked in the footer.
 

@@ -12,6 +12,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
+import { LoginTwoFactorDto } from './dto/login-2fa.dto';
 import { VerifyDto } from './dto/verify.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { LogoutDto } from './dto/logout.dto';
@@ -32,6 +33,15 @@ export class AuthController {
   @Post('login')
   login(@Body() body: LoginDto) {
     return this.authService.login(body.email, body.password);
+  }
+
+  @Post('login/2fa')
+  loginTwoFactor(@Body() body: LoginTwoFactorDto) {
+    return this.authService.loginTwoFactor(
+      body.email,
+      body.password,
+      body.code,
+    );
   }
 
   @Post('verify')
