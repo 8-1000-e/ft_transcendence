@@ -6,6 +6,7 @@ import { ROUTES } from '@/api/routes'
 import { publicUrl } from '@/api/upload'
 import { useAuthStore } from '@/stores/auth'
 import { useI18n } from '@/i18n'
+import { relativeTime } from '@/utils/time'
 import Avatar from '@/components/Avatar.vue'
 import type { Comment, Reply, VoteValue } from '@/types/api'
 
@@ -50,14 +51,7 @@ function message(e: unknown, fallback: string): string {
   return (e as { message?: string }).message ?? fallback
 }
 function timeAgo(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const mins = Math.round((Date.now() - d.getTime()) / 60000)
-  if (mins < 1) return t('forum.now')
-  if (mins < 60) return `${mins}m`
-  const h = Math.round(mins / 60)
-  if (h < 24) return `${h}h`
-  return `${Math.round(h / 24)}d`
+  return relativeTime(iso, t)
 }
 
 async function fetchChildren() {

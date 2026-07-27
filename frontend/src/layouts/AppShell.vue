@@ -5,12 +5,15 @@ import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
 import { useAuthStore } from '@/stores/auth'
 import { useGroupsStore } from '@/stores/groups'
+import { useI18n } from '@/i18n'
+import { relativeTime } from '@/utils/time'
 import Modal from '@/components/Modal.vue'
 import Avatar from '@/components/Avatar.vue'
 import type { NotificationItem, NotificationsPage } from '@/types/api'
 
 const auth = useAuthStore()
 const groups = useGroupsStore()
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
@@ -89,11 +92,7 @@ function openNotif(n: NotificationItem) {
 }
 
 function notifTime(iso: string): string {
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
-  if (mins < 1) return 'now'
-  if (mins < 60) return `${mins}m`
-  const h = Math.round(mins / 60)
-  return h < 24 ? `${h}h` : `${Math.round(h / 24)}d`
+  return relativeTime(iso, t)
 }
 
 onMounted(() => {
