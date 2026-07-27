@@ -3,13 +3,14 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
-import { uploadImage, publicUrl, validateImage, deleteUpload } from '@/api/upload'
+import { uploadImage, publicUrl, validateUpload, deleteUpload, ACCEPT_UPLOAD, isImageUrl } from '@/api/upload'
 import { useAuthStore } from '@/stores/auth'
 import { useGroupsStore } from '@/stores/groups'
 import { usePaginated } from '@/composables/pagination'
 import { useI18n } from '@/i18n'
 import Avatar from '@/components/Avatar.vue'
 import ImageCarousel from '@/components/ImageCarousel.vue'
+import FileAttachment from '@/components/FileAttachment.vue'
 import type { Page, Post, VoteValue } from '@/types/api'
 
 const route = useRoute()
@@ -97,7 +98,7 @@ async function onFile(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-  const invalid = validateImage(file)
+  const invalid = validateUpload(file)
   if (invalid) {
     error.value = invalid
     input.value = ''
@@ -222,10 +223,11 @@ watch(
           <label class="btn-ghost" style="height: 38px; cursor: pointer">
             <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none" style="margin-right: 6px"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7" /><circle cx="9" cy="10" r="1.8" stroke="currentColor" stroke-width="1.7" /><path d="m4 18 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
             {{ uploadPct !== null ? uploadPct + '%' : newFiles.length ? $t('forum.imageReady') : $t('forum.image') }}
-            <input type="file" accept="image/*" hidden :aria-label="$t('forum.attachImage')" @change="onFile" />
+            <input type="file" :accept="ACCEPT_UPLOAD" hidden :aria-label="$t('forum.attachImage')" @change="onFile" />
           </label>
           <span v-if="newFiles.length" style="display: inline-flex; align-items: center; gap: 6px">
-            <img :src="publicUrl(newFiles[0])" alt="" style="width: 34px; height: 34px; object-fit: cover; border-radius: 6px" @error="($event.target as HTMLImageElement).style.display = 'none'" />
+            <img v-if="isImageUrl(newFiles[0])" :src="publicUrl(newFiles[0])" alt="" style="width: 34px; height: 34px; object-fit: cover; border-radius: 6px" @error="($event.target as HTMLImageElement).style.display = 'none'" />
+            <span v-else class="chip">{{ $t('forum.fileReady') }}</span>
             <button type="button" class="txt-btn" :aria-label="$t('common.remove')" @click="removeImage">✕</button>
           </span>
         </div>
@@ -263,7 +265,8 @@ watch(
           <h3 v-if="p.title" class="c-title">{{ p.title }}</h3>
           <p class="c-body">{{ p.content }}</p>
         </RouterLink>
-        <ImageCarousel v-if="p.filesUrl.length" :images="p.filesUrl.map(publicUrl)" :alt="$t('forum.imageSharedBy', { name: p.user?.name ?? $t('forum.anonymous') })" />
+        <ImageCarousel v-if="p.filesUrl.some(isImageUrl)" :images="p.filesUrl.filter(isImageUrl).map(publicUrl)" :alt="$t('forum.imageSharedBy', { name: p.user?.name ?? $t('forum.anonymous') })" />
+        <FileAttachment v-for="f in p.filesUrl.filter((u) => !isImageUrl(u))" :key="f" :path="f" />
         <div class="c-foot">
           <span class="votepill" :style="!has42 ? 'opacity:.45' : ''">
             <button class="vbtn up" :class="{ on: p.myVote === 'UP' }" :aria-pressed="p.myVote === 'UP'" :aria-label="$t('forum.approve')" @click="vote(p, 'UP')"><svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg></button>

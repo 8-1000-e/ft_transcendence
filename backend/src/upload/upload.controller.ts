@@ -16,22 +16,48 @@ import { randomUUID } from 'crypto';
 import { extname, basename, join } from 'path';
 import { unlink } from 'fs/promises';
 
-const IMAGE_TYPES = new Set([
+// Images render inline; documents are offered as downloads. Deliberately no
+// archives or executables — they are the classic upload attack vector.
+const ALLOWED_TYPES = new Set([
   'image/jpeg',
   'image/png',
   'image/gif',
   'image/webp',
+  'application/pdf',
+  'text/plain',
+  'text/markdown',
+  'text/csv',
+]);
+// Extension must match the declared type: a browser can send an arbitrary
+// Content-Type, so the stored name is what later decides how a file is served.
+const ALLOWED_EXT = new Set([
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.gif',
+  '.webp',
+  '.pdf',
+  '.txt',
+  '.md',
+  '.csv',
 ]);
 const MAX_SIZE = 5 * 1024 * 1024; // 5 Mo
 
 // Server-side type gate — never trust the client's `accept` attribute.
-const imageFilter = (
+const uploadFilter = (
   _req: Request,
   file: Express.Multer.File,
   cb: (err: Error | null, ok: boolean) => void,
 ) => {
-  if (IMAGE_TYPES.has(file.mimetype)) cb(null, true);
-  else cb(new BadRequestException('Only JPEG, PNG, GIF or WebP images'), false);
+  const ext = extname(file.originalname).toLowerCase();
+  if (ALLOWED_TYPES.has(file.mimetype) && ALLOWED_EXT.has(ext)) cb(null, true);
+  else
+    cb(
+      new BadRequestException(
+        'Allowed files: JPEG, PNG, GIF, WebP, PDF, TXT, MD, CSV (max 5 MB)',
+      ),
+      false,
+    );
 };
 
 const named = (
@@ -47,7 +73,7 @@ export class UploadController {
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({ destination: './uploads', filename: named }),
-      fileFilter: imageFilter,
+      fileFilter: uploadFilter,
       limits: { fileSize: MAX_SIZE },
     }),
   )
@@ -64,7 +90,7 @@ export class UploadController {
         destination: './private-uploads',
         filename: named,
       }),
-      fileFilter: imageFilter,
+      fileFilter: uploadFilter,
       limits: { fileSize: MAX_SIZE },
     }),
   )

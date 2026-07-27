@@ -8,7 +8,8 @@ import { usePaginated } from '@/composables/pagination'
 import { useI18n } from '@/i18n'
 import { relativeTime } from '@/utils/time'
 import ImageCarousel from '@/components/ImageCarousel.vue'
-import { publicUrl } from '@/api/upload'
+import FileAttachment from '@/components/FileAttachment.vue'
+import { publicUrl, isImageUrl } from '@/api/upload'
 import type { Page, Post, VoteValue } from '@/types/api'
 
 const auth = useAuthStore()
@@ -149,10 +150,11 @@ onMounted(reload)
           <p class="c-body">{{ p.content }}</p>
         </RouterLink>
         <ImageCarousel
-          v-if="p.filesUrl.length"
-          :images="p.filesUrl.map(publicUrl)"
+          v-if="p.filesUrl.some(isImageUrl)"
+          :images="p.filesUrl.filter(isImageUrl).map(publicUrl)"
           :alt="`Image shared by ${p.user?.name ?? 'anonymous'}`"
         />
+        <FileAttachment v-for="f in p.filesUrl.filter((u) => !isImageUrl(u))" :key="f" :path="f" />
 
         <div class="c-foot">
           <span class="votepill" :style="!has42 ? 'opacity:.45' : ''">

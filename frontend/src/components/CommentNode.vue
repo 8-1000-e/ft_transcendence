@@ -3,11 +3,12 @@ import { reactive, ref, computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
-import { publicUrl } from '@/api/upload'
+import { publicUrl, isImageUrl } from '@/api/upload'
 import { useAuthStore } from '@/stores/auth'
 import { useI18n } from '@/i18n'
 import { relativeTime } from '@/utils/time'
 import Avatar from '@/components/Avatar.vue'
+import FileAttachment from '@/components/FileAttachment.vue'
 import type { Comment, Reply, VoteValue } from '@/types/api'
 
 // A comment and a reply are the same ProjectsChat row — one recursive node type.
@@ -161,7 +162,8 @@ async function saveEdit() {
         </template>
         <template v-else>
           <p class="tbody">{{ n.content }}</p>
-          <img v-for="f in n.filesUrl" :key="f" :src="publicUrl(f)" class="cmt-img" :alt="$t('forum.postImage')" @error="($event.target as HTMLImageElement).style.display = 'none'" />
+          <img v-for="f in n.filesUrl.filter(isImageUrl)" :key="f" :src="publicUrl(f)" class="cmt-img" :alt="$t('forum.postImage')" @error="($event.target as HTMLImageElement).style.display = 'none'" />
+          <FileAttachment v-for="f in n.filesUrl.filter((u) => !isImageUrl(u))" :key="f" :path="f" />
           <div class="tactions">
             <button v-if="has42" class="txt-btn" @click="replyOpen = !replyOpen">{{ $t('common.reply') }}</button>
             <button v-if="replyCount && !atThreadCap" class="txt-btn accent" @click="toggleReplies">
