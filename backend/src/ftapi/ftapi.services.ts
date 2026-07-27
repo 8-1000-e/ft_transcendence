@@ -9,6 +9,7 @@ import {
   FtUserSummary,
   FtMember,
   FtActiveLocation,
+  FtApiError,
 } from './ftapi.types';
 import { fetchWithRetry } from 'src/utils/http';
 
@@ -314,8 +315,7 @@ export class FtApiService {
   async Get<T>(path: string, userToken?: string): Promise<T> {
     const token = userToken ?? (await this.getAppToken());
     const res = await fetchWithRetry(`https://api.intra.42.fr/${path}`, token);
-    if (!res.ok)
-      throw new Error(`42 API request failed with status ${res.status}`);
+    if (!res.ok) throw new FtApiError(res.status);
     return (await res.json()) as T;
   }
 

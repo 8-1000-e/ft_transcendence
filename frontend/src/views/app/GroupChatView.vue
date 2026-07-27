@@ -198,6 +198,10 @@ async function saveEdit(m: Message) {
   try {
     await api.patch(ROUTES.groups.editMessage(groupId(), m.id), {
       content: editDraft.value,
+      // Re-send the existing image so clearing the text of an image message is
+      // accepted (the DTO requires text OR an image, and a bare content edit
+      // would look like an empty message).
+      filesUrl: m.filesUrl?.length ? m.filesUrl : undefined,
     })
     editingId.value = ''
     await fetchMessages()

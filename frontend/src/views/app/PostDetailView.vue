@@ -7,6 +7,7 @@ import { publicUrl, uploadImage, validateImage, deleteUpload } from '@/api/uploa
 import { useAuthStore } from '@/stores/auth'
 import { usePaginated } from '@/composables/pagination'
 import { useI18n } from '@/i18n'
+import { relativeTime } from '@/utils/time'
 import Avatar from '@/components/Avatar.vue'
 import ImageCarousel from '@/components/ImageCarousel.vue'
 import CommentNode from '@/components/CommentNode.vue'
@@ -23,7 +24,7 @@ const {
   items: comments,
   loading: commentsLoading,
   done: commentsDone,
-  loadMore: loadMoreComments,
+  loadMore: loadMoreCommentsPage,
   reload: reloadComments,
 } = usePaginated<Comment>((cursor) =>
   api.get<Page<Comment>>(
@@ -33,6 +34,18 @@ const {
 const newComment = ref('')
 const loading = ref(false)
 const error = ref('')
+
+// A comment posted from here is appended locally, so a later page can return it
+// again — drop duplicates or Vue renders two rows with the same key.
+async function loadMoreComments() {
+  await loadMoreCommentsPage()
+  const seen = new Set<string>()
+  comments.value = comments.value.filter((c) => {
+    if (seen.has(c.id)) return false
+    seen.add(c.id)
+    return true
+  })
+}
 
 // Author-only inline edit (title, body and image) — mirrors the feed composer.
 const isAuthor = computed(() => !!auth.user && post.value?.writer === auth.user.id)
@@ -52,14 +65,7 @@ function score(v: { upvotes: number; downvotes: number }): number {
   return v.upvotes - v.downvotes
 }
 function timeAgo(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const mins = Math.round((Date.now() - d.getTime()) / 60000)
-  if (mins < 1) return t('forum.now')
-  if (mins < 60) return `${mins}m`
-  const h = Math.round(mins / 60)
-  if (h < 24) return `${h}h`
-  return `${Math.round(h / 24)}d`
+  return relativeTime(iso, t)
 }
 
 async function loadPost() {

@@ -35,6 +35,16 @@ export interface FtMember {
   ppUrl: string | null;
 }
 
+// Carries the upstream HTTP status so callers can answer 4xx with 4xx instead of
+// turning every 42-API failure into a 500. Still an Error — existing generic
+// `catch` blocks behave exactly as before.
+export class FtApiError extends Error {
+  constructor(readonly status: number) {
+    super(`42 API request failed with status ${status}`);
+    this.name = 'FtApiError';
+  }
+}
+
 // An open session on a campus workstation (`host` = the seat, e.g. "e1r2p3").
 export interface FtActiveLocation {
   host: string | null;

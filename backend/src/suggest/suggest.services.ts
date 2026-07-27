@@ -1,9 +1,11 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { FtApiService } from 'src/ftapi/ftapi.services';
+import { FtApiError } from 'src/ftapi/ftapi.types';
 import { FtLocation, FtProjectUser, SuggestedUser } from './suggest.types';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -119,6 +121,13 @@ export class SuggestService {
       return suggestions;
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
+      // A bad projectId/campusId is the caller's fault — answer 4xx, not 500.
+      if (
+        error instanceof FtApiError &&
+        error.status >= 400 &&
+        error.status < 500
+      )
+        throw new BadRequestException('Unknown project or campus');
 
       throw new InternalServerErrorException('Unable to load suggestions');
     }
