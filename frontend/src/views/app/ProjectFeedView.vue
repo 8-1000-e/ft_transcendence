@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
@@ -160,6 +160,20 @@ async function saveEdit(p: Post) {
   }
 }
 
+// The fixed "new post" button overlapped the footer; fade it out while the
+// footer is on screen (it comes back as soon as you scroll up).
+const footerVisible = ref(false)
+let footerObserver: IntersectionObserver | null = null
+onMounted(() => {
+  const foot = document.querySelector('.hub-foot')
+  if (!foot || !('IntersectionObserver' in window)) return
+  footerObserver = new IntersectionObserver(
+    ([entry]) => (footerVisible.value = entry.isIntersecting),
+  )
+  footerObserver.observe(foot)
+})
+onBeforeUnmount(() => footerObserver?.disconnect())
+
 watch(
   () => route.params.projectId,
   () => {
@@ -269,7 +283,7 @@ watch(
     <button v-else-if="!done" class="btn-ghost" style="margin: 14px auto 0; display: flex" :disabled="loading" @click="loadMore">{{ loading ? $t('common.loading') : $t('common.loadMore') }}</button>
     <p v-else class="muted center" style="padding: 12px; font-size: 12px">— {{ $t('forum.endOfFeed') }} —</p>
 
-    <button v-if="has42 && !composerOpen" class="fab" :aria-label="$t('forum.newPost')" @click="composerOpen = true">
+    <button v-if="has42 && !composerOpen" class="fab" :class="{ tucked: footerVisible }" :aria-label="$t('forum.newPost')" @click="composerOpen = true">
       <svg aria-hidden="true" focusable="false" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
     </button>
   </section>

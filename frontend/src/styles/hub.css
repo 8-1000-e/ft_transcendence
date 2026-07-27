@@ -2112,6 +2112,50 @@ a.srow:hover .srow-name {
   }
 }
 
+/* ── Mobile topbar: the brand squeezed the search into a sliver ── */
+@media (max-width: 640px) {
+  .topbar {
+    gap: 10px;
+    padding: 0 12px;
+  }
+  /* Drop the logo + product name; the hamburger already anchors the bar. */
+  .brand {
+    display: none;
+  }
+  .search {
+    max-width: none;
+    min-width: 0;
+  }
+  .search kbd,
+  .pill-name {
+    display: none;
+  }
+}
+
+/* Popovers must scroll inside themselves instead of spilling past the
+   viewport (the profile menu used to run down over the footer). */
+@media (max-width: 900px) {
+  .menu {
+    max-height: calc(100dvh - 88px);
+    overflow-y: auto;
+  }
+}
+
+/* Freeze the page behind an open menu/drawer — it used to scroll underneath.
+   Modal.vue sets an inline overflow, which correctly wins over this class. */
+html.popover-open,
+html.popover-open body {
+  overflow: hidden;
+}
+
+/* The floating "new post" button sat on top of the footer; tuck it away once
+   the footer scrolls into view (see ProjectFeedView's observer). */
+.fab.tucked {
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+}
+
 /* ── Accessibility ─────────────────────────────────────────────── */
 /* Visible keyboard focus on every interactive element (WCAG 2.4.7).
    :where() keeps specificity at 0 so components can still opt out. */

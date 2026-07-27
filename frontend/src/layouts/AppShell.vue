@@ -53,6 +53,12 @@ function onEscape(e: KeyboardEvent) {
 onMounted(() => window.addEventListener('keydown', onEscape))
 onUnmounted(() => window.removeEventListener('keydown', onEscape))
 
+// Freeze the page while a popover/drawer is open (on mobile it scrolled behind).
+watch([showMenu, showNotifs, drawerOpen], ([m, n, d]) => {
+  document.documentElement.classList.toggle('popover-open', m || n || d)
+})
+onUnmounted(() => document.documentElement.classList.remove('popover-open'))
+
 async function refreshNotifs() {
   if (!auth.user?.has42) return
   try {
@@ -396,8 +402,9 @@ async function cancelDeletion() {
   top: calc(100% + 8px);
   right: 0;
   z-index: 66;
-  width: 320px;
-  max-height: 420px;
+  /* Never wider than the phone, never taller than what's left of the screen. */
+  width: min(320px, calc(100vw - 24px));
+  max-height: min(420px, calc(100dvh - 92px));
   overflow-y: auto;
   background: var(--surface-2);
   border: 1px solid var(--border);
