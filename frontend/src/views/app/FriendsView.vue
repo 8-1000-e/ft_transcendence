@@ -82,7 +82,7 @@ onMounted(load)
             <RouterLink :to="{ name: 'user', params: { id: u.id } }" class="fr-user">
               <span class="av-wrap">
                 <Avatar class="av av-c" :user-id="u.id" :name="u.name" :size="40" />
-                <span v-if="u.online" class="online-dot"></span>
+                <span v-if="u.online || u.location" class="online-dot" :title="u.location ?? $t('common.online')"></span>
               </span>
               <span class="fr-main">
                 <span class="fr-name">{{ u.name }}</span>
@@ -109,12 +109,14 @@ onMounted(load)
           <RouterLink :to="{ name: 'user', params: { id: u.id } }" class="fr-user">
             <span class="av-wrap">
               <Avatar class="av av-c" :user-id="u.id" :name="u.name" :size="40" />
-              <span v-if="u.online" class="online-dot"></span>
+              <span v-if="u.online || u.location" class="online-dot" :title="u.location ?? $t('common.online')"></span>
             </span>
             <span class="fr-main">
               <span class="fr-name">{{ u.name }}</span>
               <span class="fr-meta">
-                <span :class="u.online ? 'on' : 'off'">{{ u.online ? $t('common.online') : $t('common.offline') }}</span>
+                <!-- On campus → show the seat instead of a bare "online". -->
+                <span v-if="u.location" class="on">{{ u.location }}</span>
+                <span v-else :class="u.online ? 'on' : 'off'">{{ u.online ? $t('common.online') : $t('common.offline') }}</span>
                 <template v-if="u.campus"> · {{ u.campus }}</template>
               </span>
             </span>

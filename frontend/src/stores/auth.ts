@@ -4,10 +4,8 @@ import { api } from '@/api/client'
 import { ROUTES, API_BASE_URL } from '@/api/routes'
 import { disconnectRealtime } from '@/api/realtime'
 import { setLocale, LOCALES } from '@/i18n'
+import { ACCESS_KEY, REFRESH_KEY } from '@/api/tokens'
 import type { Tokens, User } from '@/types/auth'
-
-const REFRESH_KEY = 'ft_refresh'
-const ACCESS_KEY = 'ft_access'
 
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(localStorage.getItem(ACCESS_KEY))
@@ -38,6 +36,14 @@ export const useAuthStore = defineStore('auth', () => {
       useGroupsStore().reset()
     })
   }
+
+  // Refresh rotates the tokens, so a sibling tab that refreshes first leaves this
+  // tab holding a dead token. Adopt whatever it wrote instead of fighting over it.
+  // (Only adopts new values — a logout elsewhere is not forced onto this tab.)
+  window.addEventListener('storage', (e) => {
+    if (e.key === ACCESS_KEY && e.newValue) accessToken.value = e.newValue
+    if (e.key === REFRESH_KEY && e.newValue) refreshToken.value = e.newValue
+  })
 
   async function fetchMe() {
     user.value = await api.get<User>(ROUTES.users.me)

@@ -3,17 +3,20 @@ import { ref, watch, nextTick, onBeforeUnmount, computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
-import { uploadImage, validateImage } from '@/api/upload'
+import { uploadImage, validateUpload, ACCEPT_UPLOAD, isImageUrl } from '@/api/upload'
 import { subscribeGroup, pusherEnabled } from '@/api/realtime'
 import { useAuthStore } from '@/stores/auth'
+import { useGroupsStore } from '@/stores/groups'
 import { useI18n } from '@/i18n'
 import Avatar from '@/components/Avatar.vue'
 import PrivateImage from '@/components/PrivateImage.vue'
+import FileAttachment from '@/components/FileAttachment.vue'
 import Modal from '@/components/Modal.vue'
 import type { Group, GroupMember, Message } from '@/types/api'
 
 const route = useRoute()
 const auth = useAuthStore()
+const groupsStore = useGroupsStore()
 const { t } = useI18n()
 
 const group = ref<Group | null>(null)
@@ -141,7 +144,7 @@ async function onFile(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-  const invalid = validateImage(file)
+  const invalid = validateUpload(file)
   if (invalid) {
     error.value = invalid
     input.value = ''
@@ -196,6 +199,10 @@ async function saveEdit(m: Message) {
   try {
     await api.patch(ROUTES.groups.editMessage(groupId(), m.id), {
       content: editDraft.value,
+      // Re-send the existing image so clearing the text of an image message is
+      // accepted (the DTO requires text OR an image, and a bare content edit
+      // would look like an empty message).
+      filesUrl: m.filesUrl?.length ? m.filesUrl : undefined,
     })
     editingId.value = ''
     await fetchMessages()
@@ -252,6 +259,8 @@ async function saveGroup() {
       githubLink: linkChanged ? link || null : undefined,
     })
     group.value = await api.get<Group>(ROUTES.groups.byId(groupId()))
+    // Push the fresh Group into the shared store so the sidebar reflects the rename too.
+    groupsStore.upsert(group.value)
     showGroupEdit.value = false
   } catch (e) {
     error.value = (e as { message?: string }).message ?? t('chat.failUpdate')
@@ -361,7 +370,8 @@ onBeforeUnmount(teardown)
             </template>
             <template v-else>
               <span v-if="m.content" class="m-text">{{ m.content }}</span>
-              <PrivateImage v-for="f in m.filesUrl" :key="f" :path="f" />
+              <PrivateImage v-for="f in m.filesUrl.filter(isImageUrl)" :key="f" :path="f" />
+              <FileAttachment v-for="f in m.filesUrl.filter((u) => !isImageUrl(u))" :key="f" :path="f" />
             </template>
           </div>
 
@@ -390,10 +400,10 @@ onBeforeUnmount(teardown)
     <div class="composer" :class="{ 'no-round': replyingTo }">
       <label class="attach" :aria-label="$t('chat.attachImage')">
         <svg aria-hidden="true" focusable="false" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.5 12.5 21a5 5 0 0 1-7-7l8-8a3.3 3.3 0 0 1 4.7 4.7l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.3-7.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        <input type="file" accept="image/*" class="visually-hidden" :aria-label="$t('chat.attachImage')" @change="onFile" />
+        <input type="file" :accept="ACCEPT_UPLOAD" class="visually-hidden" :aria-label="$t('chat.attachImage')" @change="onFile" />
       </label>
       <span v-if="uploadPct !== null" class="chip-file">{{ uploadPct }}%</span>
-      <span v-else-if="pendingFile.length" class="chip-file">{{ $t('chat.imageReady') }}</span>
+      <span v-else-if="pendingFile.length" class="chip-file">{{ isImageUrl(pendingFile[0]) ? $t('chat.imageReady') : $t('chat.fileReady') }}</span>
       <textarea
         v-model="draft"
         class="msg-input"

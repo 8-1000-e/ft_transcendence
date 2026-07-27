@@ -8,6 +8,7 @@ import { ROUTES } from '@/api/routes'
 import { useAuthStore } from '@/stores/auth'
 import { useGroupsStore } from '@/stores/groups'
 import { useI18n } from '@/i18n'
+import { relativeTime } from '@/utils/time'
 import Avatar from '@/components/Avatar.vue'
 import type { Group, Page, Post, Poster } from '@/types/api'
 
@@ -46,16 +47,7 @@ const loading = ref(false)
 const canSuggest = computed(() => !!auth.user?.has42)
 
 function fmtTime(iso?: string | null): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const mins = Math.round((Date.now() - d.getTime()) / 60000)
-  if (mins < 1) return t('forum.now')
-  if (mins < 60) return `${mins}m`
-  const h = Math.round(mins / 60)
-  if (h < 24) return `${h}h`
-  const days = Math.round(h / 24)
-  return `${days}d`
+  return relativeTime(iso, t)
 }
 
 function nameFromGroups(id: string): string {
@@ -163,7 +155,8 @@ watch(
             <div class="srow-name">{{ m.name || m.login }} <span class="ext">↗</span></div>
             <div class="srow-meta">
               <span v-if="m.final_mark != null" class="ok">{{ m.final_mark }}%</span>
-              <span v-if="m.location" class="on"> · {{ $t('common.online') }}</span>
+              <!-- The seat is the actionable bit ("go see them at e1r2p3"). -->
+              <span v-if="m.location" class="on"> · {{ m.location }}</span>
             </div>
           </div>
         </a>

@@ -48,7 +48,11 @@ async function logout() {
   await router.push('/login')
 }
 
-onMounted(loadActivity)
+onMounted(() => {
+  loadActivity()
+  // auth.user is cached from login and never refreshed — pull the latest karma etc. on open.
+  void auth.fetchMe()
+})
 </script>
 
 <template>

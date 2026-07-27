@@ -7,6 +7,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { NotifType } from 'generated/prisma/client';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { FtApiService } from 'src/ftapi/ftapi.services';
 
 // Online = seen in the last 2 minutes; lastSeenAt is touched by POST /me/ping
 // and GET /me.
@@ -19,6 +20,7 @@ const FRIEND_SELECT = {
   id: true,
   name: true,
   login: true,
+  ftId: true,
   ftPfpUrl: true,
   campus: true,
   lastSeenAt: true,
@@ -28,6 +30,7 @@ type FriendRow = {
   id: string;
   name: string;
   login: string | null;
+  ftId: string | null;
   ftPfpUrl: string | null;
   campus: string | null;
   lastSeenAt: Date;
@@ -38,6 +41,7 @@ export class FriendsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly ft: FtApiService,
   ) {}
 
   // Friends are between real, consenting 42 identities only (non-42 accounts are
@@ -50,7 +54,9 @@ export class FriendsService {
     if (!u?.ftId) throw new ForbiddenException('42 account required');
   }
 
-  private view(f: FriendRow) {
+  // `location` = the seat they're sitting at right now (live 42 read, never
+  // stored); null when they're not logged in on campus. `ftId` stays internal.
+  private view(f: FriendRow, location: string | null = null) {
     return {
       id: f.id,
       name: f.name,
@@ -58,6 +64,7 @@ export class FriendsService {
       ftPfpUrl: f.ftPfpUrl,
       campus: f.campus,
       online: isOnline(f.lastSeenAt),
+      location,
     };
   }
 
@@ -162,15 +169,27 @@ export class FriendsService {
         addressee: { select: FRIEND_SELECT },
       },
     });
+    const friends = rows.map((r) =>
+      r.requesterId === userId ? r.addressee : r.requester,
+    );
+
+    // One batched live-42 call for everyone's current seat; if the API is down
+    // the list still renders, just without locations.
+    let seats = new Map<string, string>();
+    const ftIds = friends.map((f) => f.ftId).filter((id): id is string => !!id);
+    if (ftIds.length) {
+      seats = await this.ft.getActiveLocations(ftIds).catch(() => new Map());
+    }
+
     return (
-      rows
-        .map((r) =>
-          this.view(r.requesterId === userId ? r.addressee : r.requester),
-        )
-        // online first, then alphabetical.
+      friends
+        .map((f) => this.view(f, (f.ftId && seats.get(f.ftId)) || null))
+        // on campus first, then online, then alphabetical.
         .sort(
           (a, b) =>
-            Number(b.online) - Number(a.online) || a.name.localeCompare(b.name),
+            Number(!!b.location) - Number(!!a.location) ||
+            Number(b.online) - Number(a.online) ||
+            a.name.localeCompare(b.name),
         )
     );
   }

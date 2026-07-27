@@ -3,12 +3,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
-import { publicUrl, uploadImage, validateImage, deleteUpload } from '@/api/upload'
+import { publicUrl, uploadImage, validateUpload, deleteUpload, ACCEPT_UPLOAD, isImageUrl } from '@/api/upload'
 import { useAuthStore } from '@/stores/auth'
 import { usePaginated } from '@/composables/pagination'
 import { useI18n } from '@/i18n'
+import { relativeTime } from '@/utils/time'
 import Avatar from '@/components/Avatar.vue'
 import ImageCarousel from '@/components/ImageCarousel.vue'
+import FileAttachment from '@/components/FileAttachment.vue'
 import CommentNode from '@/components/CommentNode.vue'
 import type { Page, Post, Comment, VoteValue } from '@/types/api'
 
@@ -23,7 +25,7 @@ const {
   items: comments,
   loading: commentsLoading,
   done: commentsDone,
-  loadMore: loadMoreComments,
+  loadMore: loadMoreCommentsPage,
   reload: reloadComments,
 } = usePaginated<Comment>((cursor) =>
   api.get<Page<Comment>>(
@@ -33,6 +35,18 @@ const {
 const newComment = ref('')
 const loading = ref(false)
 const error = ref('')
+
+// A comment posted from here is appended locally, so a later page can return it
+// again — drop duplicates or Vue renders two rows with the same key.
+async function loadMoreComments() {
+  await loadMoreCommentsPage()
+  const seen = new Set<string>()
+  comments.value = comments.value.filter((c) => {
+    if (seen.has(c.id)) return false
+    seen.add(c.id)
+    return true
+  })
+}
 
 // Author-only inline edit (title, body and image) — mirrors the feed composer.
 const isAuthor = computed(() => !!auth.user && post.value?.writer === auth.user.id)
@@ -52,14 +66,7 @@ function score(v: { upvotes: number; downvotes: number }): number {
   return v.upvotes - v.downvotes
 }
 function timeAgo(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const mins = Math.round((Date.now() - d.getTime()) / 60000)
-  if (mins < 1) return t('forum.now')
-  if (mins < 60) return `${mins}m`
-  const h = Math.round(mins / 60)
-  if (h < 24) return `${h}h`
-  return `${Math.round(h / 24)}d`
+  return relativeTime(iso, t)
 }
 
 async function loadPost() {
@@ -144,7 +151,7 @@ async function onEditFile(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-  const invalid = validateImage(file)
+  const invalid = validateUpload(file)
   if (invalid) {
     error.value = invalid
     input.value = ''
@@ -249,10 +256,11 @@ onMounted(load)
               <label class="btn-ghost" style="height: 38px; cursor: pointer">
                 <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none" style="margin-right: 6px"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7" /><circle cx="9" cy="10" r="1.8" stroke="currentColor" stroke-width="1.7" /><path d="m4 18 5-4 4 3 3-3 4 3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
                 {{ editUploadPct !== null ? editUploadPct + '%' : editFiles.length ? $t('forum.imageReady') : $t('forum.image') }}
-                <input type="file" accept="image/*" hidden :aria-label="$t('forum.attachImage')" @change="onEditFile" />
+                <input type="file" :accept="ACCEPT_UPLOAD" hidden :aria-label="$t('forum.attachImage')" @change="onEditFile" />
               </label>
               <span v-if="editFiles.length" style="display: inline-flex; align-items: center; gap: 6px">
-                <img :src="publicUrl(editFiles[0])" alt="" style="width: 34px; height: 34px; object-fit: cover; border-radius: 6px" @error="($event.target as HTMLImageElement).style.display = 'none'" />
+                <img v-if="isImageUrl(editFiles[0])" :src="publicUrl(editFiles[0])" alt="" style="width: 34px; height: 34px; object-fit: cover; border-radius: 6px" @error="($event.target as HTMLImageElement).style.display = 'none'" />
+                <span v-else class="chip">{{ $t('forum.fileReady') }}</span>
                 <button type="button" class="txt-btn" :aria-label="$t('common.remove')" @click="removeEditImage">✕</button>
               </span>
             </div>
@@ -265,7 +273,8 @@ onMounted(load)
         <template v-else>
           <h1 v-if="post.title" class="pcard-title" style="font-size: 22px">{{ post.title }}</h1>
           <p class="pcard-body" style="font-size: 14.5px; line-height: 1.7">{{ post.content }}</p>
-          <ImageCarousel v-if="post.filesUrl.length" :images="post.filesUrl.map(publicUrl)" :alt="post.title || $t('forum.postImage')" />
+          <ImageCarousel v-if="post.filesUrl.some(isImageUrl)" :images="post.filesUrl.filter(isImageUrl).map(publicUrl)" :alt="post.title || $t('forum.postImage')" />
+          <FileAttachment v-for="f in post.filesUrl.filter((u) => !isImageUrl(u))" :key="f" :path="f" />
         </template>
         <div class="c-foot" style="margin-top: 16px">
           <span class="votepill" :style="!has42 ? 'opacity:.45' : ''">

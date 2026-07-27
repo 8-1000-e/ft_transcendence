@@ -1,4 +1,5 @@
 import { API_BASE_URL, ROUTES } from './routes'
+import { REFRESH_KEY } from './tokens'
 import type { ApiError, Tokens } from '@/types/auth'
 
 interface RequestOptions {
@@ -24,24 +25,37 @@ function buildError(statusCode: number, payload: unknown): ApiError {
   return { statusCode, message }
 }
 
+async function postRefresh(
+  refresh_token: string,
+  store: { setTokens: (t: Tokens) => void },
+): Promise<boolean> {
+  const res = await fetch(`${API_BASE_URL}${ROUTES.auth.refresh}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token }),
+  })
+  if (!res.ok) return false
+  store.setTokens((await res.json()) as Tokens)
+  return true
+}
+
 async function tryRefresh(): Promise<boolean> {
   if (refreshPromise) return refreshPromise
 
   refreshPromise = (async () => {
     const store = await getAuthStore()
-    const refresh_token = store.refreshToken
-    if (!refresh_token) return false
+    // Read from storage, not from this tab's memory: refresh ROTATES the token,
+    // so a sibling tab may already have replaced the one we're holding.
+    const attempted = localStorage.getItem(REFRESH_KEY) ?? store.refreshToken
+    if (!attempted) return false
 
-    const res = await fetch(`${API_BASE_URL}${ROUTES.auth.refresh}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token }),
-    })
-    if (!res.ok) return false
+    if (await postRefresh(attempted, store)) return true
 
-    const tokens = (await res.json()) as Tokens
-    store.setTokens(tokens)
-    return true
+    // Lost the race: another tab rotated it while we were in flight. Retry once
+    // with the token it just wrote instead of logging this tab out.
+    const latest = localStorage.getItem(REFRESH_KEY)
+    if (latest && latest !== attempted) return postRefresh(latest, store)
+    return false
   })().finally(() => {
     refreshPromise = null
   })

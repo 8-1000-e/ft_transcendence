@@ -98,6 +98,14 @@ export const useGroupsStore = defineStore('groups', () => {
     error.value = ''
   }
 
+  // Keep the shared list in sync after an edit, without refetching (a fetchGroups()
+  // here would restart the sync-poll and flash the rail's loading state).
+  function upsert(g: Group) {
+    const i = groups.value.findIndex((x) => x.id === g.id)
+    if (i >= 0) groups.value[i] = g
+    else groups.value.push(g)
+  }
+
   function projects(): ProjectRef[] {
     const seen = new Map<string, string>()
     for (const g of groups.value) {
@@ -108,5 +116,5 @@ export const useGroupsStore = defineStore('groups', () => {
     return [...seen].map(([projectId, projectName]) => ({ projectId, projectName }))
   }
 
-  return { groups, loaded, loading, syncing, error, fetchGroups, projects, reset }
+  return { groups, loaded, loading, syncing, error, fetchGroups, projects, reset, upsert }
 })

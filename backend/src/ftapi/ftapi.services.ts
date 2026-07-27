@@ -8,6 +8,8 @@ import {
   FtTeam,
   FtUserSummary,
   FtMember,
+  FtActiveLocation,
+  FtApiError,
 } from './ftapi.types';
 import { fetchWithRetry } from 'src/utils/http';
 
@@ -19,6 +21,8 @@ import { fetchWithRetry } from 'src/utils/http';
 const COMMON_CORE_CURSUS_ID = 21;
 // How long a live-fetched 42 member profile stays in memory (never persisted).
 const MEMBER_TTL_MS = 10 * 60 * 1000;
+// Seats change often — keep the live location cache short.
+const LOCATION_TTL_MS = 60 * 1000;
 const COMMON_CORE_SLUGS = new Set<string>([
   '42cursus-libft',
   '42cursus-ft_printf',
@@ -174,6 +178,10 @@ export class FtApiService {
   private projectNameCache = new Map<string, string>();
   // In-memory only (never written to the DB) — see getUsersByIds.
   private memberCache = new Map<string, { member: FtMember; at: number }>();
+  private locationCache = new Map<
+    string,
+    { host: string | null; at: number }
+  >();
 
   constructor(
     private readonly config: ConfigService,
@@ -262,6 +270,38 @@ export class FtApiService {
     return found;
   }
 
+  // Where a set of 42 users is currently sitting ("e1r2p3"), read live and never
+  // stored. One batched call; short TTL because a seat changes often. Users with
+  // no open session are cached as absent so we don't re-ask on every render.
+  async getActiveLocations(ftIds: string[]): Promise<Map<string, string>> {
+    const now = Date.now();
+    const out = new Map<string, string>();
+    const missing: string[] = [];
+    for (const id of ftIds) {
+      const hit = this.locationCache.get(id);
+      if (hit && now - hit.at < LOCATION_TTL_MS) {
+        if (hit.host) out.set(id, hit.host);
+      } else missing.push(id);
+    }
+
+    for (let i = 0; i < missing.length; i += 100) {
+      const chunk = missing.slice(i, i + 100);
+      const locations = await this.Get<FtActiveLocation[]>(
+        `v2/locations?filter[user_id]=${chunk.join(',')}&filter[active]=true&page[size]=100`,
+      );
+      const seen = new Set<string>();
+      for (const l of locations) {
+        const id = String(l.user.id);
+        seen.add(id);
+        this.locationCache.set(id, { host: l.host, at: now });
+        if (l.host) out.set(id, l.host);
+      }
+      for (const id of chunk)
+        if (!seen.has(id)) this.locationCache.set(id, { host: null, at: now });
+    }
+    return out;
+  }
+
   private async getProjectName(projectId: string): Promise<string> {
     const cached = this.projectNameCache.get(projectId);
     if (cached) return cached;
@@ -275,8 +315,7 @@ export class FtApiService {
   async Get<T>(path: string, userToken?: string): Promise<T> {
     const token = userToken ?? (await this.getAppToken());
     const res = await fetchWithRetry(`https://api.intra.42.fr/${path}`, token);
-    if (!res.ok)
-      throw new Error(`42 API request failed with status ${res.status}`);
+    if (!res.ok) throw new FtApiError(res.status);
     return (await res.json()) as T;
   }
 

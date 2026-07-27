@@ -5,12 +5,15 @@ import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
 import { useAuthStore } from '@/stores/auth'
 import { useGroupsStore } from '@/stores/groups'
+import { useI18n } from '@/i18n'
+import { relativeTime } from '@/utils/time'
 import Modal from '@/components/Modal.vue'
 import Avatar from '@/components/Avatar.vue'
 import type { NotificationItem, NotificationsPage } from '@/types/api'
 
 const auth = useAuthStore()
 const groups = useGroupsStore()
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
@@ -53,6 +56,12 @@ function onEscape(e: KeyboardEvent) {
 onMounted(() => window.addEventListener('keydown', onEscape))
 onUnmounted(() => window.removeEventListener('keydown', onEscape))
 
+// Freeze the page while a popover/drawer is open (on mobile it scrolled behind).
+watch([showMenu, showNotifs, drawerOpen], ([m, n, d]) => {
+  document.documentElement.classList.toggle('popover-open', m || n || d)
+})
+onUnmounted(() => document.documentElement.classList.remove('popover-open'))
+
 async function refreshNotifs() {
   if (!auth.user?.has42) return
   try {
@@ -83,11 +92,7 @@ function openNotif(n: NotificationItem) {
 }
 
 function notifTime(iso: string): string {
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
-  if (mins < 1) return 'now'
-  if (mins < 60) return `${mins}m`
-  const h = Math.round(mins / 60)
-  return h < 24 ? `${h}h` : `${Math.round(h / 24)}d`
+  return relativeTime(iso, t)
 }
 
 onMounted(() => {
@@ -396,8 +401,9 @@ async function cancelDeletion() {
   top: calc(100% + 8px);
   right: 0;
   z-index: 66;
-  width: 320px;
-  max-height: 420px;
+  /* Never wider than the phone, never taller than what's left of the screen. */
+  width: min(320px, calc(100vw - 24px));
+  max-height: min(420px, calc(100dvh - 92px));
   overflow-y: auto;
   background: var(--surface-2);
   border: 1px solid var(--border);

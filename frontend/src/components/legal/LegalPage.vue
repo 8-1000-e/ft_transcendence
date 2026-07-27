@@ -10,6 +10,16 @@ function goBack() {
   if (window.history.length > 1) router.back()
   else router.push('/')
 }
+
+function onBodyClick(e: MouseEvent) {
+  const a = (e.target as HTMLElement).closest('a')
+  if (!a) return
+  const href = a.getAttribute('href') ?? ''
+  // Only intercept same-app absolute paths; leave external/mailto/anchors alone.
+  if (!href.startsWith('/') || href.startsWith('//')) return
+  e.preventDefault()
+  void router.push(href)
+}
 </script>
 
 <template>
@@ -36,7 +46,7 @@ function goBack() {
       <article class="doc">
         <h1 class="doc-title">{{ title }}</h1>
         <p v-if="updated" class="doc-updated">{{ $t('legal.lastUpdated') }}: {{ updated }}</p>
-        <div class="doc-body">
+        <div class="doc-body" @click="onBodyClick">
           <slot />
         </div>
       </article>

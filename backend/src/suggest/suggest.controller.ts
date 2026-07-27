@@ -16,18 +16,4 @@ export class SuggestController {
   ): Promise<SuggestedUser[]> {
     return this.suggesService.getSuggestForMe(projectId, req.user.sub);
   }
-
-  @Get(`suggest/:projectId/:campusId`)
-  @UseGuards(JwtAuthGuard)
-  getSuggest(
-    @Param('projectId') projectId: string,
-    @Param('campusId') campusId: string,
-    @Req() req: AuthedRequest,
-  ): Promise<SuggestedUser[]> {
-    return this.suggesService.getSuggestByProject(
-      projectId,
-      campusId,
-      req.user.sub,
-    );
-  }
 }

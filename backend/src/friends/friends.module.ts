@@ -4,10 +4,11 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 import { FriendsController } from './friends.controller';
 import { FriendsService } from './friends.service';
 import { NotificationsModule } from 'src/notifications/notifications.module';
+import { FtApiModule } from 'src/ftapi/ftapi.module';
 
 @Module({
   // AuthModule provides JwtService for the JwtAuthGuard used on the controller.
-  imports: [AuthModule, PrismaModule, NotificationsModule],
+  imports: [AuthModule, PrismaModule, NotificationsModule, FtApiModule],
   controllers: [FriendsController],
   providers: [FriendsService],
   exports: [FriendsService],

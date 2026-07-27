@@ -441,28 +441,6 @@
   font-weight: 700;
   box-shadow: 0 2px 10px -3px rgba(110, 123, 242, 0.9);
 }
-.rail-foot {
-  margin-top: auto;
-  padding: 13px 12px 4px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.rail-foot .l {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-.rail-foot .n {
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--accent-2);
-}
-
 /* Link-42 CTA (non-42 accounts) */
 .link42 {
   margin: 6px 6px;
@@ -666,39 +644,7 @@
   line-height: 1.55;
   margin: 0;
   white-space: pre-wrap;
-}
-.c-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 10px;
-  font-family: var(--mono);
-  font-size: 11.5px;
-  color: var(--accent-2);
-  border: 1px solid rgba(110, 123, 242, 0.28);
-  background: rgba(110, 123, 242, 0.07);
-  padding: 6px 11px;
-  border-radius: 8px;
-  text-decoration: none;
-}
-.c-layout {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-}
-.c-layout .c-main {
-  flex: 1;
-  min-width: 0;
-}
-.p-img {
-  margin-top: 12px;
-  max-width: 100%;
-  max-height: 340px;
-  border-radius: 12px;
-  border: 1px solid var(--border-soft);
-  display: block;
-}
-.c-foot {
+}.c-foot {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -898,11 +844,7 @@
 .stat b {
   color: var(--text);
   font-weight: 700;
-}
-.stat-dot {
-  color: var(--dim);
-}
-.proj-cat {
+}.proj-cat {
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.1em;
@@ -911,26 +853,7 @@
   border: 1px solid rgba(110, 123, 242, 0.35);
   padding: 3px 8px;
   border-radius: 999px;
-}
-.follow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--border-soft);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-2);
-  font-size: 12.5px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.follow:hover {
-  border-color: rgba(110, 123, 242, 0.5);
-  color: var(--accent-ink);
-}
-.pcard {
+}.pcard {
   display: flex;
   gap: 15px;
   border-radius: 15px;
@@ -946,46 +869,9 @@
   align-items: center;
   gap: 5px;
   padding-top: 2px;
-}
-.abtn {
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  border: 1px solid var(--border-soft);
-  background: rgba(255, 255, 255, 0.03);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.1s, border-color 0.14s, background 0.14s;
-}
-.abtn:active {
-  transform: scale(0.92);
-}
-.abtn.yes {
-  color: var(--up);
-}
-.abtn.yes:hover,
-.abtn.yes.on {
-  border-color: rgba(94, 224, 138, 0.55);
-  background: rgba(94, 224, 138, 0.14);
-}
-.abtn.no {
-  color: var(--down);
-}
-.abtn.no:hover,
-.abtn.no.on {
-  border-color: rgba(239, 109, 114, 0.5);
-  background: rgba(239, 109, 114, 0.12);
-}
-.approve .score {
+}.approve .score {
   font-size: 13px;
-}
-.pcard-main {
-  flex: 1;
-  min-width: 0;
-}
-.pcard-head {
+}.pcard-head {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -1019,14 +905,7 @@
   line-height: 1.6;
   margin: 0;
   white-space: pre-wrap;
-}
-.pcard-foot {
-  display: flex;
-  gap: 8px;
-  margin-top: 13px;
-  flex-wrap: wrap;
-}
-.fab {
+}.fab {
   position: fixed;
   right: max(28px, calc(50% - 720px));
   bottom: 30px;
@@ -1474,19 +1353,7 @@ a.m-author:hover {
   font-size: 10.5px;
   color: var(--muted);
   margin: 0 0 12px;
-}
-.panel-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 2px;
-  font-family: var(--mono);
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--accent-2);
-}
-.panel-empty {
+}.panel-empty {
   font-size: 12px;
   color: var(--muted);
   padding: 4px 4px 2px;
@@ -2110,6 +1977,50 @@ a.srow:hover .srow-name {
   .live i {
     animation: none;
   }
+}
+
+/* ── Mobile topbar: the brand squeezed the search into a sliver ── */
+@media (max-width: 640px) {
+  .topbar {
+    gap: 10px;
+    padding: 0 12px;
+  }
+  /* Drop the logo + product name; the hamburger already anchors the bar. */
+  .brand {
+    display: none;
+  }
+  .search {
+    max-width: none;
+    min-width: 0;
+  }
+  .search kbd,
+  .pill-name {
+    display: none;
+  }
+}
+
+/* Popovers must scroll inside themselves instead of spilling past the
+   viewport (the profile menu used to run down over the footer). */
+@media (max-width: 900px) {
+  .menu {
+    max-height: calc(100dvh - 88px);
+    overflow-y: auto;
+  }
+}
+
+/* Freeze the page behind an open menu/drawer — it used to scroll underneath.
+   Modal.vue sets an inline overflow, which correctly wins over this class. */
+html.popover-open,
+html.popover-open body {
+  overflow: hidden;
+}
+
+/* The floating "new post" button sat on top of the footer; tuck it away once
+   the footer scrolls into view (see ProjectFeedView's observer). */
+.fab.tucked {
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
 }
 
 /* ── Accessibility ─────────────────────────────────────────────── */

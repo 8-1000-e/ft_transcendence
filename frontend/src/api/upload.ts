@@ -2,13 +2,31 @@ import { API_BASE_URL } from './routes'
 import { useAuthStore } from '@/stores/auth'
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+const DOC_TYPES = ['application/pdf', 'text/plain', 'text/markdown', 'text/csv']
+const IMAGE_EXT = /\.(jpe?g|png|gif|webp)$/i
 const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
 
+// `accept` attribute for file inputs — mirrors the server's allow-list.
+export const ACCEPT_UPLOAD = 'image/*,.pdf,.txt,.md,.csv'
+
 // Client-side gate mirroring the server's fileFilter, for instant feedback.
-export function validateImage(file: File): string | null {
-  if (!IMAGE_TYPES.includes(file.type)) return 'Only JPEG, PNG, GIF or WebP images'
-  if (file.size > MAX_SIZE) return 'Image must be 5 MB or smaller'
+export function validateUpload(file: File): string | null {
+  // Some browsers send an empty type for .md/.csv — fall back to the extension.
+  const byType = [...IMAGE_TYPES, ...DOC_TYPES].includes(file.type)
+  const byExt = /\.(jpe?g|png|gif|webp|pdf|txt|md|csv)$/i.test(file.name)
+  if (!byType && !byExt) return 'Allowed: images, PDF, TXT, MD or CSV'
+  if (file.size > MAX_SIZE) return 'File must be 5 MB or smaller'
   return null
+}
+
+// Images render inline; anything else is shown as a downloadable attachment.
+export function isImageUrl(url: string): boolean {
+  return IMAGE_EXT.test(url)
+}
+
+// The stored name is a uuid; show the extension so the file type is obvious.
+export function fileLabel(url: string): string {
+  return url.split('/').pop() ?? 'file'
 }
 
 // XHR (not fetch) so we can report upload progress via onProgress(0..100).
