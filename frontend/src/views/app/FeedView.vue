@@ -4,59 +4,57 @@ import { RouterLink } from 'vue-router'
 import { api } from '@/api/client'
 import { ROUTES } from '@/api/routes'
 import { useAuthStore } from '@/stores/auth'
-import { useGroupsStore } from '@/stores/groups'
+import { usePaginated } from '@/composables/pagination'
+import { useI18n } from '@/i18n'
 import ImageCarousel from '@/components/ImageCarousel.vue'
 import { publicUrl } from '@/api/upload'
 import type { Page, Post, VoteValue } from '@/types/api'
 
 const auth = useAuthStore()
-const groups = useGroupsStore()
+const { t } = useI18n()
 
 interface FeedPost extends Post {
   community: string
 }
-interface BrowseProject {
-  id: string
-  name: string
-  postCount: number
-  category: 'core' | 'specialization'
-}
-
-const rawPosts = ref<FeedPost[]>([])
-const loading = ref(true)
-const error = ref('')
-
-type SortKey = 'hot' | 'new' | 'top' | 'discussed'
-const SORTS: { key: SortKey; label: string }[] = [
-  { key: 'hot', label: 'Hot' },
-  { key: 'new', label: 'New' },
-  { key: 'top', label: 'Top' },
-  { key: 'discussed', label: 'Discussed' },
-]
-const sort = ref<SortKey>('hot')
-
-// Client-side pagination over the sorted aggregate: 7 at a time + infinite scroll.
-const PAGE = 7
-const shown = ref(PAGE)
 
 const has42 = computed(() => !!auth.user?.has42)
+
+// Server-side feed: latest posts across every catalogued project, cursor-paginated.
+const {
+  items: posts,
+  loading,
+  done,
+  loadMore,
+  reload,
+} = usePaginated<FeedPost>((cursor) =>
+  api.get<Page<FeedPost>>(`${ROUTES.feed}?limit=20${cursor ? `&cursor=${cursor}` : ''}`),
+)
+
+type SortKey = 'hot' | 'new' | 'top' | 'discussed'
+const SORTS: { key: SortKey }[] = [
+  { key: 'hot' },
+  { key: 'new' },
+  { key: 'top' },
+  { key: 'discussed' },
+]
+const sort = ref<SortKey>('hot')
 
 function score(p: Post): number {
   return p.upvotes - p.downvotes
 }
 function ageHours(iso: string): number {
-  const t = new Date(iso).getTime()
-  if (Number.isNaN(t)) return 9999
-  return Math.max(0, (Date.now() - t) / 3_600_000)
+  const t2 = new Date(iso).getTime()
+  if (Number.isNaN(t2)) return 9999
+  return Math.max(0, (Date.now() - t2) / 3_600_000)
 }
 // Upvote-weighted with a gentle time decay so fresh, well-received posts rise.
 function hotRank(p: FeedPost): number {
   return score(p) / Math.pow(ageHours(p.postedAt) + 2, 1.3)
 }
 
-// Feed is a bounded window of posts, so sorting stays client-side (no cursor to break); tabs re-rank the same set.
+// Re-rank the loaded window client-side; tabs never refetch.
 const items = computed<FeedPost[]>(() => {
-  const list = rawPosts.value.slice()
+  const list = posts.value.slice()
   const recent = (a: FeedPost, b: FeedPost) => +new Date(b.postedAt) - +new Date(a.postedAt)
   if (sort.value === 'new') list.sort(recent)
   else if (sort.value === 'top') list.sort((a, b) => score(b) - score(a) || recent(a, b))
@@ -65,19 +63,13 @@ const items = computed<FeedPost[]>(() => {
   else list.sort((a, b) => hotRank(b) - hotRank(a) || recent(a, b))
   return list
 })
-const visible = computed(() => items.value.slice(0, shown.value))
-
-// Reset to the first page when the sort changes so it starts from the top.
-watch(sort, () => {
-  shown.value = PAGE
-})
 
 function fmtTime(iso?: string | null): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   const mins = Math.round((Date.now() - d.getTime()) / 60000)
-  if (mins < 1) return 'now'
+  if (mins < 1) return t('forum.now')
   if (mins < 60) return `${mins}m`
   const h = Math.round(mins / 60)
   if (h < 24) return `${h}h`
@@ -88,51 +80,15 @@ function code(name?: string | null): string {
   return (name ?? '??').replace(/[^a-zA-Z0-9]/g, '').slice(0, 2).toUpperCase() || '??'
 }
 
-const discover = ref(false)
-
-async function memberProjects(): Promise<{ id: string; name: string }[]> {
-  if (!has42.value) return []
-  if (!groups.loaded) await groups.fetchGroups()
-  return groups.projects().map((p) => ({ id: p.projectId, name: p.projectName }))
-}
-
-async function popularProjects(): Promise<{ id: string; name: string }[]> {
-  const projects = await api.get<BrowseProject[]>(ROUTES.projects).catch(() => [])
-  return projects
-    .filter((p) => p.category === 'core' && p.postCount > 0)
-    .sort((a, b) => b.postCount - a.postCount)
-    .slice(0, 6)
-    .map((p) => ({ id: p.id, name: p.name }))
-}
-
-async function fetchFrom(src: { id: string; name: string }[]): Promise<FeedPost[]> {
-  const lists = await Promise.all(
-    src.slice(0, 6).map((s) =>
-      api
-        .get<Page<Post>>(`${ROUTES.posts.listByProject(s.id)}?limit=20`)
-        .then((page) => page.items.map((p) => ({ ...p, community: s.name })))
-        .catch(() => [] as FeedPost[]),
-    ),
-  )
-  return lists.flat()
-}
-
-async function load() {
-  loading.value = true
-  error.value = ''
-  discover.value = false
+// Swap a single post in place after a vote — reloading the whole feed would
+// blank the list and lose scroll position. /post/:id has no `community`, keep it.
+async function replacePost(id: string) {
   try {
-    let result = await fetchFrom(await memberProjects())
-    // No dead-end for non-members: if the member feed is empty, fall back to what's active across the school.
-    if (!result.length) {
-      discover.value = true
-      result = await fetchFrom(await popularProjects())
-    }
-    rawPosts.value = result
-  } catch (e) {
-    error.value = (e as { message?: string }).message ?? 'Failed to load your feed'
-  } finally {
-    loading.value = false
+    const fresh = await api.get<Post>(ROUTES.posts.single(id))
+    const i = posts.value.findIndex((p) => p.id === id)
+    if (i !== -1) posts.value[i] = { ...fresh, community: posts.value[i].community }
+  } catch {
+    /* ignore */
   }
 }
 
@@ -140,20 +96,21 @@ async function vote(post: FeedPost, value: VoteValue) {
   if (!has42.value) return
   try {
     await api.post(ROUTES.posts.vote(post.id), { vote: value })
-    await load()
+    await replacePost(post.id)
   } catch {
     /* ignore */
   }
 }
 
-onMounted(load)
+watch(sort, () => window.scrollTo({ top: 0 }))
+onMounted(reload)
 </script>
 
 <template>
   <section>
     <h1 class="h1">{{ $t('home.title') }}</h1>
     <p class="eyebrow">
-      // {{ discover ? $t('home.sub.discover') : $t('home.sub.mine') }} · {{ $t('home.sub.sortedBy', { sort: $t('home.sort.' + sort) }) }}
+      // {{ $t('home.sub.discover') }} · {{ $t('home.sub.sortedBy', { sort: $t('home.sort.' + sort) }) }}
     </p>
 
     <div v-if="!has42" class="readonly">
@@ -165,7 +122,7 @@ onMounted(load)
       <button class="readonly-btn" @click="auth.link42()"><span class="badge42-sq" style="width: 18px; height: 18px">42</span>{{ $t('common.linkYour42') }}</button>
     </div>
 
-    <div v-if="!loading && rawPosts.length" class="sortbar" role="tablist" aria-label="Sort posts">
+    <div v-if="posts.length" class="sortbar" role="tablist" aria-label="Sort posts">
       <button
         v-for="s in SORTS"
         :key="s.key"
@@ -177,16 +134,15 @@ onMounted(load)
       >{{ $t('home.sort.' + s.key) }}</button>
     </div>
 
-    <p v-if="error" class="err">{{ error }}</p>
-    <p v-if="loading" class="muted">{{ $t('home.loading') }}</p>
-    <p v-else-if="!items.length" class="muted">
+    <p v-if="loading && !posts.length" class="muted" role="status">{{ $t('home.loading') }}</p>
+    <p v-else-if="!posts.length" class="muted">
       {{ $t('home.empty.pre') }}
       <RouterLink :to="{ name: 'browse' }" style="color: var(--accent-2)">{{ $t('home.empty.link') }}</RouterLink>
       {{ $t('home.empty.post') }}
     </p>
 
     <div v-else class="feed">
-      <article v-for="p in visible" :key="p.id" class="card">
+      <article v-for="p in items" :key="p.id" class="card">
         <div class="c-head">
           <RouterLink :to="{ name: 'project', params: { projectId: p.projectId } }" style="display: inline-flex; align-items: center; gap: 9px; text-decoration: none">
             <span class="av av-b" style="width: 22px; height: 22px; font-size: 9px; border-radius: 6px">{{ code(p.community) }}</span>
@@ -222,7 +178,7 @@ onMounted(load)
         </div>
       </article>
 
-      <button v-if="shown < items.length" class="btn-ghost" style="margin: 16px auto 0; display: flex" @click="shown += PAGE">{{ $t('common.loadMore') }}</button>
+      <button v-if="!done" class="btn-ghost" style="margin: 16px auto 0; display: flex" :disabled="loading" @click="loadMore">{{ loading ? $t('common.loading') : $t('common.loadMore') }}</button>
       <p v-else class="muted center" style="padding: 12px; font-size: 12px">{{ $t('home.endOfFeed') }}</p>
     </div>
   </section>

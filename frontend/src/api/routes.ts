@@ -4,6 +4,7 @@ export const API_BASE_URL: string =
 
 export const ROUTES = {
   projects: '/projects',
+  feed: '/feed',
   search: (q: string) => `/search?q=${encodeURIComponent(q)}`,
 
   auth: {
@@ -59,6 +60,7 @@ export const ROUTES = {
   groups: {
     list: '/groups',
     byId: (groupId: string) => `/groups/${groupId}`,
+    members: (groupId: string) => `/groups/${groupId}/members`,
     edit: (groupId: string) => `/groups/${groupId}`,
     messages: (groupId: string) => `/groups/${groupId}/messages`,
     sendMessage: (groupId: string) => `/groups/${groupId}/message`,

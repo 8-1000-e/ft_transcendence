@@ -28,6 +28,12 @@ export class GroupController {
     return this.groupService.getGroup(groupId, req.user.sub);
   }
 
+  @Get('groups/:groupId/members')
+  @UseGuards(JwtAuthGuard)
+  getMembers(@Param('groupId') groupId: string, @Req() req: AuthedRequest) {
+    return this.groupService.getMembers(groupId, req.user.sub);
+  }
+
   @Patch('groups/:groupId')
   @UseGuards(JwtAuthGuard)
   editGroup(

@@ -22,6 +22,14 @@ export interface Group {
   usersId: string[]
 }
 
+// Live 42 profile of a group member (never persisted server-side).
+export interface GroupMember {
+  ftId: string
+  login: string
+  name: string
+  ppUrl: string | null
+}
+
 export interface ProjectRef {
   projectId: string
   projectName: string

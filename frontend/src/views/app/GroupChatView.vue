@@ -10,13 +10,14 @@ import { useI18n } from '@/i18n'
 import Avatar from '@/components/Avatar.vue'
 import PrivateImage from '@/components/PrivateImage.vue'
 import Modal from '@/components/Modal.vue'
-import type { Group, Message } from '@/types/api'
+import type { Group, GroupMember, Message } from '@/types/api'
 
 const route = useRoute()
 const auth = useAuthStore()
 const { t } = useI18n()
 
 const group = ref<Group | null>(null)
+const members = ref<GroupMember[]>([])
 const messages = ref<Message[]>([])
 const draft = ref('')
 const pendingFile = ref<string[]>([])
@@ -101,6 +102,17 @@ async function fetchMessages(force = false): Promise<void> {
   }
 }
 
+// Teammates' real 42 pictures — served live by the backend (never stored) and
+// loaded separately so the slow 42 API never delays the chat itself.
+async function loadMembers(gid: string) {
+  try {
+    const list = await api.get<GroupMember[]>(ROUTES.groups.members(gid))
+    if (gid === groupId()) members.value = list
+  } catch {
+    /* keep the initials fallback */
+  }
+}
+
 async function load() {
   const gid = groupId()
   loading.value = true
@@ -108,12 +120,14 @@ async function load() {
   // Clear stale content so switching groups doesn't flash the previous chat.
   messages.value = []
   group.value = null
+  members.value = []
   try {
     const g = await api.get<Group>(ROUTES.groups.byId(gid))
     if (gid !== groupId()) return
     group.value = g
     groupName.value = g.groupName
     githubLink.value = g.githubLink ?? ''
+    void loadMembers(gid)
     await fetchMessages(true)
   } catch (e) {
     if (gid !== groupId()) return
@@ -274,11 +288,20 @@ onBeforeUnmount(teardown)
     <header class="chat-head">
       <span class="stack">
         <Avatar
-          v-for="uid in (group?.usersId ?? []).slice(0, 4)"
+          v-for="m in members.slice(0, 4)"
+          :key="m.ftId"
+          class="av av-b"
+          :pfp-url="m.ppUrl ?? ''"
+          :name="m.name"
+          :title="`${m.name} (@${m.login})`"
+          :size="34"
+        />
+        <!-- 42 profiles not loaded yet (or API down): keep the member count visible. -->
+        <Avatar
+          v-for="uid in members.length ? [] : (group?.usersId ?? []).slice(0, 4)"
           :key="uid"
           class="av av-b"
-          :user-id="uid"
-          :name="uid"
+          name="??"
           :size="34"
         />
         <span v-if="!group?.usersId?.length" class="av av-b ch-av">{{ (group?.groupName ?? '?').slice(0, 2).toUpperCase() }}</span>
