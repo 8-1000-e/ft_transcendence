@@ -173,6 +173,32 @@ export class PostsService {
     };
   }
 
+  // Home feed: the latest posts across ALL catalogued projects (core + spec),
+  // not just the viewer's group projects — so new threads anywhere surface.
+  async getFeed(userId: string, cursor?: string, limit?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const take = this.pageLimit(limit);
+    const rows = await this.prisma.projectsPost.findMany({
+      where: { project: { category: { not: null } } },
+      orderBy: [{ postedAt: 'desc' }, { id: 'desc' }],
+      take: take + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      include: {
+        _count: { select: { chats: true } },
+        votes: true,
+        user: { select: this.AUTHOR_SELECT },
+        project: { select: { name: true } },
+      },
+    });
+    const hasMore = rows.length > take;
+    const page = hasMore ? rows.slice(0, take) : rows;
+    const items = page.map((r) => ({
+      ...this.mapVoted(r, user, userId),
+      community: r.project.name,
+    }));
+    return { items, nextCursor: hasMore ? page[page.length - 1].id : null };
+  }
+
   // A single post (the thread page) — avoids refetching a whole project feed.
   async getPost(postId: string, userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });

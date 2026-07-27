@@ -32,6 +32,16 @@ export class PostsController {
     return this.postsService.search(q ?? '', req.user.sub);
   }
 
+  @Get('feed')
+  @UseGuards(JwtAuthGuard)
+  getFeed(
+    @Query('cursor') cursor: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.postsService.getFeed(req.user.sub, cursor, limit);
+  }
+
   @Post('project/:projectId/posts')
   @UseGuards(JwtAuthGuard)
   sendPost(
