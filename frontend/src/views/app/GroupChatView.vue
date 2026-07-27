@@ -6,6 +6,7 @@ import { ROUTES } from '@/api/routes'
 import { uploadImage, validateImage } from '@/api/upload'
 import { subscribeGroup, pusherEnabled } from '@/api/realtime'
 import { useAuthStore } from '@/stores/auth'
+import { useGroupsStore } from '@/stores/groups'
 import { useI18n } from '@/i18n'
 import Avatar from '@/components/Avatar.vue'
 import PrivateImage from '@/components/PrivateImage.vue'
@@ -14,6 +15,7 @@ import type { Group, GroupMember, Message } from '@/types/api'
 
 const route = useRoute()
 const auth = useAuthStore()
+const groupsStore = useGroupsStore()
 const { t } = useI18n()
 
 const group = ref<Group | null>(null)
@@ -252,6 +254,8 @@ async function saveGroup() {
       githubLink: linkChanged ? link || null : undefined,
     })
     group.value = await api.get<Group>(ROUTES.groups.byId(groupId()))
+    // Push the fresh Group into the shared store so the sidebar reflects the rename too.
+    groupsStore.upsert(group.value)
     showGroupEdit.value = false
   } catch (e) {
     error.value = (e as { message?: string }).message ?? t('chat.failUpdate')

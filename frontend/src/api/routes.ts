@@ -73,8 +73,6 @@ export const ROUTES = {
   },
 
   suggest: {
-    byProject: (projectId: string, campusId: string) =>
-      `/suggest/${projectId}/${campusId}`,
     forProject: (projectId: string) => `/suggest/${projectId}`,
   },
 

@@ -1,4 +1,4 @@
-import { onBeforeUnmount, ref, watch, type Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import type { Page } from '@/types/api'
 
 // Cursor pagination; guards concurrent calls and drops a stale response for a list reset mid-flight (epoch).
@@ -43,30 +43,4 @@ export function usePaginated<T>(fetchPage: (cursor: string | null) => Promise<Pa
   }
 
   return { items, cursor, loading, done, error, loadMore, reset, reload }
-}
-
-// Fire onReach when the bottom sentinel scrolls into view.
-export function useInfiniteScroll(
-  sentinel: Ref<HTMLElement | null>,
-  onReach: () => void,
-) {
-  let observer: IntersectionObserver | null = null
-
-  watch(
-    sentinel,
-    (el) => {
-      observer?.disconnect()
-      if (!el) return
-      observer = new IntersectionObserver(
-        (entries) => {
-          if (entries.some((e) => e.isIntersecting)) onReach()
-        },
-        { rootMargin: '400px' },
-      )
-      observer.observe(el)
-    },
-    { immediate: true, flush: 'post' },
-  )
-
-  onBeforeUnmount(() => observer?.disconnect())
 }
