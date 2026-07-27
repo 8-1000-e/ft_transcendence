@@ -163,7 +163,8 @@ watch(
             <div class="srow-name">{{ m.name || m.login }} <span class="ext">↗</span></div>
             <div class="srow-meta">
               <span v-if="m.final_mark != null" class="ok">{{ m.final_mark }}%</span>
-              <span v-if="m.location" class="on"> · {{ $t('common.online') }}</span>
+              <!-- The seat is the actionable bit ("go see them at e1r2p3"). -->
+              <span v-if="m.location" class="on"> · {{ m.location }}</span>
             </div>
           </div>
         </a>

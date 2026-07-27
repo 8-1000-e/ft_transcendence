@@ -127,6 +127,8 @@ export interface FriendView {
   ftPfpUrl: string | null
   campus: string | null
   online: boolean
+  // Seat they're currently sitting at (live 42 read), null when not on campus.
+  location: string | null
 }
 
 export type FriendStatus =

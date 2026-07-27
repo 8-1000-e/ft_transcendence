@@ -35,15 +35,16 @@ export interface FtMember {
   ppUrl: string | null;
 }
 
+// An open session on a campus workstation (`host` = the seat, e.g. "e1r2p3").
+export interface FtActiveLocation {
+  host: string | null;
+  user: { id: number };
+}
+
 export interface FtProject {
   id: number;
   name: string;
   slug: string;
   exam?: boolean;
   parent?: { id: number; slug: string } | null;
-}
-
-export interface FtCursus {
-  id: number;
-  name: string;
 }
