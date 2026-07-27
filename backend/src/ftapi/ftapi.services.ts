@@ -1,7 +1,14 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { FtTokenResponse, FtProfile, FtProject, FtTeam } from './ftapi.types';
+import {
+  FtTokenResponse,
+  FtProfile,
+  FtProject,
+  FtTeam,
+  FtUserSummary,
+  FtMember,
+} from './ftapi.types';
 import { fetchWithRetry } from 'src/utils/http';
 
 // The 42 API has no "project kind" flag: real projects, exams, piscine modules,
@@ -10,6 +17,8 @@ import { fetchWithRetry } from 'src/utils/http';
 // deny-list is impossible since the junk set is open-ended. Anything unmatched
 // stays untagged and is filtered out of GET /projects.
 const COMMON_CORE_CURSUS_ID = 21;
+// How long a live-fetched 42 member profile stays in memory (never persisted).
+const MEMBER_TTL_MS = 10 * 60 * 1000;
 const COMMON_CORE_SLUGS = new Set<string>([
   '42cursus-libft',
   '42cursus-ft_printf',
@@ -163,6 +172,8 @@ export class FtApiService {
   private appToken: string | null = null;
   private appTokenExpiresAt: number = 0;
   private projectNameCache = new Map<string, string>();
+  // In-memory only (never written to the DB) — see getUsersByIds.
+  private memberCache = new Map<string, { member: FtMember; at: number }>();
 
   constructor(
     private readonly config: ConfigService,
@@ -216,6 +227,39 @@ export class FtApiService {
     }
     const resl = await this.Get<FtProfile>(`v2/me`, data.access_token);
     return resl;
+  }
+
+  // Live 42 profiles (real name + intra picture) for a set of ftIds. Nothing is
+  // persisted — same consent model as `suggest`: read on demand inside the
+  // auth-gated 42 circle. Batched (one call per 100 ids) and memory-cached for a
+  // few minutes so reopening a chat doesn't eat the 2 req/s app budget.
+  async getUsersByIds(ftIds: string[]): Promise<FtMember[]> {
+    const now = Date.now();
+    const found: FtMember[] = [];
+    const missing: string[] = [];
+    for (const id of ftIds) {
+      const hit = this.memberCache.get(id);
+      if (hit && now - hit.at < MEMBER_TTL_MS) found.push(hit.member);
+      else missing.push(id);
+    }
+
+    for (let i = 0; i < missing.length; i += 100) {
+      const chunk = missing.slice(i, i + 100);
+      const users = await this.Get<FtUserSummary[]>(
+        `v2/users?filter[id]=${chunk.join(',')}&page[size]=100`,
+      );
+      for (const u of users) {
+        const member: FtMember = {
+          ftId: String(u.id),
+          login: u.login,
+          name: u.usual_full_name ?? u.displayname ?? u.login,
+          ppUrl: u.image?.link ?? null,
+        };
+        this.memberCache.set(member.ftId, { member, at: now });
+        found.push(member);
+      }
+    }
+    return found;
   }
 
   private async getProjectName(projectId: string): Promise<string> {

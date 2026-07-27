@@ -2,10 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EditGroupDto } from './dto/edit-group.dto';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { FtApiService } from 'src/ftapi/ftapi.services';
 
 @Injectable()
 export class GroupService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ft: FtApiService,
+  ) {}
 
   async getMyGroups(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -30,6 +34,19 @@ export class GroupService {
       throw new ForbiddenException();
 
     return group;
+  }
+
+  // Teammates' real name + 42 picture for the chat header. Read live from the 42
+  // API and never stored; getGroup() gates it to members of that group (42-only).
+  async getMembers(groupId: string, userId: string) {
+    const group = await this.getGroup(groupId, userId);
+    if (!group.usersId.length) return [];
+    try {
+      return await this.ft.getUsersByIds(group.usersId);
+    } catch {
+      // 42 API unavailable → the header falls back to initials.
+      return [];
+    }
   }
 
   async updateGroup(groupId: string, userId: string, body: EditGroupDto) {
